@@ -119,7 +119,7 @@ export class TypeOrmCrudService<T> extends CrudService<T> {
       this.throwBadRequestException('Empty data. Nothing to save.');
     }
 
-    const saved = await this.repo.save<any>(entity);
+    const saved = await this.repo.save(entity as DeepPartial<T>);
 
     if (returnShallow) {
       return saved;
@@ -154,7 +154,7 @@ export class TypeOrmCrudService<T> extends CrudService<T> {
       this.throwBadRequestException('Empty data. Nothing to save.');
     }
 
-    return this.repo.save<any>(bulk, { chunk: 50 });
+    return this.repo.save(bulk as DeepPartial<T>[], { chunk: 50 });
   }
 
   /**
@@ -170,7 +170,7 @@ export class TypeOrmCrudService<T> extends CrudService<T> {
       ? { ...found, ...dto, ...paramsFilters, ...req.parsed.authPersist }
       : { ...found, ...dto, ...req.parsed.authPersist };
     const updated = await this.repo.save(
-      plainToClass(this.entityType, toSave, req.parsed.classTransformOptions) as unknown as DeepPartial<T>,
+      plainToClass(this.entityType, toSave, req.parsed.classTransformOptions) as DeepPartial<T>,
     );
 
     if (returnShallow) {
@@ -191,7 +191,7 @@ export class TypeOrmCrudService<T> extends CrudService<T> {
    */
   public async recoverOne(req: CrudRequest): Promise<T> {
     const found = await this.getOneOrFail(req, false, true);
-    return this.repo.recover(found as unknown as DeepPartial<T>);
+    return this.repo.recover(found as DeepPartial<T>);
   }
 
   /**
@@ -212,7 +212,7 @@ export class TypeOrmCrudService<T> extends CrudService<T> {
           ...req.parsed.authPersist,
         };
     const replaced = await this.repo.save(
-      plainToClass(this.entityType, toSave, req.parsed.classTransformOptions) as unknown as DeepPartial<T>,
+      plainToClass(this.entityType, toSave, req.parsed.classTransformOptions) as DeepPartial<T>,
     );
 
     if (returnShallow) {
@@ -240,10 +240,11 @@ export class TypeOrmCrudService<T> extends CrudService<T> {
     const toReturn = returnDeleted
       ? plainToClass(this.entityType, { ...found }, req.parsed.classTransformOptions)
       : undefined;
-    const _deleted =
-      req.options.query.softDelete === true
-        ? await this.repo.softRemove(found as unknown as DeepPartial<T>)
-        : await this.repo.remove(found);
+    if (req.options.query.softDelete === true) {
+      await this.repo.softRemove(found as DeepPartial<T>);
+    } else {
+      await this.repo.remove(found);
+    }
     return toReturn;
   }
 
@@ -287,7 +288,7 @@ export class TypeOrmCrudService<T> extends CrudService<T> {
     const allowedJoins = objKeys(joinOptions);
 
     if (hasLength(allowedJoins)) {
-      const eagerJoins: any = {};
+      const eagerJoins: Record<string, boolean> = {};
 
       for (let i = 0; i < allowedJoins.length; i++) {
         /* istanbul ignore else */
@@ -341,7 +342,7 @@ export class TypeOrmCrudService<T> extends CrudService<T> {
     // set cache
     /* istanbul ignore else */
     if (options.query.cache && parsed.cache !== 0) {
-      builder.cache(builder.getQueryAndParameters(), options.query.cache);
+      builder.cache(options.query.cache);
     }
 
     return builder;
@@ -364,8 +365,8 @@ export class TypeOrmCrudService<T> extends CrudService<T> {
   ): Promise<GetManyDefaultResponse<T> | T[]> {
     if (this.decidePagination(query, options)) {
       const [data, total] = await builder.getManyAndCount();
-      const limit = builder.expressionMap.take;
-      const offset = builder.expressionMap.skip;
+      const limit = this.getTake(query, options.query);
+      const offset = this.getSkip(query, limit);
 
       return this.createPageInfo(data, total, limit || total, offset || 0);
     }
@@ -592,115 +593,18 @@ export class TypeOrmCrudService<T> extends CrudService<T> {
 
   protected setSearchCondition(builder: SelectQueryBuilder<T>, search: SCondition, condition: SConditionKey = '$and') {
     /* istanbul ignore else */
-    if (isObject(search)) {
-      const keys = objKeys(search);
-      /* istanbul ignore else */
-      if (keys.length) {
-        // search: {$and: [...], ...}
-        if (isArrayFull(search.$and)) {
-          // search: {$and: [{}]}
-          if (search.$and.length === 1) {
-            this.setSearchCondition(builder, search.$and[0], condition);
-          }
-          // search: {$and: [{}, {}, ...]}
-          else {
-            this.builderAddBrackets(
-              builder,
-              condition,
-              new Brackets((qb: any) => {
-                search.$and.forEach((item: any) => {
-                  this.setSearchCondition(qb, item, '$and');
-                });
-              }),
-            );
-          }
-        }
-        // search: {$or: [...], ...}
-        else if (isArrayFull(search.$or)) {
-          // search: {$or: [...]}
-          if (keys.length === 1) {
-            // search: {$or: [{}]}
-            if (search.$or.length === 1) {
-              this.setSearchCondition(builder, search.$or[0], condition);
-            }
-            // search: {$or: [{}, {}, ...]}
-            else {
-              this.builderAddBrackets(
-                builder,
-                condition,
-                new Brackets((qb: any) => {
-                  search.$or.forEach((item: any) => {
-                    this.setSearchCondition(qb, item, '$or');
-                  });
-                }),
-              );
-            }
-          }
-          // search: {$or: [...], foo, ...}
-          else {
-            this.builderAddBrackets(
-              builder,
-              condition,
-              new Brackets((qb: any) => {
-                keys.forEach((field: string) => {
-                  if (field !== '$or') {
-                    const value = search[field];
-                    if (!isObject(value)) {
-                      this.builderSetWhere(qb, '$and', field, value);
-                    } else {
-                      this.setSearchFieldObjectCondition(qb, '$and', field, value);
-                    }
-                  } else {
-                    if (search.$or.length === 1) {
-                      this.setSearchCondition(builder, search.$or[0], '$and');
-                    } else {
-                      this.builderAddBrackets(
-                        qb,
-                        '$and',
-                        new Brackets((qb2: any) => {
-                          search.$or.forEach((item: any) => {
-                            this.setSearchCondition(qb2, item, '$or');
-                          });
-                        }),
-                      );
-                    }
-                  }
-                });
-              }),
-            );
-          }
-        }
-        // search: {...}
-        else {
-          // search: {foo}
-          if (keys.length === 1) {
-            const field = keys[0];
-            const value = search[field];
-            if (!isObject(value)) {
-              this.builderSetWhere(builder, condition, field, value);
-            } else {
-              this.setSearchFieldObjectCondition(builder, condition, field, value);
-            }
-          }
-          // search: {foo, ...}
-          else {
-            this.builderAddBrackets(
-              builder,
-              condition,
-              new Brackets((qb: any) => {
-                keys.forEach((field: string) => {
-                  const value = search[field];
-                  if (!isObject(value)) {
-                    this.builderSetWhere(qb, '$and', field, value);
-                  } else {
-                    this.setSearchFieldObjectCondition(qb, '$and', field, value);
-                  }
-                });
-              }),
-            );
-          }
-        }
-      }
+    if (!isObject(search)) return;
+
+    const keys = objKeys(search);
+    /* istanbul ignore else */
+    if (!keys.length) return;
+
+    if (isArrayFull(search.$and)) {
+      this.handleAndConditions(builder, search.$and, condition);
+    } else if (isArrayFull(search.$or)) {
+      this.handleOrConditions(builder, search, keys, condition);
+    } else {
+      this.handleFieldConditions(builder, search, keys, condition);
     }
   }
 
@@ -752,7 +656,7 @@ export class TypeOrmCrudService<T> extends CrudService<T> {
           this.builderAddBrackets(
             builder,
             condition,
-            new Brackets((qb: any) => {
+            new Brackets((qb: SelectQueryBuilder<T>) => {
               operators.forEach((operator: ComparisonOperator) => {
                 const value = object[operator];
 
@@ -767,7 +671,7 @@ export class TypeOrmCrudService<T> extends CrudService<T> {
                     this.builderAddBrackets(
                       qb,
                       condition,
-                      new Brackets((qb2: any) => {
+                      new Brackets((qb2: SelectQueryBuilder<T>) => {
                         this.setSearchFieldObjectCondition(qb2, '$or', field, object.$or);
                       }),
                     );
@@ -823,9 +727,17 @@ export class TypeOrmCrudService<T> extends CrudService<T> {
 
         return `${i}${this.alias}${i}.${i}${dbColName}${i}`;
       case 2:
-        return field;
-      default:
-        return cols.slice(cols.length - 2, cols.length).join('.');
+        if (sort) {
+          return field;
+        }
+        return `${i}${cols[0]}${i}.${i}${cols[1]}${i}`;
+      default: {
+        const last2 = cols.slice(cols.length - 2, cols.length);
+        if (sort) {
+          return last2.join('.');
+        }
+        return `${i}${last2[0]}${i}.${i}${last2[1]}${i}`;
+      }
     }
   }
 
@@ -977,10 +889,122 @@ export class TypeOrmCrudService<T> extends CrudService<T> {
     return { str, params };
   }
 
+  private handleAndConditions(
+    builder: SelectQueryBuilder<T>,
+    conditions: SCondition[],
+    parentCondition: SConditionKey,
+  ) {
+    if (conditions.length === 1) {
+      this.setSearchCondition(builder, conditions[0], parentCondition);
+    } else {
+      this.builderAddBrackets(
+        builder,
+        parentCondition,
+        new Brackets((qb: SelectQueryBuilder<T>) => {
+          conditions.forEach((item: SCondition) => {
+            this.setSearchCondition(qb, item, '$and');
+          });
+        }),
+      );
+    }
+  }
+
+  private handleOrConditions(
+    builder: SelectQueryBuilder<T>,
+    search: SCondition,
+    keys: string[],
+    parentCondition: SConditionKey,
+  ) {
+    if (keys.length === 1) {
+      if (search.$or.length === 1) {
+        this.setSearchCondition(builder, search.$or[0], parentCondition);
+      } else {
+        this.builderAddBrackets(
+          builder,
+          parentCondition,
+          new Brackets((qb: SelectQueryBuilder<T>) => {
+            search.$or.forEach((item: SCondition) => {
+              this.setSearchCondition(qb, item, '$or');
+            });
+          }),
+        );
+      }
+    } else {
+      this.builderAddBrackets(
+        builder,
+        parentCondition,
+        new Brackets((qb: SelectQueryBuilder<T>) => {
+          keys.forEach((field: string) => {
+            if (field !== '$or') {
+              const value = search[field];
+              if (!isObject(value)) {
+                this.builderSetWhere(qb, '$and', field, value);
+              } else {
+                this.setSearchFieldObjectCondition(qb, '$and', field, value);
+              }
+            } else {
+              if (search.$or.length === 1) {
+                this.setSearchCondition(builder, search.$or[0], '$and');
+              } else {
+                this.builderAddBrackets(
+                  qb,
+                  '$and',
+                  new Brackets((qb2: SelectQueryBuilder<T>) => {
+                    search.$or.forEach((item: SCondition) => {
+                      this.setSearchCondition(qb2, item, '$or');
+                    });
+                  }),
+                );
+              }
+            }
+          });
+        }),
+      );
+    }
+  }
+
+  private handleFieldConditions(
+    builder: SelectQueryBuilder<T>,
+    search: SCondition,
+    keys: string[],
+    parentCondition: SConditionKey,
+  ) {
+    if (keys.length === 1) {
+      const field = keys[0];
+      const value = search[field];
+      if (!isObject(value)) {
+        this.builderSetWhere(builder, parentCondition, field, value);
+      } else {
+        this.setSearchFieldObjectCondition(builder, parentCondition, field, value);
+      }
+    } else {
+      this.builderAddBrackets(
+        builder,
+        parentCondition,
+        new Brackets((qb: SelectQueryBuilder<T>) => {
+          keys.forEach((field: string) => {
+            const value = search[field];
+            if (!isObject(value)) {
+              this.builderSetWhere(qb, '$and', field, value);
+            } else {
+              this.setSearchFieldObjectCondition(qb, '$and', field, value);
+            }
+          });
+        }),
+      );
+    }
+  }
+
   private checkFilterIsArray(cond: QueryFilter, withLength?: boolean) {
     /* istanbul ignore if */
-    if (!Array.isArray(cond.value) || !cond.value.length || (!isNil(withLength) ? withLength : false)) {
-      this.throwBadRequestException(`Invalid column '${cond.field}' value`);
+    if (!Array.isArray(cond.value)) {
+      this.throwBadRequestException(`Invalid column '${cond.field}' value: expected an array`);
+    }
+    if (!cond.value.length) {
+      this.throwBadRequestException(`Invalid column '${cond.field}' value: array must not be empty`);
+    }
+    if (withLength) {
+      this.throwBadRequestException(`Invalid column '${cond.field}' value: array length mismatch`);
     }
   }
 
@@ -989,7 +1013,7 @@ export class TypeOrmCrudService<T> extends CrudService<T> {
     if (this.sqlInjectionRegEx.length) {
       for (let i = 0; i < this.sqlInjectionRegEx.length; i++) {
         /* istanbul ignore else */
-        if (this.sqlInjectionRegEx[0].test(field)) {
+        if (this.sqlInjectionRegEx[i].test(field)) {
           this.throwBadRequestException(`SQL injection detected: "${field}"`);
         }
       }

@@ -196,7 +196,7 @@ export class RequestQueryParser implements ParsedRequestParams {
     return [];
   }
 
-  private parseValue(val: any) {
+  private parseValue(val: any): string | number | boolean | Date {
     try {
       const parsed = JSON.parse(val);
 
@@ -231,21 +231,41 @@ export class RequestQueryParser implements ParsedRequestParams {
   }
 
   private parseSearchQueryParam(d: any): SCondition {
+    if (isNil(d)) {
+      return undefined;
+    }
+
+    let data: any;
     try {
-      if (isNil(d)) {
-        return undefined;
-      }
-
-      const data = JSON.parse(d);
-
-      if (!isObject(data)) {
-        throw new Error();
-      }
-
-      return data;
+      data = JSON.parse(d);
     } catch (_) {
       throw new RequestQueryException('Invalid search param. JSON expected');
     }
+
+    if (!isObject(data)) {
+      throw new RequestQueryException('Invalid search param. JSON object expected');
+    }
+
+    const maxDepth = 10;
+    if (!this.validateSearchDepth(data, maxDepth)) {
+      throw new RequestQueryException(`Invalid search param. Maximum nesting depth of ${maxDepth} exceeded`);
+    }
+
+    return data;
+  }
+
+  private validateSearchDepth(obj: any, maxDepth: number, currentDepth = 0): boolean {
+    if (currentDepth > maxDepth) {
+      return false;
+    }
+    if (!isObject(obj)) {
+      return true;
+    }
+    return Object.values(obj).every((val) =>
+      Array.isArray(val)
+        ? val.every((item) => this.validateSearchDepth(item, maxDepth, currentDepth + 1))
+        : this.validateSearchDepth(val, maxDepth, currentDepth + 1),
+    );
   }
 
   private conditionParser(cond: 'filter' | 'or' | 'search', data: string): QueryFilter {
@@ -295,7 +315,7 @@ export class RequestQueryParser implements ParsedRequestParams {
   }
 
   private numericParser(num: 'limit' | 'offset' | 'page' | 'cache' | 'includeDeleted', data: string): number {
-    const val = this.parseValue(data);
+    const val = this.parseValue(data) as number;
     validateNumeric(val, num);
 
     return val;

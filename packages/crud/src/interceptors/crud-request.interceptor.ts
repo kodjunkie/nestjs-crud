@@ -25,7 +25,7 @@ export class CrudRequestInterceptor extends CrudBaseInterceptor implements NestI
         if (!isNil(ctrlOptions)) {
           const search = this.getSearch(parser, crudOptions, action, req.params);
           const auth = this.getAuth(parser, crudOptions, req);
-          parser.search = auth.or ? { $or: [auth.or, { $and: search }] } : { $and: [auth.filter, ...search] };
+          parser.search = auth.or ? { $or: [auth.or, { $and: search }] } : { $and: [...(auth.filter ? [auth.filter] : []), ...search] };
         } else {
           parser.search = { $and: this.getSearch(parser, crudOptions, action) };
         }
@@ -82,34 +82,22 @@ export class CrudRequestInterceptor extends CrudBaseInterceptor implements NestI
     if (parser.search) {
       search = [parser.search];
     } else if (hasLength(parser.filter) && hasLength(parser.or)) {
-      search =
-        parser.filter.length === 1 && parser.or.length === 1
-          ? [
-              {
-                $or: [parser.convertFilterToSearch(parser.filter[0]), parser.convertFilterToSearch(parser.or[0])],
-              },
-            ]
-          : [
-              {
-                $or: [
-                  { $and: parser.filter.map(parser.convertFilterToSearch) },
-                  { $and: parser.or.map(parser.convertFilterToSearch) },
-                ],
-              },
-            ];
+      const filterConditions = parser.filter.map(parser.convertFilterToSearch);
+      const orConditions = parser.or.map(parser.convertFilterToSearch);
+      search = [
+        {
+          $or: [
+            filterConditions.length === 1 ? filterConditions[0] : { $and: filterConditions },
+            orConditions.length === 1 ? orConditions[0] : { $and: orConditions },
+          ],
+        },
+      ];
     } else if (hasLength(parser.filter)) {
       search = parser.filter.map(parser.convertFilterToSearch);
-    } else {
-      if (hasLength(parser.or)) {
-        search =
-          parser.or.length === 1
-            ? [parser.convertFilterToSearch(parser.or[0])]
-            : /* istanbul ignore next */ [
-                {
-                  $or: parser.or.map(parser.convertFilterToSearch),
-                },
-              ];
-      }
+    } else if (hasLength(parser.or)) {
+      search = parser.or.length === 1
+        ? [parser.convertFilterToSearch(parser.or[0])]
+        : [{ $or: parser.or.map(parser.convertFilterToSearch) }];
     }
 
     return [...paramsSearch, ...optionsFilter, ...search];

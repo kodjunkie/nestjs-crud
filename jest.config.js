@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-var-requires */
 
 const tsconfig = require('tsconfig-extends');
-const { pathsToModuleNameMapper } = require('ts-jest/utils');
+const { pathsToModuleNameMapper } = require('ts-jest');
 const compilerOptions = tsconfig.load_file_sync('./tsconfig.jest.json', __dirname);
 
 module.exports = {
@@ -14,12 +14,12 @@ module.exports = {
   testRegex: '\\.spec.ts$',
   rootDir: '.',
   transform: {
-    '^.+\\.ts$': 'ts-jest',
-  },
-  globals: {
-    'ts-jest': {
-      tsconfig: 'tsconfig.jest.json',
-    },
+    '^.+\\.ts$': [
+      'ts-jest',
+      {
+        tsconfig: 'tsconfig.jest.json',
+      },
+    ],
   },
   coverageReporters: ['json', 'lcov', 'text-summary'],
   coverageDirectory: 'coverage',

@@ -126,13 +126,16 @@ export class CrudRoutesFactory {
     this.options.serialize.get = isFalse(this.options.serialize.get)
       ? false
       : this.options.serialize.get || this.modelType;
-    this.options.serialize.getMany = isFalse(this.options.serialize.getMany)
-      ? false
-      : this.options.serialize.getMany
-        ? this.options.serialize.getMany
-        : isFalse(this.options.serialize.get)
-          ? /* istanbul ignore next */ false
-          : SerializeHelper.createGetManyDto(this.options.serialize.get, this.modelName);
+    if (isFalse(this.options.serialize.getMany)) {
+      this.options.serialize.getMany = false;
+    } else if (this.options.serialize.getMany) {
+      // keep existing value
+    } else if (isFalse(this.options.serialize.get)) {
+      /* istanbul ignore next */
+      this.options.serialize.getMany = false;
+    } else {
+      this.options.serialize.getMany = SerializeHelper.createGetManyDto(this.options.serialize.get, this.modelName);
+    }
     this.options.serialize.create = isFalse(this.options.serialize.create)
       ? false
       : this.options.serialize.create || this.modelType;
