@@ -28,7 +28,6 @@
     "format": "npx pretty-quick --pattern \"packages/**/!(*.d).ts\"",
     "lint": "npx eslint \"packages/**/!(*.d).ts\" --fix",
     "commit": "npx git-cz",
-    "postinstall": "npx opencollective",
     "prepare": "npx husky install",
     "release": "mrepo release",
     "release:alpha": "yarn release prerelease --preid alpha --dist-tag alpha",
@@ -60,7 +59,6 @@
     "typeorm": "^0.3.0"
   },
   "devDependencies": {
-    "@nuxtjs/opencollective": "0.2.2",
     "@types/jest": "27.4.1",
     "@types/node": "17.0.23",
     "@types/qs": "6.9.7",
