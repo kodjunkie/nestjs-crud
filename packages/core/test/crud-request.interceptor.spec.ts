@@ -130,7 +130,7 @@ describe('#crud', () => {
     }
   }
 
-  let $: supertest.SuperTest<supertest.Test>;
+  let $: any;
   let app: NestApplication;
 
   beforeAll(async () => {
