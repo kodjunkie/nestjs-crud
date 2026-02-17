@@ -1,0 +1,34 @@
+{
+  "compilerOptions": {
+    "module": "commonjs",
+    "declaration": true,
+    "noImplicitAny": false,
+    "noUnusedLocals": false,
+    "removeComments": true,
+    "noLib": false,
+    "emitDecoratorMetadata": true,
+    "experimentalDecorators": true,
+    "target": "es2018",
+    "sourceMap": true,
+    "allowJs": false,
+    "skipLibCheck": false,
+    "composite": true,
+    "baseUrl": "./packages",
+    "paths": {
+      "@nestjsx/crud": ["crud/src"],
+      "@nestjsx/crud-typeorm": ["crud-typeorm/src"],
+      "@nestjsx/crud-request": ["crud-request/src"],
+      "@nestjsx/util": ["util/src"],
+      "@nestjsx/crud/*": ["crud/src/*"],
+      "@nestjsx/crud-typeorm/*": ["crud-typeorm/src/*"],
+      "@nestjsx/crud-request/*": ["crud-request/src/*"],
+      "@nestjsx/util/*": ["util/src/*"]
+    }
+  },
+  "references": [
+    { "path": "crud" },
+    { "path": "crud-typeorm" },
+    { "path": "crud-request" },
+    { "path": "util" }
+  ]
+}

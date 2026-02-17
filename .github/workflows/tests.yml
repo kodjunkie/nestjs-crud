@@ -1,0 +1,50 @@
+name: Tests
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    env:
+      COMPOSE_FILE: ./docker-compose.yml
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: build docker db
+        run: docker-compose up -d
+
+      - name: install
+        run: yarn boot
+
+      - name: build
+        run: yarn build
+
+      - name: check docker
+        run: docker-compose up -d
+
+      - name: tests
+        run: yarn test:coverage
+
+      - name: Coveralls Parallel
+        uses: coverallsapp/github-action@master
+        with:
+          github-token: ${{ secrets.github_token }}
+          flag-name: run-${{ matrix.test_number }}
+          parallel: true
+
+  coverage:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Coveralls coverage
+        uses: coverallsapp/github-action@master
+        with:
+          github-token: ${{ secrets.github_token }}
+          parallel-finished: true
