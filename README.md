@@ -6,7 +6,7 @@
 </div>
 
 <div align="center">
-  <h1>CRUD</h1>
+  <h1>NESTJS-CRUD</h1>
 </div>
 <div align="center">
   <strong>for RESTful APIs built with NestJs</strong>
