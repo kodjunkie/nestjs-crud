@@ -91,9 +91,7 @@ export class DrizzleCrudService<T extends Record<string, unknown>> extends CrudS
         .from(this.table)
         .$dynamic();
       if (allConditions.length) {
-        countQuery.where(
-          allConditions.length === 1 ? allConditions[0] : and(...allConditions),
-        );
+        countQuery.where(allConditions.length === 1 ? allConditions[0] : and(...allConditions));
       }
       const countResult = await countQuery;
       const total = Number(countResult[0]?.count ?? 0);
@@ -142,10 +140,7 @@ export class DrizzleCrudService<T extends Record<string, unknown>> extends CrudS
 
     const primaryParams = this.getPrimaryParams(options);
     if (primaryParams.length && primaryParams.every((p) => !isNil(saved[p]))) {
-      req.parsed.search = primaryParams.reduce(
-        (acc, p) => ({ ...acc, [p]: saved[p] }),
-        {},
-      );
+      req.parsed.search = primaryParams.reduce((acc, p) => ({ ...acc, [p]: saved[p] }), {});
       return this.getOneOrFail(req);
     }
 
@@ -198,10 +193,7 @@ export class DrizzleCrudService<T extends Record<string, unknown>> extends CrudS
 
     const primaryParams = this.getPrimaryParams(options);
     if (primaryParams.length) {
-      req.parsed.search = primaryParams.reduce(
-        (acc, p) => ({ ...acc, [p]: (updated as any)[p] }),
-        {},
-      );
+      req.parsed.search = primaryParams.reduce((acc, p) => ({ ...acc, [p]: (updated as any)[p] }), {});
     }
     return this.getOneOrFail(req);
   }
@@ -239,10 +231,7 @@ export class DrizzleCrudService<T extends Record<string, unknown>> extends CrudS
 
     const primaryParams = this.getPrimaryParams(options);
     if (primaryParams.length) {
-      req.parsed.search = primaryParams.reduce(
-        (acc, p) => ({ ...acc, [p]: (toReturn as any)[p] }),
-        {},
-      );
+      req.parsed.search = primaryParams.reduce((acc, p) => ({ ...acc, [p]: (toReturn as any)[p] }), {});
     }
     return this.getOneOrFail(req);
   }
@@ -280,10 +269,7 @@ export class DrizzleCrudService<T extends Record<string, unknown>> extends CrudS
       .set({ [this.getSoftDeleteColumnName()]: null })
       .where(pkCondition);
 
-    req.parsed.search = this.entityPrimaryColumns.reduce(
-      (acc, p) => ({ ...acc, [p]: (found as any)[p] }),
-      {},
-    );
+    req.parsed.search = this.entityPrimaryColumns.reduce((acc, p) => ({ ...acc, [p]: (found as any)[p] }), {});
     return this.getOneOrFail(req);
   }
 
@@ -379,26 +365,17 @@ export class DrizzleCrudService<T extends Record<string, unknown>> extends CrudS
     return filters;
   }
 
-  protected async getOneOrFail(
-    req: CrudRequest,
-    shallow = false,
-    withDeleted = false,
-  ): Promise<T> {
+  protected async getOneOrFail(req: CrudRequest, shallow = false, withDeleted = false): Promise<T> {
     const { parsed, options } = req;
     const selectMap = shallow
-      ? Object.fromEntries(
-          this.entityColumns.map((c) => [c, this.columnsMap[c]]),
-        ) as Record<string, Column>
+      ? (Object.fromEntries(this.entityColumns.map((c) => [c, this.columnsMap[c]])) as Record<string, Column>)
       : this.getSelect(parsed, options.query);
 
     const query = this.db.select(selectMap).from(this.table).$dynamic();
 
     const searchWhere = this.buildSearchCondition(parsed.search);
     const softDeleteWhere =
-      !withDeleted &&
-      options.query.softDelete &&
-      this.entityHasDeleteColumn &&
-      parsed.includeDeleted !== 1
+      !withDeleted && options.query.softDelete && this.entityHasDeleteColumn && parsed.includeDeleted !== 1
         ? this.getSoftDeleteCondition()
         : undefined;
 

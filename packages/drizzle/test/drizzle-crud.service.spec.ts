@@ -125,10 +125,7 @@ describe('DrizzleCrudService', () => {
 
     it('should handle nested $and and $or', () => {
       const result = service.buildSearchCondition({
-        $and: [
-          { $or: [{ name: 'John' }, { name: 'Jane' }] },
-          { age: { $gte: 18 } },
-        ],
+        $and: [{ $or: [{ name: 'John' }, { name: 'Jane' }] }, { age: { $gte: 18 } }],
       });
       expect(result).toBeDefined();
     });
@@ -257,10 +254,7 @@ describe('DrizzleCrudService', () => {
     });
 
     it('should combine allow and exclude', () => {
-      const result = service.getSelect(
-        { fields: [] },
-        { allow: ['name', 'email', 'age'], exclude: ['age'] },
-      );
+      const result = service.getSelect({ fields: [] }, { allow: ['name', 'email', 'age'], exclude: ['age'] });
       const keys = Object.keys(result);
       expect(keys).toContain('name');
       expect(keys).toContain('email');
@@ -313,40 +307,33 @@ describe('DrizzleCrudService', () => {
     });
 
     it('should handle query sort ASC', () => {
-      const result = service.getSort(
-        { sort: [{ field: 'name', order: 'ASC' }] },
-        {},
-      );
+      const result = service.getSort({ sort: [{ field: 'name', order: 'ASC' }] }, {});
       expect(result.length).toBe(1);
     });
 
     it('should handle DESC sort', () => {
-      const result = service.getSort(
-        { sort: [{ field: 'name', order: 'DESC' }] },
-        {},
-      );
+      const result = service.getSort({ sort: [{ field: 'name', order: 'DESC' }] }, {});
       expect(result.length).toBe(1);
     });
 
     it('should fall back to options sort', () => {
-      const result = service.getSort(
-        { sort: [] },
-        { sort: [{ field: 'id', order: 'ASC' }] },
-      );
+      const result = service.getSort({ sort: [] }, { sort: [{ field: 'id', order: 'ASC' }] });
       expect(result.length).toBe(1);
     });
 
     it('should skip unknown fields', () => {
-      const result = service.getSort(
-        { sort: [{ field: 'unknown', order: 'ASC' }] },
-        {},
-      );
+      const result = service.getSort({ sort: [{ field: 'unknown', order: 'ASC' }] }, {});
       expect(result.length).toBe(0);
     });
 
     it('should handle multiple sort fields', () => {
       const result = service.getSort(
-        { sort: [{ field: 'name', order: 'ASC' }, { field: 'age', order: 'DESC' }] },
+        {
+          sort: [
+            { field: 'name', order: 'ASC' },
+            { field: 'age', order: 'DESC' },
+          ],
+        },
         {},
       );
       expect(result.length).toBe(2);
