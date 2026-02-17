@@ -64,7 +64,7 @@ yarn test:coverage
 `docker-compose.yml` provides Postgres (port 5455), MySQL (port 3316), and Redis (port 6399):
 
 ```bash
-docker-compose up -d                    # Start all services
+docker compose up -d                    # Start all services
 yarn db:prepare:typeorm:postgres        # Drop + sync + seed Postgres
 yarn db:prepare:typeorm:mysql           # Drop + sync + seed MySQL
 ```

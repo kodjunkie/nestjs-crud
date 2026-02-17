@@ -18,7 +18,7 @@ jobs:
       - uses: actions/checkout@v2
 
       - name: build docker db
-        run: docker-compose up -d
+        run: docker compose up -d
 
       - name: install
         run: yarn boot
@@ -27,7 +27,7 @@ jobs:
         run: yarn build
 
       - name: check docker
-        run: docker-compose up -d
+        run: docker compose up -d
 
       - name: tests
         run: yarn test:coverage
