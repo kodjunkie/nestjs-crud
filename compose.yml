@@ -1,12 +1,10 @@
-version: '3'
-
 networks:
   nestjs_crud:
 
 services:
   postgres:
     # TypeORM fails with Postgres v.12
-    image: postgres:11.5
+    image: postgres:18
     ports:
       - 5455:5432
     environment:
@@ -18,7 +16,7 @@ services:
 
   mysql:
     platform: linux/x86_64
-    image: mysql:5.7
+    image: mysql:9
     ports:
       - 3316:3306
     environment:
