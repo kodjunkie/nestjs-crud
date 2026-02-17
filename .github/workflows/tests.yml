@@ -12,7 +12,7 @@ jobs:
   test:
     runs-on: ubuntu-latest
     env:
-      COMPOSE_FILE: ./docker-compose.yml
+      COMPOSE_FILE: ./compose.yml
 
     steps:
       - uses: actions/checkout@v2
