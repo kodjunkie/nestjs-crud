@@ -4,20 +4,20 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-A NestJS CRUD monorepo (`@nestjs-crud/crud`) that auto-generates RESTful CRUD endpoints for NestJS controllers backed by TypeORM. Managed with Yarn workspaces + Lerna + `@zmotivat0r/mrepo`.
+A NestJS CRUD monorepo (`@nestjs-crud/core`) that auto-generates RESTful CRUD endpoints for NestJS controllers backed by TypeORM. Managed with Yarn workspaces + Lerna + `@zmotivat0r/mrepo`.
 
 ## Packages
 
 Four packages in `packages/`, with this dependency chain:
 
 ```
-util → crud-request → crud → crud-typeorm
+util → request → core → typeorm
 ```
 
 - **`@nestjs-crud/util`** — Tiny type-check utilities (`isNil`, `isArrayFull`, etc.)
-- **`@nestjs-crud/crud-request`** — `RequestQueryBuilder` (frontend query construction) and `RequestQueryParser` (backend query parsing). Handles search conditions, filters, joins, sorting, pagination
-- **`@nestjs-crud/crud`** — Core framework: `@Crud()` decorator, `CrudRoutesFactory`, `CrudRequestInterceptor`, `CrudResponseInterceptor`, `@CrudAuth()`, `@Override()`, `@ParsedRequest()`, `CrudConfigService`
-- **`@nestjs-crud/crud-typeorm`** — `TypeOrmCrudService<T>` — concrete TypeORM implementation that translates parsed requests into `SelectQueryBuilder` queries
+- **`@nestjs-crud/request`** — `RequestQueryBuilder` (frontend query construction) and `RequestQueryParser` (backend query parsing). Handles search conditions, filters, joins, sorting, pagination
+- **`@nestjs-crud/core`** — Core framework: `@Crud()` decorator, `CrudRoutesFactory`, `CrudRequestInterceptor`, `CrudResponseInterceptor`, `@CrudAuth()`, `@Override()`, `@ParsedRequest()`, `CrudConfigService`
+- **`@nestjs-crud/typeorm`** — `TypeOrmCrudService<T>` — concrete TypeORM implementation that translates parsed requests into `SelectQueryBuilder` queries
 
 ## Build Commands
 
@@ -44,7 +44,7 @@ yarn test:postgres
 yarn test:mysql
 
 # Run a single test file
-npx jest packages/crud/test/crud.decorator.base.spec.ts
+npx jest packages/core/test/crud.decorator.base.spec.ts
 
 # Run tests matching a name pattern
 npx jest --testNamePattern="getManyBase"
@@ -55,9 +55,9 @@ yarn test:coverage
 
 ### Test categories
 
-- **`packages/crud/test/`** — Unit tests for decorators, interceptors, config service. No database needed.
-- **`packages/crud-request/test/`** — Unit tests for query builder/parser. No database needed.
-- **`packages/crud-typeorm/test/`** — Integration tests requiring a live database. Tests use the `integration/crud-typeorm/` app as a fixture (entities, services, seeds).
+- **`packages/core/test/`** — Unit tests for decorators, interceptors, config service. No database needed.
+- **`packages/request/test/`** — Unit tests for query builder/parser. No database needed.
+- **`packages/typeorm/test/`** — Integration tests requiring a live database. Tests use the `integration/typeorm/` app as a fixture (entities, services, seeds).
 
 ### Database for integration tests
 
@@ -96,6 +96,6 @@ HTTP Request
 
 - **Entities as DTOs**: Entities use `class-validator` groups (`CrudValidationGroups.CREATE` / `UPDATE`) to handle different validation rules for create vs update, avoiding separate DTO classes.
 - **Search conditions**: MongoDB-like `SCondition` syntax (`$and`, `$or`, `$eq`, `$gt`, `$cont`, etc.) gets recursively translated to TypeORM `Brackets`/`andWhere`/`orWhere`.
-- **`integration/crud-typeorm/`** is both a runnable NestJS app and the test fixture for integration tests. Tests import entities/services from there directly.
-- **Metadata-driven**: All route configuration flows through `Reflect.defineMetadata`. The reflection helper `R` (in `packages/crud/src/crud/reflection.helper.ts`) centralizes all metadata access. Constants are in `packages/crud/src/constants.ts`.
+- **`integration/typeorm/`** is both a runnable NestJS app and the test fixture for integration tests. Tests import entities/services from there directly.
+- **Metadata-driven**: All route configuration flows through `Reflect.defineMetadata`. The reflection helper `R` (in `packages/core/src/crud/reflection.helper.ts`) centralizes all metadata access. Constants are in `packages/core/src/constants.ts`.
 - **Swagger is optional**: `safeRequire` gracefully skips Swagger setup if `@nestjs/swagger` is not installed.

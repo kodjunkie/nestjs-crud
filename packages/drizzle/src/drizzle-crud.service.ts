@@ -6,9 +6,9 @@ import {
   QueryOptions,
   JoinOptions,
   JoinOption,
-} from '@nestjs-crud/crud';
+} from '@nestjs-crud/core';
 import { NotFoundException } from '@nestjs/common';
-import { ParsedRequestParams, QueryJoin, SCondition, ComparisonOperator } from '@nestjs-crud/crud-request';
+import { ParsedRequestParams, QueryJoin, SCondition, ComparisonOperator } from '@nestjs-crud/request';
 import { hasLength, isArrayFull, isNil, isObject, objKeys, isNull } from '@nestjs-crud/util';
 import {
   Table,

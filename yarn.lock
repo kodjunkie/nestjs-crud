@@ -1371,28 +1371,11 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@nestjs-crud/crud-request@npm:^1.0.0, @nestjs-crud/crud-request@workspace:packages/crud-request":
+"@nestjs-crud/core@workspace:packages/core":
   version: 0.0.0-use.local
-  resolution: "@nestjs-crud/crud-request@workspace:packages/crud-request"
+  resolution: "@nestjs-crud/core@workspace:packages/core"
   dependencies:
-    "@nestjs-crud/util": "npm:^1.0.0"
-    qs: "npm:^6.15.0"
-  languageName: unknown
-  linkType: soft
-
-"@nestjs-crud/crud-typeorm@workspace:packages/crud-typeorm":
-  version: 0.0.0-use.local
-  resolution: "@nestjs-crud/crud-typeorm@workspace:packages/crud-typeorm"
-  dependencies:
-    "@zmotivat0r/o0": "npm:^1.0.2"
-  languageName: unknown
-  linkType: soft
-
-"@nestjs-crud/crud@workspace:packages/crud":
-  version: 0.0.0-use.local
-  resolution: "@nestjs-crud/crud@workspace:packages/crud"
-  dependencies:
-    "@nestjs-crud/crud-request": "npm:^1.0.0"
+    "@nestjs-crud/request": "npm:^1.0.0"
     "@nestjs-crud/util": "npm:^1.0.0"
     deepmerge: "npm:^4.3.1"
     pluralize: "npm:^8.0.0"
@@ -1407,6 +1390,23 @@ __metadata:
   resolution: "@nestjs-crud/drizzle@workspace:packages/drizzle"
   peerDependencies:
     drizzle-orm: ">=0.36.0"
+  languageName: unknown
+  linkType: soft
+
+"@nestjs-crud/request@npm:^1.0.0, @nestjs-crud/request@workspace:packages/request":
+  version: 0.0.0-use.local
+  resolution: "@nestjs-crud/request@workspace:packages/request"
+  dependencies:
+    "@nestjs-crud/util": "npm:^1.0.0"
+    qs: "npm:^6.15.0"
+  languageName: unknown
+  linkType: soft
+
+"@nestjs-crud/typeorm@workspace:packages/typeorm":
+  version: 0.0.0-use.local
+  resolution: "@nestjs-crud/typeorm@workspace:packages/typeorm"
+  dependencies:
+    "@zmotivat0r/o0": "npm:^1.0.2"
   languageName: unknown
   linkType: soft
 
