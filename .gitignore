@@ -4,7 +4,6 @@ yarn-error.log
 npm-debug.log
 
 /.yarn
-yarn.lock
 
 # IDE
 /.idea

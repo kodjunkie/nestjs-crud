@@ -8,13 +8,13 @@
         "name": "util"
       },
       {
-        "name": "crud-request"
+        "name": "request"
       },
       {
-        "name": "crud-typeorm"
+        "name": "typeorm"
       },
       {
-        "name": "crud"
+        "name": "core"
       },
       {
         "name": "drizzle"

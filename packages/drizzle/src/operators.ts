@@ -17,7 +17,7 @@ import {
   not,
   sql,
 } from 'drizzle-orm';
-import { ComparisonOperator } from '@nestjs-crud/crud-request';
+import { ComparisonOperator } from '@nestjs-crud/request';
 
 type DbDialect = 'pg' | 'mysql' | 'sqlite' | string;
 

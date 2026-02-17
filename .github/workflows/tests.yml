@@ -12,22 +12,25 @@ jobs:
   test:
     runs-on: ubuntu-latest
     env:
-      COMPOSE_FILE: ./docker-compose.yml
+      COMPOSE_FILE: ./compose.yml
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
 
       - name: build docker db
-        run: docker-compose up -d
+        run: docker compose up -d
+
+      - name: Set Yarn version to stable
+        run: yarn set version stable
 
       - name: install
-        run: yarn boot
+        run: yarn install --immutable
 
       - name: build
         run: yarn build
 
       - name: check docker
-        run: docker-compose up -d
+        run: docker compose up -d
 
       - name: tests
         run: yarn test:coverage

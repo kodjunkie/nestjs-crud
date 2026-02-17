@@ -1,0 +1,34 @@
+networks:
+  nestjs_crud:
+
+services:
+  postgres:
+    # TypeORM fails with Postgres v.12
+    image: postgres:18
+    ports:
+      - 5455:5432
+    environment:
+      POSTGRES_USER: root
+      POSTGRES_PASSWORD: root
+      POSTGRES_DB: nestjs_crud
+    networks:
+      - nestjs_crud
+
+  mysql:
+    platform: linux/x86_64
+    image: mysql:9
+    ports:
+      - 3316:3306
+    environment:
+      MYSQL_DATABASE: nestjs_crud
+      MYSQL_USER: nestjs_crud
+      MYSQL_PASSWORD: nestjs_crud
+      MYSQL_ROOT_PASSWORD: nestjs_crud
+
+  redis:
+    image: redis:alpine
+    ports:
+      - 6399:6379
+    command: redis-server
+    networks:
+      - nestjs_crud
