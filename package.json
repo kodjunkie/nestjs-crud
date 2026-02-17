@@ -8,7 +8,6 @@
   ],
   "private": true,
   "scripts": {
-    "boot": "npx lerna bootstrap",
     "rebuild": "yarn clean && yarn build",
     "build": "npx mrepo build",
     "clean": "npx mrepo clean && npx rimraf ./.mrepo",
