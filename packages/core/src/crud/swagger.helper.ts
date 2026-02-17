@@ -541,9 +541,7 @@ export class Swagger {
   }
 
   private static getSwaggerVersion(): number {
-    return swaggerPkgJson
-      ? parseInt(swaggerPkgJson.version.split('.')[0], 10)
-      : /* istanbul ignore next */ 3;
+    return swaggerPkgJson ? parseInt(swaggerPkgJson.version.split('.')[0], 10) : /* istanbul ignore next */ 3;
   }
 }
 
