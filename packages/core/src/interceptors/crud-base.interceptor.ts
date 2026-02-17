@@ -4,9 +4,7 @@ import { CrudActions } from '../enums';
 import { MergedCrudOptions } from '../interfaces';
 
 export class CrudBaseInterceptor {
-  protected getCrudInfo(
-    context: ExecutionContext,
-  ): {
+  protected getCrudInfo(context: ExecutionContext): {
     ctrlOptions: MergedCrudOptions;
     crudOptions: Partial<MergedCrudOptions>;
     action: CrudActions;

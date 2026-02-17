@@ -12,17 +12,13 @@ describe('#crud', () => {
 
     describe('#throwBadRequestException', () => {
       it('should throw BadRequestException', () => {
-        expect(service.throwBadRequestException.bind(service, '')).toThrowError(
-          BadRequestException,
-        );
+        expect(service.throwBadRequestException.bind(service, '')).toThrowError(BadRequestException);
       });
     });
 
     describe('#throwNotFoundException', () => {
       it('should throw NotFoundException', () => {
-        expect(service.throwNotFoundException.bind(service, '')).toThrowError(
-          NotFoundException,
-        );
+        expect(service.throwNotFoundException.bind(service, '')).toThrowError(NotFoundException);
       });
     });
 
@@ -46,9 +42,7 @@ describe('#crud', () => {
           pageCount: 1,
           total: 100,
         };
-        expect(service.createPageInfo([], 100, undefined, undefined)).toMatchObject(
-          expected,
-        );
+        expect(service.createPageInfo([], 100, undefined, undefined)).toMatchObject(expected);
       });
     });
   });
