@@ -15,13 +15,16 @@ jobs:
       COMPOSE_FILE: ./compose.yml
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
 
       - name: build docker db
         run: docker compose up -d
 
+      - name: Set Yarn version to stable
+        run: yarn set version stable
+
       - name: install
-        run: yarn boot
+        run: yarn install --immutable
 
       - name: build
         run: yarn build
