@@ -6,7 +6,7 @@ exports.default = new DataSource({
   port: 5455,
   username: 'root',
   password: 'root',
-  database: 'nestjsx_crud',
+  database: 'nestjs_crud',
   entities: ['./**/*.entity.ts'],
   migrationsTableName: 'orm_migrations',
   migrations: ['./seeds.ts'],

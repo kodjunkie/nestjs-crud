@@ -7,7 +7,7 @@ import {
   IsDefined,
   IsBoolean,
 } from 'class-validator';
-import { CrudValidationGroups } from '@nestjsx/crud';
+import { CrudValidationGroups } from '@nestjs-crud/crud';
 
 import { BaseEntity } from '../base-entity';
 import { Company } from '../companies/company.entity';

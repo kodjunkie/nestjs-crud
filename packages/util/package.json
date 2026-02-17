@@ -1,7 +1,7 @@
 {
-  "name": "@nestjsx/util",
+  "name": "@nestjs-crud/util",
   "description": "NestJs CRUD for RESTful APIs - util",
-  "version": "5.0.0-alpha.3",
+  "version": "1.0.0",
   "license": "MIT",
   "main": "lib/index.js",
   "typings": "lib/index.d.ts",
@@ -30,8 +30,8 @@
     "crud-generator"
   ],
   "author": {
-    "name": "Michael Yali",
-    "email": "mihon4ik@gmail.com"
+    "name": "Lawrence Onah",
+    "email": "paplow01@gmail.com"
   },
   "scripts": {
     "build": "npx tsc -b"

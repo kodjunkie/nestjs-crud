@@ -1,7 +1,7 @@
 {
   "workspace": {
     "name": "packages",
-    "scope": "nestjsx",
+    "scope": "nestjs-crud",
     "registry": "npm",
     "packages": [
       {
@@ -23,8 +23,8 @@
     "defaultOptions": {
       "access": "public",
       "license": "MIT",
-      "authorName": "Michael Yali",
-      "authorEmail": "mihon4ik@gmail.com",
+      "authorName": "Lawrence Onah",
+      "authorEmail": "paplow01@gmail.com",
       "updateTsconfig": true,
       "subGenerators": [],
       "dependencies": []

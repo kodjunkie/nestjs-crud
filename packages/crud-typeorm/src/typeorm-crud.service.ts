@@ -7,7 +7,7 @@ import {
   JoinOption,
   JoinOptions,
   QueryOptions,
-} from '@nestjsx/crud';
+} from '@nestjs-crud/crud';
 import {
   ParsedRequestParams,
   QueryFilter,
@@ -16,8 +16,8 @@ import {
   SCondition,
   SConditionKey,
   ComparisonOperator,
-} from '@nestjsx/crud-request';
-import { ClassType, hasLength, isArrayFull, isObject, isUndefined, objKeys, isNil, isNull } from '@nestjsx/util';
+} from '@nestjs-crud/crud-request';
+import { ClassType, hasLength, isArrayFull, isObject, isUndefined, objKeys, isNil, isNull } from '@nestjs-crud/util';
 import { oO } from '@zmotivat0r/o0';
 import { plainToClass } from 'class-transformer';
 import {
@@ -240,7 +240,7 @@ export class TypeOrmCrudService<T> extends CrudService<T> {
     const toReturn = returnDeleted
       ? plainToClass(this.entityType, { ...found }, req.parsed.classTransformOptions)
       : undefined;
-    const deleted =
+    const _deleted =
       req.options.query.softDelete === true
         ? await this.repo.softRemove(found as unknown as DeepPartial<T>)
         : await this.repo.remove(found);
@@ -804,13 +804,13 @@ export class TypeOrmCrudService<T> extends CrudService<T> {
     return query.sort && query.sort.length
       ? this.mapSort(query.sort)
       : options.sort && options.sort.length
-      ? this.mapSort(options.sort)
-      : {};
+        ? this.mapSort(options.sort)
+        : {};
   }
 
   protected getFieldWithAlias(field: string, sort = false) {
     /* istanbul ignore next */
-    const i = ['mysql','mariadb'].includes(this.dbName) ? '`' : '"';
+    const i = ['mysql', 'mariadb'].includes(this.dbName) ? '`' : '"';
     const cols = field.split('.');
 
     switch (cols.length) {

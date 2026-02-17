@@ -1,7 +1,7 @@
 version: '3'
 
 networks:
-  nestjsx_crud:
+  nestjs_crud:
 
 services:
   postgres:
@@ -12,9 +12,9 @@ services:
     environment:
       POSTGRES_USER: root
       POSTGRES_PASSWORD: root
-      POSTGRES_DB: nestjsx_crud
+      POSTGRES_DB: nestjs_crud
     networks:
-      - nestjsx_crud
+      - nestjs_crud
 
   mysql:
     platform: linux/x86_64
@@ -22,10 +22,10 @@ services:
     ports:
       - 3316:3306
     environment:
-      MYSQL_DATABASE: nestjsx_crud
-      MYSQL_USER: nestjsx_crud
-      MYSQL_PASSWORD: nestjsx_crud
-      MYSQL_ROOT_PASSWORD: nestjsx_crud
+      MYSQL_DATABASE: nestjs_crud
+      MYSQL_USER: nestjs_crud
+      MYSQL_PASSWORD: nestjs_crud
+      MYSQL_ROOT_PASSWORD: nestjs_crud
 
   redis:
     image: redis:alpine
@@ -33,4 +33,4 @@ services:
       - 6399:6379
     command: redis-server
     networks:
-      - nestjsx_crud
+      - nestjs_crud

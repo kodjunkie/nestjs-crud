@@ -1,6 +1,6 @@
 import { RouteParamtypes } from '@nestjs/common/enums/route-paramtypes.enum';
 import {
-  CUSTOM_ROUTE_AGRS_METADATA,
+  CUSTOM_ROUTE_ARGS_METADATA,
   INTERCEPTORS_METADATA,
   METHOD_METADATA,
   PARAMTYPES_METADATA,
@@ -8,7 +8,7 @@ import {
   ROUTE_ARGS_METADATA,
 } from '@nestjs/common/constants';
 import { ArgumentsHost } from '@nestjs/common';
-import { isFunction } from '@nestjsx/util';
+import { isFunction } from '@nestjs-crud/util';
 
 import { BaseRoute, MergedCrudOptions, AuthOptions } from '../interfaces';
 import { BaseRouteName } from '../types';
@@ -45,7 +45,7 @@ export class R {
     data = undefined,
   ): any {
     return {
-      [`${paramtype}${CUSTOM_ROUTE_AGRS_METADATA}:${index}`]: {
+      [`${paramtype}${CUSTOM_ROUTE_ARGS_METADATA}:${index}`]: {
         index,
         factory: (_, ctx) => R.getContextRequest(ctx)[paramtype],
         data,

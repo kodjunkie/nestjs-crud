@@ -1,7 +1,7 @@
 {
-  "name": "@nestjsx/crud-request",
+  "name": "@nestjs-crud/crud-request",
   "description": "NestJs CRUD for RESTful APIs - request query builder",
-  "version": "5.0.0-alpha.3",
+  "version": "1.0.0",
   "license": "MIT",
   "main": "lib/index.js",
   "typings": "lib/index.d.ts",
@@ -40,14 +40,14 @@
     "querybuilder"
   ],
   "author": {
-    "name": "Michael Yali",
-    "email": "mihon4ik@gmail.com"
+    "name": "Lawrence Onah",
+    "email": "paplow01@gmail.com"
   },
   "scripts": {
     "build": "npx tsc -b"
   },
   "dependencies": {
-    "@nestjsx/util": "^5.0.0-alpha.3",
-    "qs": "^6.10.3"
+    "@nestjs-crud/util": "^1.0.0",
+    "qs": "^6.15.0"
   }
 }

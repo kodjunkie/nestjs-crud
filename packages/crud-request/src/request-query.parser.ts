@@ -10,7 +10,7 @@ import {
   objKeys,
   isNil,
   ObjectLiteral,
-} from '@nestjsx/util';
+} from '@nestjs-crud/util';
 import { ClassTransformOptions } from 'class-transformer';
 
 import { RequestQueryException } from './exceptions';
@@ -209,7 +209,7 @@ export class RequestQueryParser implements ParsedRequestParams {
       }
 
       return parsed;
-    } catch (ignored) {
+    } catch (_ignored) {
       if (isDateString(val)) {
         return new Date(val);
       }

@@ -1,11 +1,4 @@
-import {
-  IsString,
-  IsEmail,
-  IsNumber,
-  IsOptional,
-  IsNotEmpty,
-  IsEmpty,
-} from 'class-validator';
+import { IsString, IsEmail, IsNumber } from 'class-validator';
 
 export class TestCreateDto {
   @IsString()

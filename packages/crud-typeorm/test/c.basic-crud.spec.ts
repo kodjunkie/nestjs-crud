@@ -3,8 +3,8 @@ import { APP_FILTER } from '@nestjs/core';
 import { Test } from '@nestjs/testing';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
-import { Crud } from '@nestjsx/crud';
-import { RequestQueryBuilder } from '@nestjsx/crud-request';
+import { Crud } from '@nestjs-crud/crud';
+import { RequestQueryBuilder } from '@nestjs-crud/crud-request';
 import * as request from 'supertest';
 import { Company } from '../../../integration/crud-typeorm/companies';
 import { Device } from '../../../integration/crud-typeorm/devices';
@@ -24,8 +24,8 @@ describe('#crud-typeorm', () => {
   describe('#basic crud using alwaysPaginate default respects global limit', () => {
     let app: INestApplication;
     let server: any;
-    let qb: RequestQueryBuilder;
-    let service: CompaniesService;
+    let _qb: RequestQueryBuilder;
+    let _service: CompaniesService;
 
     @Crud({
       model: { type: Company },
@@ -47,14 +47,14 @@ describe('#crud-typeorm', () => {
       }).compile();
 
       app = fixture.createNestApplication();
-      service = app.get<CompaniesService>(CompaniesService);
+      _service = app.get<CompaniesService>(CompaniesService);
 
       await app.init();
       server = app.getHttpServer();
     });
 
     beforeEach(() => {
-      qb = RequestQueryBuilder.create();
+      _qb = RequestQueryBuilder.create();
     });
 
     afterAll(async () => {
@@ -79,7 +79,7 @@ describe('#crud-typeorm', () => {
     let app: INestApplication;
     let server: any;
     let qb: RequestQueryBuilder;
-    let service: CompaniesService;
+    let _service: CompaniesService;
 
     @Crud({
       model: { type: Company },
@@ -98,7 +98,7 @@ describe('#crud-typeorm', () => {
       }).compile();
 
       app = fixture.createNestApplication();
-      service = app.get<CompaniesService>(CompaniesService);
+      _service = app.get<CompaniesService>(CompaniesService);
 
       await app.init();
       server = app.getHttpServer();

@@ -1,6 +1,6 @@
 import { HttpStatus } from '@nestjs/common';
-import { RequestQueryBuilder } from '@nestjsx/crud-request';
-import { isString, objKeys } from '@nestjsx/util';
+import { RequestQueryBuilder } from '@nestjs-crud/crud-request';
+import { isString, objKeys } from '@nestjs-crud/util';
 import { MergedCrudOptions, ParamsOptions } from '../interfaces';
 import { BaseRouteName } from '../types';
 import { safeRequire } from '../util';
@@ -253,8 +253,8 @@ export class Swagger {
     }
 
     const {
-      delim: d,
-      delimStr: coma,
+      delim: _d,
+      delimStr: _coma,
       fields,
       search,
       filter,

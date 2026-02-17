@@ -1,4 +1,4 @@
-import { ClassType } from '@nestjsx/util';
+import { ClassType } from '@nestjs-crud/util';
 import { plainToClass } from 'class-transformer';
 import { MigrationInterface, Repository, QueryRunner } from 'typeorm';
 import { Company } from './companies';

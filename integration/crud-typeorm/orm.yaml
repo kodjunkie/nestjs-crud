@@ -4,7 +4,7 @@ default:
   port: 5455
   username: root
   password: root
-  database: nestjsx_crud
+  database: nestjs_crud
   entities:
     - ./**/*.entity.ts
   migrationsTableName: orm_migrations
@@ -14,9 +14,9 @@ mysql:
   type: mysql
   host: 127.0.0.1
   port: 3316
-  username: nestjsx_crud
-  password: nestjsx_crud
-  database: nestjsx_crud
+  username: nestjs_crud
+  password: nestjs_crud
+  database: nestjs_crud
   entities:
     - ./**/*.entity.ts
   migrationsTableName: orm_migrations

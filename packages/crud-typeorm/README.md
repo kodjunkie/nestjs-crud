@@ -1,5 +1,5 @@
 <div align="center">
-  <h1>CRUD (@nestjsx/crud-typeorm)</h1>
+  <h1>CRUD (@nestjs-crud/crud-typeorm)</h1>
 </div>
 <div align="center">
   <strong>for RESTful APIs built with NestJs</strong>
@@ -17,7 +17,7 @@
 
 <br />
 
-We believe that everyone who's working with NestJs and building some RESTful services and especially some CRUD functionality will find `@nestjsx/crud` microframework very useful.
+We believe that everyone who's working with NestJs and building some RESTful services and especially some CRUD functionality will find `@nestjs-crud/crud` microframework very useful.
 
 ## Features
 
@@ -44,14 +44,14 @@ We believe that everyone who's working with NestJs and building some RESTful ser
 ## Install
 
 ```shell
-npm i @nestjsx/crud-typeorm @nestjs/typeorm typeorm
+npm i @nestjs-crud/crud-typeorm @nestjs/typeorm typeorm
 ```
 
 ## Packages
 
-- [**@nestjsx/crud**](https://www.npmjs.com/package/@nestjsx/crud) - core package which provides `@Crud()` decorator for endpoints generation, global configuration, validation, helper decorators ([docs](https://github.com/nestjsx/crud/wiki/Controllers#description))
-- [**@nestjsx/crud-request**](https://www.npmjs.com/package/@nestjsx/crud-request) - request builder/parser package which provides `RequestQueryBuilder` class for a frontend usage and `RequestQueryParser` that is being used internally for handling and validating query/path params on a backend side ([docs](https://github.com/nestjsx/crud/wiki/Requests#frontend-usage))
-- [**@nestjsx/crud-typeorm**](https://www.npmjs.com/package/@nestjsx/crud-typeorm) - TypeORM package which provides base `TypeOrmCrudService` with methods for CRUD database operations ([docs](https://github.com/nestjsx/crud/wiki/ServiceTypeorm))
+- [**@nestjs-crud/crud**](https://www.npmjs.com/package/@nestjs-crud/crud) - core package which provides `@Crud()` decorator for endpoints generation, global configuration, validation, helper decorators ([docs](https://github.com/nestjsx/crud/wiki/Controllers#description))
+- [**@nestjs-crud/crud-request**](https://www.npmjs.com/package/@nestjs-crud/crud-request) - request builder/parser package which provides `RequestQueryBuilder` class for a frontend usage and `RequestQueryParser` that is being used internally for handling and validating query/path params on a backend side ([docs](https://github.com/nestjsx/crud/wiki/Requests#frontend-usage))
+- [**@nestjs-crud/crud-typeorm**](https://www.npmjs.com/package/@nestjs-crud/crud-typeorm) - TypeORM package which provides base `TypeOrmCrudService` with methods for CRUD database operations ([docs](https://github.com/nestjsx/crud/wiki/ServiceTypeorm))
 
 ## Documentation
 

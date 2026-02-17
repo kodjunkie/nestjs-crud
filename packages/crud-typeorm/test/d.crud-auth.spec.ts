@@ -3,7 +3,7 @@ import { APP_FILTER, APP_GUARD } from '@nestjs/core';
 import { Test } from '@nestjs/testing';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
-import { Crud, CrudAuth } from '@nestjsx/crud';
+import { Crud, CrudAuth } from '@nestjs-crud/crud';
 import * as request from 'supertest';
 import { withCache } from '../../../integration/crud-typeorm/orm.config';
 import { User } from '../../../integration/crud-typeorm/users';
@@ -163,10 +163,10 @@ describe('#crud-typeorm', () => {
 
     describe('#deleteOneBase', () => {
       it('should delete an entity with auth filter', async () => {
-        const res = await server.delete('/projects/21').expect(200);
+        const _res = await server.delete('/projects/21').expect(200);
       });
       it('should throw an error with auth filter', async () => {
-        const res = await server.delete('/projects/20').expect(404);
+        const _res = await server.delete('/projects/20').expect(404);
       });
     });
   });

@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { ParsedRequestParams } from '@nestjsx/crud-request';
+import { ParsedRequestParams } from '@nestjs-crud/crud-request';
 import { CrudRequestOptions } from '../../../src/interfaces';
 
 import { CreateManyDto, CrudRequest } from '../../../src/interfaces';
@@ -39,7 +39,7 @@ export class TestService<T> extends CrudService<T> {
     return { req };
   }
 
-  decidePagination(parsed: ParsedRequestParams, options: CrudRequestOptions): boolean {
+  decidePagination(_parsed: ParsedRequestParams, _options: CrudRequestOptions): boolean {
     return true;
   }
 }

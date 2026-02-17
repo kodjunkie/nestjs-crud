@@ -1,7 +1,7 @@
 import { Controller, Get, Param, ParseIntPipe, Query, UseInterceptors } from '@nestjs/common';
 import { NestApplication } from '@nestjs/core';
 import { Test } from '@nestjs/testing';
-import { RequestQueryBuilder } from '@nestjsx/crud-request';
+import { RequestQueryBuilder } from '@nestjs-crud/crud-request';
 import * as supertest from 'supertest';
 import { Crud, ParsedRequest, CrudAuth, Override } from '../src/decorators';
 import { CrudRequestInterceptor } from '../src/interceptors';
@@ -54,7 +54,7 @@ describe('#crud', () => {
 
     @UseInterceptors(CrudRequestInterceptor)
     @Get('other2/:id/twoParams/:someParam')
-    async twoParams(@ParsedRequest() req: CrudRequest, @Param('someParam', ParseIntPipe) p: number) {
+    async twoParams(@ParsedRequest() req: CrudRequest, @Param('someParam', ParseIntPipe) _p: number) {
       return { filter: req.parsed.paramsFilter };
     }
   }
@@ -67,7 +67,7 @@ describe('#crud', () => {
   })
   @CrudAuth({
     property: 'user',
-    filter: (user) => ({ user: 'test', buz: 1 }),
+    filter: (_user) => ({ user: 'test', buz: 1 }),
     persist: () => ({ bar: false }),
   })
   @Controller('test3')
@@ -225,7 +225,7 @@ describe('#crud', () => {
     });
 
     it('should parse multiple primary key', async () => {
-      const res = await $.get('/test5/123/456').expect(200);
+      const _res = await $.get('/test5/123/456').expect(200);
     });
 
     it('should work like before', async () => {

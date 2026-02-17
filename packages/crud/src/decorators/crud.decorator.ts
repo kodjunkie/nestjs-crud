@@ -5,5 +5,5 @@ export const Crud =
   (options: CrudOptions) =>
   (target: unknown): void => {
     const factoryMethod = options.routesFactory || CrudRoutesFactory;
-    const factory = new factoryMethod(target, options);
+    const _factory = new factoryMethod(target, options);
   };

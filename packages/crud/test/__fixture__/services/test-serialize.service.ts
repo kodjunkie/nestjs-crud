@@ -29,17 +29,17 @@ export class TestSerializeService<T = TestSerializeModel> extends CrudService<T>
       : this.store;
   }
 
-  async getOne(req: CrudRequest): Promise<T> {
+  async getOne(_req: CrudRequest): Promise<T> {
     return this.store[0];
   }
 
-  async createOne(req: CrudRequest, dto: T): Promise<any> {}
+  async createOne(_req: CrudRequest, _dto: T): Promise<any> {}
 
-  async createMany(req: CrudRequest, dto: CreateManyDto<T>): Promise<any> {}
+  async createMany(_req: CrudRequest, _dto: CreateManyDto<T>): Promise<any> {}
 
-  async updateOne(req: CrudRequest, dto: T): Promise<any> {}
+  async updateOne(_req: CrudRequest, _dto: T): Promise<any> {}
 
-  async replaceOne(req: CrudRequest, dto: T): Promise<any> {}
+  async replaceOne(_req: CrudRequest, _dto: T): Promise<any> {}
 
   async deleteOne(req: CrudRequest): Promise<any> {
     return req.options.routes.deleteOneBase.returnDeleted ? this.store[0] : undefined;
