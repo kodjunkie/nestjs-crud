@@ -15,6 +15,9 @@
       },
       {
         "name": "crud"
+      },
+      {
+        "name": "drizzle"
       }
     ]
   },

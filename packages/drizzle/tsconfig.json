@@ -1,0 +1,11 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": { "rootDir": "src", "outDir": "lib", "skipLibCheck": true },
+  "include": ["src"],
+  "exclude": ["lib"],
+  "references": [
+    { "path": "../util" },
+    { "path": "../crud-request" },
+    { "path": "../crud" }
+  ]
+}

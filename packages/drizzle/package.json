@@ -1,0 +1,45 @@
+{
+  "name": "@nestjs-crud/drizzle",
+  "description": "NestJs CRUD for RESTful APIs - Drizzle ORM",
+  "version": "1.0.0",
+  "license": "MIT",
+  "main": "lib/index.js",
+  "typings": "lib/index.d.ts",
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "lib"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/nestjsx/crud.git"
+  },
+  "bugs": {
+    "url": "https://github.com/nestjsx/crud/issues"
+  },
+  "keywords": [
+    "typescript",
+    "drizzle",
+    "drizzle-orm",
+    "nest",
+    "nestjs",
+    "rest",
+    "restful",
+    "api",
+    "crud",
+    "crud-generator",
+    "backend",
+    "frameworks"
+  ],
+  "author": {
+    "name": "Lawrence Onah",
+    "email": "paplow01@gmail.com"
+  },
+  "scripts": {
+    "build": "npx tsc -b"
+  },
+  "peerDependencies": {
+    "drizzle-orm": ">=0.36.0"
+  }
+}
