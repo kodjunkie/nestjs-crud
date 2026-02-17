@@ -25,7 +25,9 @@ export class CrudRequestInterceptor extends CrudBaseInterceptor implements NestI
         if (!isNil(ctrlOptions)) {
           const search = this.getSearch(parser, crudOptions, action, req.params);
           const auth = this.getAuth(parser, crudOptions, req);
-          parser.search = auth.or ? { $or: [auth.or, { $and: search }] } : { $and: [...(auth.filter ? [auth.filter] : []), ...search] };
+          parser.search = auth.or
+            ? { $or: [auth.or, { $and: search }] }
+            : { $and: [...(auth.filter ? [auth.filter] : []), ...search] };
         } else {
           parser.search = { $and: this.getSearch(parser, crudOptions, action) };
         }
@@ -95,9 +97,10 @@ export class CrudRequestInterceptor extends CrudBaseInterceptor implements NestI
     } else if (hasLength(parser.filter)) {
       search = parser.filter.map(parser.convertFilterToSearch);
     } else if (hasLength(parser.or)) {
-      search = parser.or.length === 1
-        ? [parser.convertFilterToSearch(parser.or[0])]
-        : [{ $or: parser.or.map(parser.convertFilterToSearch) }];
+      search =
+        parser.or.length === 1
+          ? [parser.convertFilterToSearch(parser.or[0])]
+          : [{ $or: parser.or.map(parser.convertFilterToSearch) }];
     }
 
     return [...paramsSearch, ...optionsFilter, ...search];

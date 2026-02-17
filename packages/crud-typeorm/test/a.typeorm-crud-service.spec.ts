@@ -22,7 +22,7 @@ describe('TypeOrmCrudService', () => {
     });
 
     it('should detect SQL injection matching pattern 2 (= followed by quotes/semicolons)', () => {
-      expect(() => service.checkSqlInjection("field=%27;")).toThrow('SQL injection detected');
+      expect(() => service.checkSqlInjection('field=%27;')).toThrow('SQL injection detected');
     });
 
     it('should detect SQL injection matching pattern 3 (OR keyword)', () => {
