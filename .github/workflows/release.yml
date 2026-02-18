@@ -4,6 +4,15 @@ on:
   pull_request:
     types: [closed]
 
+permissions:
+  contents: write
+  id-token: write
+  pull-requests: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
 jobs:
   release:
     if: github.event.pull_request.merged && startsWith(github.head_ref, 'release')
@@ -13,17 +22,13 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          fetch-depth: '0'
+          fetch-depth: 0
 
-      - name: Set NPM Token
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
+          node-version: '24'
           registry-url: https://registry.npmjs.org
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-
-      - name: Set Yarn version to stable
-        run: yarn set version stable
 
       - name: Install
         run: yarn install --immutable
@@ -34,91 +39,69 @@ jobs:
       - name: Run Tests
         run: yarn test
 
-      - name: Get Latest Tag
-        id: get_latest_tag
-        uses: actions-ecosystem/action-get-latest-tag@v1
-
-      - name: Parse Latest Git Tag
-        id: parse_latest_tag
+      - name: Determine Version and Dist Tag
+        id: version
         run: |
-          TAG=$(echo ${{ steps.get_latest_tag.outputs.tag }} | cut -d 'v' -f 2)
-          echo "::set-output name=tag::${TAG}"
+          set -euo pipefail
+          STRATEGY=$(node -p "require('./lerna.json').version")
 
-      - name: Get Next Tag Semver
-        id: get_next_tag_semver
-        uses: WyriHaximus/github-action-next-semvers@v1
-        with:
-          version: ${{ steps.parse_latest_tag.outputs.tag }}
-
-      - name: Define Publishing Strategy
-        id: lerna_strategy
-        run: |
-          MREPO_LERNA_STRATEGY=$(cat lerna.json | npx jase version)
-          echo "MREPO_LERNA_STRATEGY=${MREPO_LERNA_STRATEGY}" >> $GITHUB_ENV
-
-      - name: Define Current Version
-        run: |
-          echo ${{ env.MREPO_LERNA_STRATEGY }}
-          if [ "${{ env.MREPO_LERNA_STRATEGY }}" = "independent" ]; then
-            CURRENT_VERSION=${{ steps.get_next_tag_semver.outputs.v_minor }}
-            DIST_TAG=$(cat lerna.json | npx jase distTag)
+          if [ "$STRATEGY" = "independent" ]; then
+            LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+            CURRENT_VERSION=$(echo "$LATEST_TAG" | sed 's/^v//')
+            IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT_VERSION"
+            CURRENT_VERSION="v${MAJOR}.$((MINOR + 1)).0"
+            DIST_TAG=$(node -p "require('./lerna.json').distTag || 'latest'")
           else
-            CURRENT_VERSION=$(cat lerna.json | npx jase version)
-            [[ $CURRENT_VERSION =~ "-" ]] && DIST_TAG=$(echo $CURRENT_VERSION | cut -d '-' -f 2 | cut -d '.' -f 1) || DIST_TAG="latest"
-            CURRENT_VERSION=v$CURRENT_VERSION
+            CURRENT_VERSION=$(node -p "require('./lerna.json').version")
+            if echo "$CURRENT_VERSION" | grep -q '-'; then
+              DIST_TAG=$(echo "$CURRENT_VERSION" | cut -d '-' -f 2 | cut -d '.' -f 1)
+            else
+              DIST_TAG="latest"
+            fi
+            CURRENT_VERSION="v${CURRENT_VERSION}"
           fi
 
-          echo $CURRENT_VERSION
-          echo $DIST_TAG
+          echo "version=$CURRENT_VERSION" >> "$GITHUB_OUTPUT"
+          echo "dist_tag=$DIST_TAG" >> "$GITHUB_OUTPUT"
 
-          echo "CURRENT_VERSION=${CURRENT_VERSION}" >> $GITHUB_ENV
-          echo "DIST_TAG=${DIST_TAG}" >> $GITHUB_ENV
+      - name: Check if Tag Exists
+        id: check_tag
+        run: |
+          set -euo pipefail
+          if [ -n "$(git tag -l "${{ steps.version.outputs.version }}")" ]; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
 
-      - name: Ensure Latest Git Tag
-        uses: mukunku/tag-exists-action@v1.0.0
-        id: checkTag
-        with:
-          tag: ${{ env.CURRENT_VERSION }}
+      - name: Create Tag and Release
+        if: steps.check_tag.outputs.exists == 'false'
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Create Git Tag
-        if: steps.checkTag.outputs.exists == 'false'
-        uses: negz/create-tag@v1
-        with:
-          version: ${{ env.CURRENT_VERSION }}
-          token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Create Release
-        if: steps.checkTag.outputs.exists == 'false'
-        uses: actions/create-release@v1
-        with:
-          tag_name: ${{ env.CURRENT_VERSION }}
-          release_name: ${{ env.CURRENT_VERSION }}
-          body: |
-            ${{ github.event.pull_request.body }}
-          draft: false
-          prerelease: false
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_BODY: ${{ github.event.pull_request.body }}
+        run: |
+          set -euo pipefail
+          git tag "${{ steps.version.outputs.version }}"
+          git push origin "${{ steps.version.outputs.version }}"
+          gh release create "${{ steps.version.outputs.version }}" \
+            --title "${{ steps.version.outputs.version }}" \
+            --notes "$RELEASE_BODY"
 
       - name: Publish Packages to NPM Registry
-        if: steps.checkTag.outputs.exists == 'false'
+        if: steps.check_tag.outputs.exists == 'false'
         run: |
-          lerna publish from-package --no-git-reset --no-verify-access --yes --registry https://registry.npmjs.org --dist-tag ${{ env.DIST_TAG }}
-          git update-index --assume-unchanged ./packages/**/package.json
-        env:
-          GH_TOKEN: ${{ secrets.NPM_TOKEN }}
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          set -euo pipefail
+          npx lerna publish from-package \
+            --no-git-reset \
+            --no-verify-access \
+            --yes \
+            --dist-tag "${{ steps.version.outputs.dist_tag }}" \
+            --provenance
 
-      - name: Create a Comment
-        uses: actions/github-script@0.8.0
-        with:
-          github-token: ${{secrets.GITHUB_TOKEN}}
-          script: |
-            github.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: 'Packages with version [${{ env.CURRENT_VERSION }}](https://github.com/${{ github.repository }}/releases/tag/${{ env.CURRENT_VERSION }}) have been released 🎉'
-            })
+      - name: Comment on Pull Request
+        if: steps.check_tag.outputs.exists == 'false'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh pr comment ${{ github.event.pull_request.number }} \
+            --body "Packages with version [${{ steps.version.outputs.version }}](https://github.com/${{ github.repository }}/releases/tag/${{ steps.version.outputs.version }}) have been released"

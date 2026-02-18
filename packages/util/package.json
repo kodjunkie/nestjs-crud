@@ -13,10 +13,10 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/nestjsx/crud.git"
+    "url": "https://github.com/kodjunkie/nestjs-crud.git"
   },
   "bugs": {
-    "url": "https://github.com/nestjsx/crud/issues"
+    "url": "https://github.com/kodjunkie/nestjs-crud/issues"
   },
   "keywords": [
     "typescript",
@@ -35,5 +35,6 @@
   },
   "scripts": {
     "build": "npx tsc -b"
-  }
+  },
+  "gitHead": "2d3b7f66efefd8fafc82f1dfd065a8652685cbc0"
 }

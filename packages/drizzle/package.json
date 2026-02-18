@@ -2,6 +2,7 @@
   "name": "@nestjs-crud/drizzle",
   "description": "NestJs CRUD for RESTful APIs - Drizzle ORM",
   "version": "1.0.0",
+  "private": true,
   "license": "MIT",
   "main": "lib/index.js",
   "typings": "lib/index.d.ts",
@@ -13,10 +14,10 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/nestjsx/crud.git"
+    "url": "https://github.com/kodjunkie/nestjs-crud.git"
   },
   "bugs": {
-    "url": "https://github.com/nestjsx/crud/issues"
+    "url": "https://github.com/kodjunkie/nestjs-crud/issues"
   },
   "keywords": [
     "typescript",
