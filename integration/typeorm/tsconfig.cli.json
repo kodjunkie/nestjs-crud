@@ -1,0 +1,21 @@
+{
+  "compilerOptions": {
+    "module": "commonjs",
+    "noImplicitAny": false,
+    "emitDecoratorMetadata": true,
+    "experimentalDecorators": true,
+    "target": "es2018",
+    "skipLibCheck": true,
+    "baseUrl": ".",
+    "paths": {
+      "@nestjs-crud/core": ["../../packages/core/src"],
+      "@nestjs-crud/typeorm": ["../../packages/typeorm/src"],
+      "@nestjs-crud/request": ["../../packages/request/src"],
+      "@nestjs-crud/util": ["../../packages/util/src"],
+      "@nestjs-crud/core/*": ["../../packages/core/src/*"],
+      "@nestjs-crud/typeorm/*": ["../../packages/typeorm/src/*"],
+      "@nestjs-crud/request/*": ["../../packages/request/src/*"],
+      "@nestjs-crud/util/*": ["../../packages/util/src/*"]
+    }
+  }
+}

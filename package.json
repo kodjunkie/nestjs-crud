@@ -18,7 +18,7 @@
     "test:postgres": "yarn db:prepare:typeorm:postgres && yarn test",
     "test:mysql": "yarn db:prepare:typeorm:mysql && TYPEORM_CONNECTION=mysql yarn test",
     "start:typeorm": "npx nodemon -w ./integration/typeorm -e ts node_modules/ts-node/dist/bin.js integration/typeorm/main.ts",
-    "db:cli:typeorm": "cd ./integration/typeorm && npx ts-node -r tsconfig-paths/register ../../node_modules/typeorm/cli.js",
+    "db:cli:typeorm": "cd ./integration/typeorm && npx ts-node --project tsconfig.cli.json -r tsconfig-paths/register ../../node_modules/typeorm/cli.js",
     "db:sync:typeorm": "yarn db:cli:typeorm schema:sync",
     "db:drop:typeorm": "yarn db:cli:typeorm schema:drop",
     "db:seeds:typeorm": "yarn db:cli:typeorm migration:run",

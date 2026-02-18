@@ -17,7 +17,7 @@ describe('#crud-typeorm', () => {
   describe('#CrudAuth', () => {
     const USER_REQUEST_KEY = 'user';
     let app: INestApplication;
-    let server: request.SuperTest<request.Test>;
+    let server: any;
 
     @Injectable()
     class AuthGuard implements CanActivate {
