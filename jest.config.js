@@ -5,6 +5,7 @@ const { pathsToModuleNameMapper } = require('ts-jest');
 const compilerOptions = tsconfig.load_file_sync('./tsconfig.jest.json', __dirname);
 
 module.exports = {
+  maxWorkers: 1,
   testEnvironment: 'node',
   setupFilesAfterEnv: ['jest-extended/all'],
   moduleNameMapper: pathsToModuleNameMapper(compilerOptions.paths, {

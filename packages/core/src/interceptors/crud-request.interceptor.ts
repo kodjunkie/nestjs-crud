@@ -2,6 +2,7 @@ import { BadRequestException, CallHandler, ExecutionContext, Injectable, NestInt
 import { RequestQueryException, RequestQueryParser, SCondition, QueryFilter } from '@nestjs-crud/request';
 import { isNil, isFunction, isArrayFull, hasLength } from '@nestjs-crud/util';
 import { ClassTransformOptions } from 'class-transformer';
+import { parse as qsParse } from 'qs';
 
 import { PARSED_CRUD_REQUEST_KEY } from '../constants';
 import { CrudActions } from '../enums';
@@ -20,7 +21,9 @@ export class CrudRequestInterceptor extends CrudBaseInterceptor implements NestI
         const { ctrlOptions, crudOptions, action } = this.getCrudInfo(context);
         const parser = RequestQueryParser.create();
 
-        parser.parseQuery(req.query);
+        const rawQuery = req.url?.split('?')[1] || '';
+        const query = rawQuery ? qsParse(rawQuery) : req.query;
+        parser.parseQuery(query);
 
         if (!isNil(ctrlOptions)) {
           const search = this.getSearch(parser, crudOptions, action, req.params);
