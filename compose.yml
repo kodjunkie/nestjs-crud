@@ -3,7 +3,6 @@ networks:
 
 services:
   postgres:
-    # TypeORM fails with Postgres v.12
     image: postgres:18
     ports:
       - 5455:5432
@@ -15,7 +14,6 @@ services:
       - nestjs_crud
 
   mysql:
-    platform: linux/x86_64
     image: mysql:9
     ports:
       - 3316:3306
