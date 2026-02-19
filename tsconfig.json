@@ -28,12 +28,5 @@
       "@nestjs-crud/drizzle": ["drizzle/src"],
       "@nestjs-crud/drizzle/*": ["drizzle/src/*"]
     }
-  },
-  "references": [
-    { "path": "core" },
-    { "path": "typeorm" },
-    { "path": "request" },
-    { "path": "util" },
-    { "path": "drizzle" }
-  ]
+  }
 }
