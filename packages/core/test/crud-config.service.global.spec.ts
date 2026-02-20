@@ -1,7 +1,7 @@
-import * as request from 'supertest';
-import { Test } from '@nestjs/testing';
 import { Controller, INestApplication } from '@nestjs/common';
 import { APP_FILTER } from '@nestjs/core';
+import { Test } from '@nestjs/testing';
+import * as request from 'supertest';
 
 import { CrudGlobalConfig } from '../src/interfaces';
 import { CrudConfigService } from '../src/module/crud-config.service';
@@ -35,7 +35,7 @@ const conf: CrudGlobalConfig = {
 };
 
 // Important: load config before (!!!) you import AppModule
-// https://github.com/nestjsx/crud/wiki/Controllers#global-options
+// https://github.com/kodjunkie/nestjs-crud/wiki/Controllers#global-options
 CrudConfigService.load(conf);
 
 import { Crud } from '../src/decorators/crud.decorator';
