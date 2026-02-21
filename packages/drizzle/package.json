@@ -2,7 +2,6 @@
   "name": "@nestjs-crud/drizzle",
   "description": "NestJs CRUD for RESTful APIs - Drizzle ORM",
   "version": "1.0.0",
-  "private": true,
   "license": "MIT",
   "main": "lib/index.js",
   "typings": "lib/index.d.ts",
