@@ -45,8 +45,8 @@ We believe that everyone who's working with NestJs and building some RESTful ser
 - [**@nestjs-crud/core**](https://www.npmjs.com/package/@nestjs-crud/core) - core package which provides `@Crud()` decorator for endpoints generation, global configuration, validation, helper decorators ([docs](https://github.com/kodjunkie/nestjs-crud/wiki/Controllers#description))
 - [**@nestjs-crud/request**](https://www.npmjs.com/package/@nestjs-crud/request) - request builder/parser package which provides `RequestQueryBuilder` class for a frontend usage and `RequestQueryParser` that is being used internally for handling and validating query/path params on a backend side ([docs](https://github.com/kodjunkie/nestjs-crud/wiki/Requests#frontend-usage))
 - [**@nestjs-crud/typeorm**](https://www.npmjs.com/package/@nestjs-crud/typeorm) - TypeORM package which provides base `TypeOrmCrudService` with methods for CRUD database operations ([docs](https://github.com/kodjunkie/nestjs-crud/wiki/ServiceTypeorm))
-- [**@nestjs-crud/mikro-orm**](https://www.npmjs.com/package/@nestjs-crud/mikro-orm) - MikroORM package which provides base `MikroORMCrudService` with methods for CRUD database operations (experimental)
-- [**@nestjs-crud/drizzle**](https://www.npmjs.com/package/@nestjs-crud/drizzle) - Drizzle package which provides base `DrizzleCrudService` with methods for CRUD database operations (experimental)
+- [**@nestjs-crud/mikro-orm**](https://www.npmjs.com/package/@nestjs-crud/mikro-orm) - MikroORM package which provides base `MikroORMCrudService` with methods for CRUD database operations (new)
+- [**@nestjs-crud/drizzle**](https://www.npmjs.com/package/@nestjs-crud/drizzle) - Drizzle package which provides base `DrizzleCrudService` with methods for CRUD database operations (new)
 
 ## Documentation
 
