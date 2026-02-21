@@ -103,14 +103,14 @@ jobs:
         if: steps.check_tag.outputs.exists == 'false'
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_CONFIG_PROVENANCE: true
         run: |
           set -euo pipefail
           npx lerna publish from-package \
             --no-git-reset \
             --no-verify-access \
             --yes \
-            --dist-tag "${{ steps.version.outputs.dist_tag }}" \
-            --provenance
+            --dist-tag "${{ steps.version.outputs.dist_tag }}"
 
       - name: Comment on Pull Request
         if: steps.check_tag.outputs.exists == 'false'
