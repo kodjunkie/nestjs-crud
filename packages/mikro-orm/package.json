@@ -1,0 +1,26 @@
+{
+  "name": "@nestjs-crud/mikro-orm",
+  "version": "1.0.0",
+  "description": "NestJS CRUD MikroORM adapter",
+  "main": "lib/index.js",
+  "typings": "lib/index.d.ts",
+  "license": "MIT",
+  "author": {
+    "name": "Lawrence Onah",
+    "email": "paplow01@gmail.com"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "npx tsc -b"
+  },
+  "peerDependencies": {
+    "@mikro-orm/core": ">=6.0.0",
+    "@mikro-orm/knex": ">=6.0.0",
+    "@nestjs-crud/core": "^1.0.0",
+    "@nestjs-crud/request": "^1.0.0",
+    "@nestjs-crud/util": "^1.0.0",
+    "@nestjs/common": ">=10.0.0"
+  }
+}
