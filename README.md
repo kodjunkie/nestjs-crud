@@ -55,6 +55,10 @@ We believe that everyone who's working with NestJs and building some RESTful ser
 - :horse_racing: [CRUD ORM Services](https://github.com/kodjunkie/nestjs-crud/wiki/Services#description)
 - :trumpet: [Handling Requests](https://github.com/kodjunkie/nestjs-crud/wiki/Requests#description)
 
+## Credits
+
+- [`nestjsx/crud`](https://github.com/nestjsx/crud) — <a href="https://twitter.com/MichaelYali">@MichaelYali</a> and all the wonderful <a href="https://github.com/nestjsx/crud/graphs/contributors">Contributors</a>
+
 ## Support
 
 Any support is welcome. At least you can give us a star :star:
