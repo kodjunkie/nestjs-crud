@@ -18,7 +18,6 @@ import {
   ComparisonOperator,
 } from '@nestjs-crud/request';
 import { ClassType, hasLength, isArrayFull, isObject, isUndefined, objKeys, isNil, isNull } from '@nestjs-crud/util';
-import { oO } from '@zmotivat0r/o0';
 import { plainToClass } from 'class-transformer';
 import {
   Brackets,
@@ -202,7 +201,7 @@ export class TypeOrmCrudService<T> extends CrudService<T> {
   public async replaceOne(req: CrudRequest, dto: T | Partial<T>): Promise<T> {
     const { allowParamsOverride, returnShallow } = req.options.routes.replaceOneBase;
     const paramsFilters = this.getParamFilters(req.parsed);
-    const [_, found] = await oO(this.getOneOrFail(req, returnShallow));
+    const found = await this.getOneOrFail(req, returnShallow).catch(() => undefined);
     const toSave = !allowParamsOverride
       ? { ...(found || {}), ...dto, ...paramsFilters, ...req.parsed.authPersist }
       : {
