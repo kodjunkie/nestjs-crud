@@ -37,6 +37,9 @@
     }
   },
   "dependencies": {
+    "@mikro-orm/core": "^6.0.0",
+    "@mikro-orm/knex": "^6.0.0",
+    "@mikro-orm/sqlite": "^6.0.0",
     "@nestjs/common": "^11.1.13",
     "@nestjs/core": "^11.1.13",
     "@nestjs/platform-express": "^11.1.13",

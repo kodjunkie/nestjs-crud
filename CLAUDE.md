@@ -4,20 +4,24 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-A NestJS CRUD monorepo (`@nestjs-crud/core`) that auto-generates RESTful CRUD endpoints for NestJS controllers backed by TypeORM. Managed with Yarn workspaces + Lerna + `@zmotivat0r/mrepo`.
+A NestJS CRUD monorepo (`@nestjs-crud/core`) that auto-generates RESTful CRUD endpoints for NestJS controllers. Supports TypeORM, MikroORM, and Drizzle ORM. Managed with Yarn workspaces + Lerna + `@zmotivat0r/mrepo`.
 
 ## Packages
 
-Four packages in `packages/`, with this dependency chain:
+Six packages in `packages/`, with this dependency chain:
 
 ```
 util → request → core → typeorm
+                      → drizzle
+                      → mikro-orm
 ```
 
 - **`@nestjs-crud/util`** — Tiny type-check utilities (`isNil`, `isArrayFull`, etc.)
 - **`@nestjs-crud/request`** — `RequestQueryBuilder` (frontend query construction) and `RequestQueryParser` (backend query parsing). Handles search conditions, filters, joins, sorting, pagination
 - **`@nestjs-crud/core`** — Core framework: `@Crud()` decorator, `CrudRoutesFactory`, `CrudRequestInterceptor`, `CrudResponseInterceptor`, `@CrudAuth()`, `@Override()`, `@ParsedRequest()`, `CrudConfigService`
 - **`@nestjs-crud/typeorm`** — `TypeOrmCrudService<T>` — concrete TypeORM implementation that translates parsed requests into `SelectQueryBuilder` queries
+- **`@nestjs-crud/drizzle`** — `DrizzleCrudService<T>` — Drizzle ORM implementation that translates parsed requests into Drizzle query builder operations
+- **`@nestjs-crud/mikro-orm`** — `MikroOrmCrudService<T>` — MikroORM implementation that translates parsed requests into EntityManager operations
 
 ## Build Commands
 
@@ -88,7 +92,7 @@ The `@Crud()` class decorator instantiates `CrudRoutesFactory` at decoration tim
 HTTP Request
   → CrudRequestInterceptor: parse query/params, apply @CrudAuth filter/persist, build SCondition search tree
   → Controller handler (generated or @Override)
-  → TypeOrmCrudService: build SelectQueryBuilder from parsed request, execute query
+  → CrudService (TypeOrmCrudService / DrizzleCrudService / MikroOrmCrudService): build query from parsed request, execute
   → CrudResponseInterceptor: serialize response using class-transformer with per-route DTOs
 ```
 
