@@ -2,8 +2,8 @@
 
 - [Why](https://github.com/kodjunkie/nestjs-crud/wiki/Home#why)
 - [Structure](https://github.com/kodjunkie/nestjs-crud/wiki/Home#structure)
-- [Tests](https://github.com/kodjunkie/nestjs-crud/wiki/Home#tests)
-- [Example projects](https://github.com/kodjunkie/nestjs-crud/wiki/Home#example-projects)
+- [Tests](https://github.com/kodjunkie/nestjs-crud/wiki/Home#cloning-and-running-tests)
+- [Example projects](https://github.com/kodjunkie/nestjs-crud/wiki/Home#running-an-example-project)
 
 ### Controllers
 

@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-A NestJS CRUD monorepo (`@nestjs-crud/core`) that auto-generates RESTful CRUD endpoints for NestJS controllers backed by TypeORM. Managed with Yarn workspaces + Lerna + `@zmotivat0r/mrepo`.
+A NestJS CRUD monorepo (`@nestjs-crud/core`) that auto-generates RESTful CRUD endpoints for NestJS controllers. Supports TypeORM, MikroORM, and Drizzle ORM. Managed with Yarn workspaces + Lerna + `@zmotivat0r/mrepo`.
 
 ## Packages
 
