@@ -37,6 +37,5 @@
   },
   "scripts": {
     "build": "npx tsc -b"
-  },
-  "dependencies": {}
+  }
 }
