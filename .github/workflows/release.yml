@@ -18,11 +18,17 @@ jobs:
     if: github.event.pull_request.merged && startsWith(github.head_ref, 'release')
     runs-on: ubuntu-latest
 
+    env:
+      COMPOSE_FILE: ./compose.yml
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+
+      - name: Start Database Services
+        run: docker compose up -d
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -30,14 +36,20 @@ jobs:
           node-version: '24'
           registry-url: https://registry.npmjs.org
 
+      - name: Set Yarn version to stable
+        run: yarn set version stable
+
       - name: Install
         run: yarn install --immutable
 
       - name: Build
         run: yarn build
 
+      - name: Ensure Database Services
+        run: docker compose up -d
+
       - name: Run Tests
-        run: yarn test
+        run: yarn test:all
 
       - name: Determine Version and Dist Tag
         id: version
@@ -89,6 +101,8 @@ jobs:
 
       - name: Publish Packages to NPM Registry
         if: steps.check_tag.outputs.exists == 'false'
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
           set -euo pipefail
           npx lerna publish from-package \
