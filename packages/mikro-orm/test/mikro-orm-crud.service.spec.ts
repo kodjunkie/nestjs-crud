@@ -198,7 +198,12 @@ describe('MikroOrmCrudService', () => {
 
     it('should handle multiple sort fields', () => {
       const result = service.getSort(
-        { sort: [{ field: 'name', order: 'ASC' }, { field: 'age', order: 'DESC' }] },
+        {
+          sort: [
+            { field: 'name', order: 'ASC' },
+            { field: 'age', order: 'DESC' },
+          ],
+        },
         {},
       );
       expect(result).toEqual({ name: 'ASC', age: 'DESC' });
