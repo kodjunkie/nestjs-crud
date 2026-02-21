@@ -1,6 +1,6 @@
 ## Description
 
-[**@nestjs-crud/core**](https://www.npmjs.com/package/@nestjs-crud/core) - core package which provides `@Crud()` controller decorator for endpoints generation, global configuration, validation, helper decorators.
+[**@nestjs-crud/core**](https://www.npmjs.com/package/@nestjs-crud/core) - core package which provides `@Crud()` controller decorator for endpoints generation, global configuration, validation, and helper decorators.
 
 ## Table of Contents
 
