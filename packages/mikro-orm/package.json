@@ -1,6 +1,6 @@
 {
   "name": "@nestjs-crud/mikro-orm",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "NestJS CRUD MikroORM adapter",
   "main": "lib/index.js",
   "typings": "lib/index.d.ts",
@@ -22,5 +22,6 @@
     "@nestjs-crud/request": "^1.0.0",
     "@nestjs-crud/util": "^1.0.0",
     "@nestjs/common": ">=10.0.0"
-  }
+  },
+  "gitHead": "6f5fb9b83cde621265e4268c904c6ee98ae89142"
 }

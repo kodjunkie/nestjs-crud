@@ -1,8 +1,7 @@
 {
   "name": "@nestjs-crud/drizzle",
   "description": "NestJs CRUD for RESTful APIs - Drizzle ORM",
-  "version": "1.0.0",
-  "private": true,
+  "version": "1.0.1",
   "license": "MIT",
   "main": "lib/index.js",
   "typings": "lib/index.d.ts",
@@ -42,5 +41,6 @@
   },
   "peerDependencies": {
     "drizzle-orm": ">=0.36.0"
-  }
+  },
+  "gitHead": "6f5fb9b83cde621265e4268c904c6ee98ae89142"
 }
