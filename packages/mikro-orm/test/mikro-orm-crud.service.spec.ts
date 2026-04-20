@@ -1,3 +1,5 @@
+import * as fs from 'fs';
+import * as path from 'path';
 import { MikroOrmCrudService } from '../src/mikro-orm-crud.service';
 
 // Mock metadata structure matching MikroORM's EntityMetadata.properties
@@ -126,6 +128,39 @@ describe('MikroOrmCrudService', () => {
       expect(svc.entityColumns).toContain('id');
       expect(svc.entityColumns).toContain('name');
       expect(svc.entityColumns).not.toContain('posts');
+    });
+  });
+
+  describe('sqlInjectionRegEx parity (QUALITY-03)', () => {
+    // Parity verified against packages/drizzle/src/drizzle-crud.service.ts and
+    // packages/typeorm/src/typeorm-crud.service.ts. Guards against /g or /gi
+    // re-introduction which would cause stateful .test() lastIndex bugs on
+    // repeat calls with the same input (QUALITY-02).
+    const sourcePath = path.resolve(__dirname, '../src/mikro-orm-crud.service.ts');
+    const source = fs.readFileSync(sourcePath, 'utf-8');
+    const arrayMatch = source.match(/sqlInjectionRegEx:\s*RegExp\[\]\s*=\s*\[([\s\S]*?)\];/);
+
+    it('should find the sqlInjectionRegEx array in source', () => {
+      expect(arrayMatch).not.toBeNull();
+    });
+
+    it('should have no /g flag on any entry (regression guard)', () => {
+      const body = arrayMatch![1];
+      expect(body).not.toMatch(/\/gi\b/);
+      expect(body).not.toMatch(/\/g\b/);
+    });
+
+    it('should have no /y (sticky) flag on any entry', () => {
+      const body = arrayMatch![1];
+      expect(body).not.toMatch(/\/y\b/);
+      expect(body).not.toMatch(/\/[a-z]*y[a-z]*,/);
+    });
+
+    it('should have /i flag on all four entries', () => {
+      const body = arrayMatch![1];
+      const flagTokens = body.match(/\/[a-z]+,/g) || [];
+      expect(flagTokens.length).toBe(4);
+      flagTokens.forEach((token) => expect(token).toContain('i'));
     });
   });
 

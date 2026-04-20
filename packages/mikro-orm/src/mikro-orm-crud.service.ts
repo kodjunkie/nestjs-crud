@@ -23,6 +23,7 @@ export class MikroOrmCrudService<T extends object> extends CrudService<T> {
 
   protected relationsHash: Map<string, MikroOrmAllowedRelation> = new Map();
 
+  // Denylist regexes use /i only. Parity verified against packages/drizzle/src/drizzle-crud.service.ts (QUALITY-03, Phase 1 of v1.0.2).
   protected sqlInjectionRegEx: RegExp[] = [
     /(%27)|(\')|(--)|(%23)|(#)/i,
     /((%3D)|(=))[^\n]*((%27)|(\')|(--)|(%3B)|(;))/i,
