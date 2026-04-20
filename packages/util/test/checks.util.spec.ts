@@ -211,6 +211,12 @@ describe('#util', () => {
         expect(isDateString(val)).toBe(false);
       }
     });
+
+    it('should return the same result on repeat calls with the same input (regression for /g lastIndex bug)', () => {
+      expect(isDateString('2019-06-19')).toBe(true);
+      expect(isDateString('2019-06-19')).toBe(true);
+      expect(isDateString('2019-06-19')).toBe(true);
+    });
   });
 
   describe('#isDate', () => {

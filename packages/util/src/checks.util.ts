@@ -22,7 +22,7 @@ export const isBoolean = (val: any): boolean => typeof val === 'boolean';
 export const isNumeric = (val: any): boolean => /^[+-]?([0-9]*[.])?[0-9]+$/.test(val);
 export const isDateString = (val: any): boolean =>
   isStringFull(val) &&
-  /^\d{4}-[01]\d-[0-3]\d(?:T[0-2]\d:[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z|[-+][0-2]\d(?::?[0-5]\d)?)?)?$/g.test(
+  /^\d{4}-[01]\d-[0-3]\d(?:T[0-2]\d:[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z|[-+][0-2]\d(?::?[0-5]\d)?)?)?$/.test(
     val,
   );
 export const isDate = (val: any): val is Date => val instanceof Date;
