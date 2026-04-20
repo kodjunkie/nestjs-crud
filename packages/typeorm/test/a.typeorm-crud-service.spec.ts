@@ -7,10 +7,10 @@ describe('TypeOrmCrudService', () => {
     beforeEach(() => {
       service = Object.create(TypeOrmCrudService.prototype);
       service.sqlInjectionRegEx = [
-        /(%27)|(\')|(--)|(%23)|(#)/gi,
-        /((%3D)|(=))[^\n]*((%27)|(\')|(--)|(%3B)|(;))/gi,
-        /w*((%27)|(\'))((%6F)|o|(%4F))((%72)|r|(%52))/gi,
-        /((%27)|(\'))union/gi,
+        /(%27)|(\')|(--)|(%23)|(#)/i,
+        /((%3D)|(=))[^\n]*((%27)|(\')|(--)|(%3B)|(;))/i,
+        /w*((%27)|(\'))((%6F)|o|(%4F))((%72)|r|(%52))/i,
+        /((%27)|(\'))union/i,
       ];
       service.throwBadRequestException = (msg: string) => {
         throw new Error(msg);
@@ -18,6 +18,12 @@ describe('TypeOrmCrudService', () => {
     });
 
     it('should detect SQL injection matching pattern 1 (quotes, comments)', () => {
+      expect(() => service.checkSqlInjection("field'--")).toThrow('SQL injection detected');
+    });
+
+    it('should throw deterministically on repeat calls with the same input (regression for /g lastIndex bug)', () => {
+      expect(() => service.checkSqlInjection("field'--")).toThrow('SQL injection detected');
+      expect(() => service.checkSqlInjection("field'--")).toThrow('SQL injection detected');
       expect(() => service.checkSqlInjection("field'--")).toThrow('SQL injection detected');
     });
 
