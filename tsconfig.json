@@ -31,5 +31,5 @@
       "@nestjs-crud/mikro-orm/*": ["mikro-orm/src/*"]
     }
   },
-  "exclude": ["opensrc"]
+  "exclude": ["opensrc", "**/lib", "**/*.tsbuildinfo"]
 }
