@@ -40,6 +40,7 @@ export class DrizzleCrudService<T extends Record<string, unknown>> extends CrudS
 
   protected relationsHash: Map<string, DrizzleAllowedRelation> = new Map();
 
+  // Adapted from @nestjsx/crud's TypeORM adapter (MIT, (c) Michael Yali).
   protected sqlInjectionRegEx: RegExp[] = [
     /(%27)|(\')|(--)|(%23)|(#)/i,
     /((%3D)|(=))[^\n]*((%27)|(\')|(--)|(%3B)|(;))/i,

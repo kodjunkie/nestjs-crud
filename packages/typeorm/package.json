@@ -35,6 +35,13 @@
     "name": "Lawrence Onah",
     "email": "paplow01@gmail.com"
   },
+  "contributors": [
+    {
+      "name": "Michael Yali",
+      "email": "mihon4ik@gmail.com",
+      "url": "https://github.com/nestjsx/crud"
+    }
+  ],
   "scripts": {
     "build": "npx tsc -b"
   }

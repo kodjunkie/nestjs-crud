@@ -5,12 +5,36 @@
   "main": "lib/index.js",
   "typings": "lib/index.d.ts",
   "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "lib"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/kodjunkie/nestjs-crud.git"
+  },
+  "bugs": {
+    "url": "https://github.com/kodjunkie/nestjs-crud/issues"
+  },
+  "keywords": [
+    "typescript",
+    "mikro-orm",
+    "mikroorm",
+    "nest",
+    "nestjs",
+    "rest",
+    "restful",
+    "api",
+    "crud",
+    "crud-generator",
+    "backend",
+    "frameworks"
+  ],
   "author": {
     "name": "Lawrence Onah",
     "email": "paplow01@gmail.com"
-  },
-  "publishConfig": {
-    "access": "public"
   },
   "scripts": {
     "build": "npx tsc -b"
