@@ -30,5 +30,6 @@
       "@nestjs-crud/mikro-orm": ["mikro-orm/src"],
       "@nestjs-crud/mikro-orm/*": ["mikro-orm/src/*"]
     }
-  }
+  },
+  "exclude": ["opensrc"]
 }

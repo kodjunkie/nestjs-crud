@@ -11,6 +11,7 @@ npm-debug.log
 /.vscode
 
 # misc
+opensrc/
 /.planning
 skills-lock.json
 lerna-debug.log
