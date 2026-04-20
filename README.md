@@ -19,6 +19,14 @@
 
 Works with **TypeORM**, **Drizzle**, and **MikroORM**.
 
+## Branches
+
+- **[`v1.0.2`](https://github.com/kodjunkie/nestjs-crud/tree/v1.0.2)** — current stable patch release (security + correctness fixes, 100% non-breaking from `v1.0.1`). Browse this branch for what's shipping now.
+- **`master`** — `v2.0.0` development (architectural cleanup, breaking changes). Follow this branch to track upcoming work.
+- **Tagged releases** (`v1.0.1` and earlier) remain accessible as Git tags.
+
+Released packages on npm always reflect the latest stable tag.
+
 ## Features
 
 <img align="right" src="img/crud-usage.png" alt="CRUD usage" width="400" />
