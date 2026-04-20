@@ -11,7 +11,7 @@ npm-debug.log
 /.vscode
 
 # misc
-opensrc/
+/.agents
 /.planning
 skills-lock.json
 lerna-debug.log
@@ -26,4 +26,3 @@ lerna-debug.log
 packages/**/lib
 packages/**/tsconfig.tsbuildinfo
 .mrepo
-/.agents

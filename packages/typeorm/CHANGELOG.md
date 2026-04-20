@@ -8,7 +8,5 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 ### Bug Fixes
 
-* **ci:** use env var for npm provenance instead of unsupported lerna flag ([91ccf95](https://github.com/kodjunkie/nestjs-crud/commit/91ccf9533a4d8babe7f09a32e8b4c1704429a360))
 * **legal:** restore upstream attribution and refresh branding ([b0b9da6](https://github.com/kodjunkie/nestjs-crud/commit/b0b9da67aee4772e77dfbc7bd76f8aae201a8ee2))
 * **typeorm:** remove /g flag from sqlInjectionRegEx to prevent stateful .test() lastIndex bug ([63c463d](https://github.com/kodjunkie/nestjs-crud/commit/63c463d66b1ff2f2c9751d7cc740320197b9f609))
-* **util:** remove /g flag from isDateString regex to prevent stateful .test() lastIndex bug ([2bbe52e](https://github.com/kodjunkie/nestjs-crud/commit/2bbe52ec2b8201a514a894e732dade0ae5abb0d5))
