@@ -3,6 +3,7 @@
   "version": "1.0.1",
   "description": "Nest CRUD for RESTful APIs",
   "license": "MIT",
+  "packageManager": "yarn@4.12.0",
   "workspaces": [
     "packages/*"
   ],
