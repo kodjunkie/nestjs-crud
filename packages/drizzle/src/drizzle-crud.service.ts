@@ -48,6 +48,15 @@ export class DrizzleCrudService<T extends Record<string, unknown>> extends CrudS
     /((%27)|(\'))union/i,
   ];
 
+  /**
+   * @deprecated Since v1.0.2. The `db` constructor parameter is typed `any`
+   * in v1.x. In v2.0 it will require a typed Drizzle database client
+   * (see v2 TYPES-01). Consumer subclasses that rely on the `any`
+   * permissiveness will need to migrate.
+   *
+   * Migration guide:
+   * {@link https://github.com/kodjunkie/nestjs-crud/wiki/v2-migration}
+   */
   constructor(
     protected db: any,
     protected table: Table,
