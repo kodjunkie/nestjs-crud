@@ -3,6 +3,10 @@
   "npmClient": "yarn",
   "version": "1.0.1",
   "command": {
+    "version": {
+      "conventionalCommits": true,
+      "message": "chore(release): publish %s"
+    },
     "publish": {
       "message": "chore: release"
     }
