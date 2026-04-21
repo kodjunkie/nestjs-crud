@@ -2,3 +2,4 @@ export * from './get-allowed-columns';
 export * from './safe-require';
 export * from './input-sanitizer';
 export * from './prepare-entity-before-save';
+export * from './get-select';

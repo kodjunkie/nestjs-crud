@@ -3,6 +3,7 @@ import {
   CrudRequest,
   CrudRequestOptions,
   CrudService,
+  getSelect as getSelectUtil,
   GetManyDefaultResponse,
   prepareEntityBeforeSave as prepareEntityBeforeSaveUtil,
   QueryOptions,
@@ -328,21 +329,6 @@ export class TypeOrmCrudService<T> extends CrudService<T> {
   }
 
   protected getSelect(query: ParsedRequestParams, options: QueryOptions): string[] {
-    const allowed = this.getAllowedColumns(this.entityColumns, options);
-
-    const columns =
-      query.fields && query.fields.length
-        ? query.fields.filter((field) => allowed.some((col) => field === col))
-        : allowed;
-
-    const select = new Set(
-      [
-        ...(options.persist && options.persist.length ? options.persist : []),
-        ...columns,
-        ...this.entityPrimaryColumns,
-      ].map((col) => `${this.alias}.${col}`),
-    );
-
-    return Array.from(select);
+    return getSelectUtil(query, options, this.entityColumns, this.entityPrimaryColumns, this.alias);
   }
 }
