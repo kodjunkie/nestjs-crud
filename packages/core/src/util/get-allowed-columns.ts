@@ -7,10 +7,7 @@ import type { QueryOptions } from '../interfaces/query-options.interface';
  *
  * @since 2.0.0
  */
-export function getAllowedColumns(
-  columns: string[],
-  options: Pick<QueryOptions, 'exclude' | 'allow'>,
-): string[] {
+export function getAllowedColumns(columns: string[], options: Pick<QueryOptions, 'exclude' | 'allow'>): string[] {
   return (!options.exclude || !options.exclude.length) && (!options.allow || !options.allow.length)
     ? columns
     : columns.filter(
