@@ -21,6 +21,42 @@ npm install @nestjs-crud/request
 
 Peer deps required: `class-validator`, `class-transformer`. Swagger is optional — install `@nestjs/swagger` and decoration auto-generates.
 
+## Global Defaults — `CrudConfigService.load()`
+
+Set project-wide defaults once, before Nest bootstraps. Every `@Crud()` inherits these and can override per-controller.
+
+```typescript
+// src/main.ts — BEFORE the app is created
+import { CrudConfigService } from '@nestjs-crud/core';
+
+CrudConfigService.load({
+  query: {
+    limit: 25,
+    maxLimit: 100,
+    alwaysPaginate: true,
+    cache: 2000,
+    softDelete: false,
+  },
+  routes: {
+    updateOneBase: { allowParamsOverride: false, returnShallow: false },
+    deleteOneBase: { returnDeleted: false },
+  },
+  params: {
+    id: { field: 'id', type: 'number', primary: true },
+  },
+  serialize: { getMany: false },   // disable serialize globally for list responses
+  queryParser: { delimiter: ',' }, // passed to RequestQueryBuilder.setOptions
+  auth: { property: 'user' },      // default user property for @CrudAuth
+});
+
+// ...then createApp as usual
+const app = await NestFactory.create(AppModule);
+```
+
+Call `load()` **at module load time** (top of `main.ts`, before `NestFactory.create`). Deep-merges into `CrudConfigService.config`. Per-controller `@Crud()` options merge on top — controller values win for scalar keys; arrays are replaced, not concatenated.
+
+**Default behavior without `load()`:** `alwaysPaginate: false`, no global params, no auth defaults, no route-level return flags set. Every controller must set its own options.
+
 ## Quickstart
 
 ```typescript
@@ -91,11 +127,24 @@ fetch(`/users?${qb.query()}`);
 @Crud({
   model: { type: Entity },          // required
 
+  dto: {                            // optional — separate DTO classes (see "DTOs" below)
+    create: CreateEntityDto,
+    update: UpdateEntityDto,
+    replace: ReplaceEntityDto,
+  },
+
+  serialize: {                      // optional — per-route response DTOs (class-transformer)
+    getMany: EntityListResponse,    //   or `false` to disable serialization on a route
+    get: EntityResponse,
+    create: EntityResponse,
+  },
+
   query: {
     limit: 25,                       // default page size
     maxLimit: 100,                   // hard cap
     cache: 2000,                     // ms (TypeORM only)
     alwaysPaginate: false,           // force pagination
+    softDelete: false,               // enables `recoverOneBase` + hides soft-deleted rows from reads
     join: {
       relation: {
         eager: true,                 // always join
@@ -111,14 +160,24 @@ fetch(`/users?${qb.query()}`);
 
   routes: {
     exclude: ['createManyBase', 'recoverOneBase'],          // disable routes
-    getManyBase: { decorators: [UseGuards(AuthGuard)] },   // per-route extras
+    getManyBase:   { decorators: [UseGuards(AuthGuard)] },  // per-route extras
+    createOneBase: { returnShallow: false },                // true → return created row w/o re-fetch
+    updateOneBase: { allowParamsOverride: false, returnShallow: false },
+    replaceOneBase:{ allowParamsOverride: false, returnShallow: false },
+    deleteOneBase: { returnDeleted: false },                // true → return the deleted row
+    recoverOneBase:{ returnRecovered: false },              // true → return the recovered row
   },
 
   params: {
     id: { field: 'id', type: 'uuid', primary: true },      // custom primary key
   },
+
+  validation: { whitelist: true },  // optional — ValidationPipeOptions, or `false` to disable
+  routesFactory: MyCustomFactory,   // optional — subclass of CrudRoutesFactory for advanced cases
 })
 ```
+
+`recoverOneBase` requires `query.softDelete: true` in the decorator or global config AND a soft-delete column on the entity.
 
 ## Scoping Requests Per User (`@CrudAuth`)
 
@@ -172,9 +231,9 @@ export class UsersController implements CrudController<User> {
 
 `@Override` accepts: `'getManyBase'`, `'getOneBase'`, `'createOneBase'`, `'createManyBase'`, `'updateOneBase'`, `'replaceOneBase'`, `'deleteOneBase'`, `'recoverOneBase'`.
 
-## Entity-as-DTO Validation
+## DTOs — Two Supported Patterns
 
-No separate DTO classes needed — use `class-validator` groups on the entity:
+**Pattern A: Entity-as-DTO (easy path, default).** Use `class-validator` groups on the entity — one class serves both as persistence model and input validation shape.
 
 ```typescript
 import { CrudValidationGroups } from '@nestjs-crud/core';
@@ -199,6 +258,32 @@ export class User {
 - `CREATE` group runs on `POST /users` and `PUT /users/:id`
 - `UPDATE` group runs on `PATCH /users/:id`
 - `{ always: true }` runs on both
+
+**Pattern B: Dedicated DTO classes** via `@Crud({ dto: { create, update, replace } })`. Use when the write shape differs meaningfully from the entity (nested input, computed fields, API-surface hardening, OpenAPI docs that should NOT leak internal columns):
+
+```typescript
+export class CreateUserDto {
+  @IsNotEmpty() @IsString() name: string;
+  @IsEmail() email: string;
+  // no `id`, no `deletedAt`, no `password` — client can't submit these
+}
+
+export class UpdateUserDto {
+  @IsOptional() @IsString() name?: string;
+  @IsOptional() @IsEmail() email?: string;
+}
+
+@Crud({
+  model: { type: User },
+  dto: { create: CreateUserDto, update: UpdateUserDto, replace: CreateUserDto },
+})
+@Controller('users')
+export class UsersController implements CrudController<User> { ... }
+```
+
+With `dto`, the controller validates the incoming body against the DTO class — `CrudValidationGroups` is NOT used (the DTO itself defines per-op shape). Use Pattern B when strict API boundary matters; Pattern A when the entity is already a clean input shape.
+
+**Output serialization is separate:** use `serialize: { getMany, get, create, ... }` in `@Crud()` to transform responses through a DTO with `class-transformer`. Combine freely — Pattern A entity-in + `serialize` DTO out is a common shape.
 
 ## Swagger
 
