@@ -3,6 +3,7 @@ import { ParsedRequestParams } from '@nestjs-crud/request';
 import { objKeys } from '@nestjs-crud/util';
 
 import { CreateManyDto, CrudRequest, CrudRequestOptions, GetManyDefaultResponse, QueryOptions } from '../interfaces';
+import { getAllowedColumns as getAllowedColumnsUtil } from '../util/get-allowed-columns';
 
 export abstract class CrudService<T> {
   throwBadRequestException(msg?: unknown): BadRequestException {
@@ -82,13 +83,7 @@ export abstract class CrudService<T> {
   }
 
   protected getAllowedColumns(columns: string[], options: QueryOptions): string[] {
-    return (!options.exclude || !options.exclude.length) && (!options.allow || !options.allow.length)
-      ? columns
-      : columns.filter(
-          (column) =>
-            (options.exclude && options.exclude.length ? !options.exclude.some((col) => col === column) : true) &&
-            (options.allow && options.allow.length ? options.allow.some((col) => col === column) : true),
-        );
+    return getAllowedColumnsUtil(columns, options);
   }
 
   abstract getMany(req: CrudRequest): Promise<GetManyDefaultResponse<T> | T[]>;
