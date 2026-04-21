@@ -1,9 +1,14 @@
-import { CrudRequestOptions, QueryTranslator } from '@nestjs-crud/core';
+import { CrudRequestOptions, JoinResolver, QueryTranslator } from '@nestjs-crud/core';
 import { ComparisonOperator, ParsedRequestParams, QueryFilter, SCondition, SConditionKey } from '@nestjs-crud/request';
 import { isArrayFull, isNull, isObject, objKeys } from '@nestjs-crud/util';
 import { Brackets, DataSourceOptions, ObjectLiteral, Repository, SelectQueryBuilder } from 'typeorm';
 
-import type { TypeOrmCrudService } from './typeorm-crud.service';
+export interface TypeOrmQueryTranslatorConfig<T extends ObjectLiteral> {
+  entityColumnsHash: ObjectLiteral;
+  entityHasDeleteColumn: boolean;
+  onBadRequest: (msg: string) => void;
+  joinResolver: JoinResolver<SelectQueryBuilder<T>>;
+}
 
 /**
  * Translates `SCondition` search trees into TypeORM `Brackets` predicates.
@@ -21,11 +26,23 @@ export class TypeOrmQueryTranslator<T extends ObjectLiteral> implements QueryTra
 > {
   private readonly repo: Repository<T>;
 
-  private readonly service: TypeOrmCrudService<T>;
+  private readonly entityColumnsHash: ObjectLiteral;
 
-  constructor(repo: Repository<T>, service: TypeOrmCrudService<T>) {
+  private readonly entityHasDeleteColumn: boolean;
+
+  private readonly onBadRequest: (msg: string) => void;
+
+  private readonly joinResolver: JoinResolver<SelectQueryBuilder<T>>;
+
+  constructor(
+    repo: Repository<T>,
+    config: TypeOrmQueryTranslatorConfig<T>,
+  ) {
     this.repo = repo;
-    this.service = service;
+    this.entityColumnsHash = config.entityColumnsHash;
+    this.entityHasDeleteColumn = config.entityHasDeleteColumn;
+    this.onBadRequest = config.onBadRequest;
+    this.joinResolver = config.joinResolver;
   }
 
   public buildWhere(search: SCondition): Brackets | undefined {
@@ -61,10 +78,6 @@ export class TypeOrmQueryTranslator<T extends ObjectLiteral> implements QueryTra
 
   private get dbName(): DataSourceOptions['type'] {
     return this.repo.metadata.connection.options.type;
-  }
-
-  private get entityColumnsHash(): ObjectLiteral {
-    return (this.service as unknown as { entityColumnsHash: ObjectLiteral }).entityColumnsHash;
   }
 
   private composeBrackets(builder: SelectQueryBuilder<T>, search: SCondition, condition: SConditionKey = '$and'): void {
@@ -441,19 +454,13 @@ export class TypeOrmQueryTranslator<T extends ObjectLiteral> implements QueryTra
   private checkFilterIsArray(cond: QueryFilter, withLength?: boolean): void {
     /* istanbul ignore if */
     if (!Array.isArray(cond.value)) {
-      (this.service as unknown as { throwBadRequestException: (m: string) => void }).throwBadRequestException(
-        `Invalid column '${cond.field}' value: expected an array`,
-      );
+      this.onBadRequest(`Invalid column '${cond.field}' value: expected an array`);
     }
     if (!cond.value.length) {
-      (this.service as unknown as { throwBadRequestException: (m: string) => void }).throwBadRequestException(
-        `Invalid column '${cond.field}' value: array must not be empty`,
-      );
+      this.onBadRequest(`Invalid column '${cond.field}' value: array must not be empty`);
     }
     if (withLength) {
-      (this.service as unknown as { throwBadRequestException: (m: string) => void }).throwBadRequestException(
-        `Invalid column '${cond.field}' value: array length mismatch`,
-      );
+      this.onBadRequest(`Invalid column '${cond.field}' value: array length mismatch`);
     }
   }
 }
