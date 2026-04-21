@@ -12,3 +12,5 @@ export * from './get-many-default-response.interface';
 export * from './crud-global-config.interface';
 export * from './dto-options.interface';
 export * from './serialize-options.interface';
+export * from './query-translator.interface';
+export * from './join-resolver.interface';

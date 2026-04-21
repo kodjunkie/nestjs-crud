@@ -1,6 +1,6 @@
 import { ParsedRequestParams, SCondition } from '@nestjs-crud/request';
 
-import { CrudRequestOptions } from './crud-request.interface';
+import { CrudRequestOptions } from './crud-options.interface';
 
 /**
  * Strategy interface for translating an `SCondition` search tree and the rest
