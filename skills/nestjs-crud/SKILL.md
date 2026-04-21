@@ -1,122 +1,277 @@
 ---
 name: nestjs-crud
-description: Use when working with @nestjs-crud packages — adding features to TypeORM, Drizzle, or MikroORM adapters, running integration tests, fixing ESLint violations, debugging build errors, or releasing a new version.
+description: Use when integrating @nestjs-crud into a NestJS project — setting up CRUD controllers, configuring query filters and pagination, scoping requests with @CrudAuth, overriding generated endpoints, or troubleshooting relations, validation, and Swagger.
 ---
 
 # @nestjs-crud
 
-## Package Dependency Chain
+Auto-generates RESTful CRUD endpoints for NestJS controllers from a single `@Crud()` decorator. Supports TypeORM, Drizzle, and MikroORM.
 
-```
-util → request → core → typeorm
-                      → drizzle
-                      → mikro-orm
-```
-
-All packages at `packages/{name}/`, source in `src/`, compiled to `lib/`.
-Orchestrated by `@zmotivat0r/mrepo` + Lerna 9 + Yarn 4.12.0 workspaces.
-
-## Build Commands
-
-| Command | What |
-|---------|------|
-| `yarn build` | Build all (tsc via mrepo, respects dep order) |
-| `yarn clean` | Remove `lib/` dirs + `.mrepo` cache |
-| `yarn rebuild` | `clean` then `build` — use for fresh builds |
-
-**Gotcha:** `yarn build && yarn build` works since root `tsconfig.json` excludes `**/lib` and `**/*.tsbuildinfo`. If TS5055 appears, run `yarn rebuild`.
-
-**`removeComments: false`** — intentionally set so `@deprecated` JSDoc propagates into emitted `.d.ts` files. Do not change to `true`.
-
-Tests run against source via `moduleNameMapper` — **no build needed for tests**.
-
-## Test Infrastructure
+## Install
 
 ```bash
-yarn test                          # Unit tests only (no DB)
-yarn test:postgres                 # Integration: Postgres 5455
-yarn test:mysql                    # Integration: MySQL 3316
-yarn test:coverage                 # Full suite + coverage
+# Pick your ORM adapter:
+npm install @nestjs-crud/core @nestjs-crud/typeorm
+npm install @nestjs-crud/core @nestjs-crud/drizzle
+npm install @nestjs-crud/core @nestjs-crud/mikro-orm
 
-# DB prep (required before integration tests)
-docker compose up -d
-yarn db:prepare:typeorm:postgres
-yarn db:prepare:typeorm:mysql
+# Frontend query builder (optional, framework-agnostic):
+npm install @nestjs-crud/request
 ```
 
-- Jest 30 + ts-jest 29.4.6 + jest-extended
-- `@nestjs-crud/*` resolves to source via `tsconfig.jest.json` `moduleNameMapper`
-- Docker ports: Postgres **5455**, MySQL **3316**, Redis **6399**
+Peer deps required: `class-validator`, `class-transformer`. Swagger is optional — install `@nestjs/swagger` and decoration auto-generates.
 
-## ESLint Rules — Critical
+## Quickstart
 
-Violations block CI. Apply these in every source/test edit:
+```typescript
+// user.service.ts
+@Injectable()
+export class UsersService extends TypeOrmCrudService<User> {
+  constructor(@InjectRepository(User) repo: Repository<User>) {
+    super(repo);
+  }
+}
 
-| Rule | What it means |
-|------|--------------|
-| `member-ordering` | fields → constructor → methods; public → protected → private; static first |
-| `lines-between-class-members: always` | Blank line between **every** class member |
-| `max-len: 150` | Per line (comments 200) |
-| `comma-dangle: always-multiline` | Trailing commas in all multi-line structures |
-| **No `/g` on `.test()`** | `/gi` or `/g` on a regex used with `.test()` causes stateful `lastIndex` — alternating true/false on repeat calls with the same input. Use `/i` only. |
-
-Run `yarn lint` to auto-fix ESLint issues.
-
-## Key Gotchas
-
-**SQL-injection guards** — each adapter has a `protected sqlInjectionRegEx: RegExp[]` denylist. Entries must use `/i`, never `/gi` or `/g`. Test seed copies in spec files must match production in lockstep or regression tests prove nothing.
-
-**Drizzle `protected db: any`** — `DrizzleCrudService` constructor takes an untyped `any` db. `skipLibCheck: true` in `packages/drizzle/tsconfig.json` suppresses drizzle-orm type issues. This is a known v2 fix (TYPES-01).
-
-**`integration/typeorm/`** is both the runnable demo app and the test fixture. Tests use alphabetic prefixes (`a.`, `b.`, `c.`) to enforce execution order. Assertion counts (e.g., `data.length === 9`) are load-bearing seed values.
-
-**`git push origin v1.0.2` is ambiguous** — both a branch and a tag exist with that name. Use explicit refs:
-- Branch: `git push origin refs/heads/v1.0.2`
-- Tag: `git push origin refs/tags/v1.0.2`
-
-**`lerna publish` adds `gitHead`** to each `package.json` — discard this, never commit.
-
-**CHANGELOG.md in tarballs** — npm does NOT auto-include it despite docs. Each package's `files` array must explicitly list `"CHANGELOG.md"`.
-
-## Release Flow (v1.0.3+)
-
-`release.yml` triggers on **merged PR where head branch starts with `release/`** — NOT on tag push.
-
-```bash
-# 1. Create release branch from v1.0.2
-git checkout -b release/v1.0.3
-git push -u origin release/v1.0.3
-
-# 2. Open PR: release/v1.0.3 → v1.0.2 (NOT master)
-gh pr create --base v1.0.2 --head release/v1.0.3 \
-  --title "chore(release): publish 1.0.3" \
-  --notes-file CHANGELOG.md
-
-# 3. Merge → release.yml fires automatically:
-#    runs tests → creates tag → lerna publish → GH release
+// user.controller.ts
+@Crud({
+  model: { type: User },
+  query: {
+    limit: 25,
+    maxLimit: 100,
+    join: {
+      profile: { eager: true },     // auto-join relation
+      posts: { allow: ['id', 'title'] }, // allowed fields only
+    },
+  },
+})
+@Controller('users')
+export class UsersController implements CrudController<User> {
+  constructor(public service: UsersService) {}
+}
 ```
 
-**Before Lerna version bump:**
-1. Run `npx lerna version X.Y.Z --conventional-commits --no-push --no-git-tag-version --yes`
-2. Hand-curate the generated root `CHANGELOG.md` (Lerna produces a commit dump; replace with thematic sections)
-3. Commit Lerna output and curation as **separate commits** — root CHANGELOG must be curated AFTER Lerna runs, not before (Lerna overwrites it)
+## Generated Endpoints
 
-**Yarn pin:** Both `tests.yml` and `release.yml` pin `yarn set version 4.12.0`. Yarn 4.14+ changed lockfile format (version 8 → 9), breaking `--immutable` installs.
+| Method | Path | Handler |
+|--------|------|---------|
+| `GET` | `/users` | `getManyBase` |
+| `GET` | `/users/:id` | `getOneBase` |
+| `POST` | `/users` | `createOneBase` |
+| `POST` | `/users/bulk` | `createManyBase` |
+| `PATCH` | `/users/:id` | `updateOneBase` |
+| `PUT` | `/users/:id` | `replaceOneBase` |
+| `DELETE` | `/users/:id` | `deleteOneBase` |
+| `POST` | `/users/:id/recover` | `recoverOneBase` |
 
-## v2 Context
+## Query Params (Frontend → Backend)
 
-Work happens on `master`. `v1.0.2` branch preserved as stable line.
+Use `RequestQueryBuilder` on the frontend to build type-safe query strings:
 
-**ARCH-01..05** is the core v2 work:
-- Extract `QueryTranslator<T>` (ends 3-way code drift across adapters)
-- Slim 1023-line `typeorm-crud.service.ts` to orchestration only
-- Align Drizzle + MikroORM to same pattern
+```typescript
+import { RequestQueryBuilder, CondOperator } from '@nestjs-crud/request';
 
-**`@deprecated` surfaces in v1.0.2 pointing at v2:**
-- `DrizzleCrudService.db` → v2 TYPES-01 (typed db client)
-- `MikroOrmCrudService` class + `protected metadata: any` → v2 TYPES-02
-- `ParamOption.enum` (internal Swagger import) → v2 TYPES-05
+const qb = RequestQueryBuilder.create()
+  .setFilter({ field: 'isActive', operator: CondOperator.EQUALS, value: true })
+  .setOr({ field: 'role', operator: CondOperator.IN, value: ['admin', 'mod'] })
+  .setJoin({ field: 'profile' })
+  .sortBy({ field: 'createdAt', order: 'DESC' })
+  .setLimit(20)
+  .setPage(2);
 
-**SEC-03:** `updateOne`, `replaceOne`, `deleteOne` in all 3 adapters use read-modify-write without transactions — real race window under concurrent requests. Fix deferred to v2 ARCH-04.
+fetch(`/users?${qb.query()}`);
+```
 
-**Migration guide URL:** `https://github.com/kodjunkie/nestjs-crud/wiki/v2-migration` (placeholder — populate when v2 starts).
+**Supported operators:** `$eq`, `$ne`, `$gt`, `$gte`, `$lt`, `$lte`, `$in`, `$notin`, `$isnull`, `$notnull`, `$cont`, `$excl`, `$starts`, `$ends`, `$contL`, `$exclL`, `$startsL`, `$endsL`
+
+**Raw params:** `?filter=name||$cont||john&sort=createdAt,DESC&limit=25&page=2&join=profile`
+
+## `@Crud()` Key Options
+
+```typescript
+@Crud({
+  model: { type: Entity },          // required
+
+  query: {
+    limit: 25,                       // default page size
+    maxLimit: 100,                   // hard cap
+    cache: 2000,                     // ms (TypeORM only)
+    alwaysPaginate: false,           // force pagination
+    join: {
+      relation: {
+        eager: true,                 // always join
+        allow: ['id', 'name'],       // field whitelist
+        exclude: ['secret'],         // field blacklist
+        required: false,             // LEFT vs INNER JOIN
+      },
+    },
+    filter: [{ field: 'deletedAt', operator: '$isnull' }], // always-on filter
+    sort: [{ field: 'id', order: 'ASC' }],                 // default sort
+    exclude: ['password'],                                  // never return these fields
+  },
+
+  routes: {
+    exclude: ['createManyBase', 'recoverOneBase'],          // disable routes
+    getManyBase: { decorators: [UseGuards(AuthGuard)] },   // per-route extras
+  },
+
+  params: {
+    id: { field: 'id', type: 'uuid', primary: true },      // custom primary key
+  },
+})
+```
+
+## Scoping Requests Per User (`@CrudAuth`)
+
+```typescript
+@Crud({ model: { type: Post } })
+@CrudAuth({
+  property: 'user',
+  filter: (user: User) => ({ authorId: { $eq: user.id } }),
+  persist: (user: User) => ({ authorId: user.id }),  // auto-set on create/update
+  or: false,
+})
+@UseGuards(JwtAuthGuard)
+@Controller('posts')
+export class PostsController implements CrudController<Post> {
+  constructor(public service: PostsService) {}
+}
+```
+
+- `filter` — appended to every GET query (users can't see other users' data)
+- `persist` — appended to every write (prevents spoofing authorId)
+- `property` — where to find the user on `req` (default: `'user'`)
+
+## Overriding Generated Routes
+
+```typescript
+@Crud({ model: { type: User } })
+@Controller('users')
+export class UsersController implements CrudController<User> {
+  constructor(public service: UsersService) {}
+
+  // Override a read route
+  @Override('getOneBase')
+  @UseInterceptors(MyInterceptor)
+  getUser(
+    @ParsedRequest() req: CrudRequest,
+    @Param('id') id: string,
+  ) {
+    return this.service.getOne(req); // delegate parsed request to service
+  }
+
+  // Override a write route — use @ParsedBody(), NOT @Body()
+  @Override('createOneBase')
+  createUser(
+    @ParsedRequest() req: CrudRequest,
+    @ParsedBody() dto: User,          // @ParsedBody() carries validation groups; @Body() does not
+  ) {
+    return this.service.createOne(req, dto);
+  }
+}
+```
+
+`@Override` accepts: `'getManyBase'`, `'getOneBase'`, `'createOneBase'`, `'createManyBase'`, `'updateOneBase'`, `'replaceOneBase'`, `'deleteOneBase'`, `'recoverOneBase'`.
+
+## Entity-as-DTO Validation
+
+No separate DTO classes needed — use `class-validator` groups on the entity:
+
+```typescript
+import { CrudValidationGroups } from '@nestjs-crud/core';
+
+const { CREATE, UPDATE } = CrudValidationGroups;
+
+@Entity()
+export class User {
+  @IsOptional({ groups: [UPDATE] })
+  @IsNotEmpty({ groups: [CREATE] })
+  @IsString({ always: true })
+  @Column()
+  name: string;
+
+  @IsOptional({ always: true })
+  @IsEmail({ always: true })
+  @Column({ nullable: true })
+  email: string;
+}
+```
+
+- `CREATE` group runs on `POST /users` and `PUT /users/:id`
+- `UPDATE` group runs on `PATCH /users/:id`
+- `{ always: true }` runs on both
+
+## Swagger
+
+Install `@nestjs/swagger` — documentation auto-generates. No extra configuration. If not installed, the library silently skips Swagger decoration (via `safeRequire` internally).
+
+**Note:** `ParamOption.enum` in `@nestjs-crud/core` is marked `@deprecated` in v1.0.2 — the internal Swagger type it references will change in v2. Your code using `enum` continues to work; you'll just see a deprecation warning in your IDE.
+
+## Best Practices
+
+**Use `CondOperator` enum — never raw operator strings.**
+`'$cont'` silently misspells; `CondOperator.CONTAINS` is caught by TypeScript.
+```typescript
+// ❌  { operator: '$cont' }         — typos compile fine
+// ✅  { operator: CondOperator.CONTAINS }
+import { CondOperator } from '@nestjs-crud/request';
+```
+
+**Use `CrudValidationGroups` constants — never magic strings.**
+```typescript
+// ❌  @IsOptional({ groups: ['update'] })   — 'update' !== CrudValidationGroups.UPDATE
+// ✅
+import { CrudValidationGroups } from '@nestjs-crud/core';
+const { CREATE, UPDATE } = CrudValidationGroups;
+@IsOptional({ groups: [UPDATE] })
+```
+
+**Use `@ParsedBody()` not `@Body()` in write overrides.**
+`@Body()` bypasses `class-validator` group selection — CREATE and UPDATE validation become identical. `@ParsedBody()` carries the correct group.
+
+**Always `exclude` sensitive fields in `query` config.**
+```typescript
+@Crud({ query: { exclude: ['password', 'secretToken'] } })
+```
+Without this, a client can request `fields=password` and get it back.
+
+**Always `allow`-list join fields on sensitive relations.**
+```typescript
+join: {
+  profile: { allow: ['bio', 'avatarUrl'] }  // never exposes profile.privateKey etc.
+}
+```
+Without `allow`, a joined relation returns all its columns.
+
+**Use `search` for complex AND/OR — `filter` is AND-only.**
+```typescript
+// ❌ filter stacks ANDs — can't express OR across different fields
+// ✅ search supports $and / $or nesting
+const qb = RequestQueryBuilder.create()
+  .search({
+    $or: [
+      { name: { $contL: 'alice' } },
+      { email: { $contL: 'alice' } },
+    ],
+  });
+// Raw: ?s={"$or":[{"name":{"$contL":"alice"}},{"email":{"$contL":"alice"}}]}
+```
+
+**Set `maxLimit` server-side — never trust client `limit` alone.**
+A client that omits `limit` or sends a huge value gets all rows without `maxLimit`.
+
+**`@UseGuards()` must come before `@CrudAuth()` can read `req.user`.**
+Place auth guard on the controller class (not individual routes) so it runs before `CrudRequestInterceptor` resolves `property` from `req`.
+
+## Common Issues
+
+**Relations not loading:** Add the relation to `query.join` in `@Crud()`. Without it, join requests from the client are silently ignored.
+
+**`maxLimit` exceeded → 400:** Client sent `limit` above `maxLimit`. Raise `maxLimit` or set `alwaysPaginate: false`.
+
+**Validation always fails on update:** Make sure fields use `@IsOptional({ groups: [UPDATE] })` — without it, UPDATE validation is as strict as CREATE.
+
+**`@CrudAuth` filter not applying:** Ensure your auth guard runs BEFORE `CrudRequestInterceptor`. Guard must populate `req.user` (or your configured `property`) for the filter to resolve.
+
+**Empty response instead of `{ data, count, total, page, pageCount }`:** `getManyBase` returns a flat array by default. Set `alwaysPaginate: true` in `@Crud()` query options to always return the paginated shape.
+
+**`@deprecated` IDE warnings on `DrizzleCrudService.db` or `MikroOrmCrudService`:** Expected in v1.0.2 — these surfaces change in v2. No action needed; code continues to work.
