@@ -26,8 +26,18 @@ export interface QueryTranslator<Q, W> {
   buildWhere(search: SCondition): W | undefined;
 
   /**
-   * Apply WHERE, sort, pagination, field selection, and soft-delete filtering
-   * to the supplied query. Returns the (possibly mutated) query for chaining.
+   * Apply the full parsed-request semantics to the supplied query:
+   * WHERE (search), sort (`sort`), pagination (`page`/`offset`/`limit`),
+   * field selection (`fields` + `options.query.persist`), soft-delete
+   * filtering (when the entity has a `@DeleteDateColumn` and the request
+   * is not in `includeDeleted` mode), and eager joins (`join` options).
+   *
+   * Returns the (possibly mutated) query for chaining.
+   *
+   * Adapters MUST NOT execute the query here — execution is a service-layer
+   * concern. This method only composes.
+   *
+   * @since 2.0.0
    */
   applyToQuery(query: Q, parsed: ParsedRequestParams, options: CrudRequestOptions): Q;
 
