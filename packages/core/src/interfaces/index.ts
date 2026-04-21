@@ -14,3 +14,8 @@ export * from './dto-options.interface';
 export * from './serialize-options.interface';
 export * from './query-translator.interface';
 export * from './join-resolver.interface';
+// Note: InputSanitizer interface intentionally NOT re-exported here to avoid
+// name collision with the concrete class of the same name exported from ../util.
+// Internal imports use the explicit path; the concrete class (which implements
+// the interface) provides both value and type via structural typing.
+export type { InputSanitizer as InputSanitizerInterface } from './input-sanitizer.interface';
