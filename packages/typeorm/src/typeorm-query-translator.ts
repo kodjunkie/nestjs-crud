@@ -1,5 +1,12 @@
-import { CrudRequestOptions, JoinResolver, QueryTranslator } from '@nestjs-crud/core';
-import { ComparisonOperator, ParsedRequestParams, QueryFilter, SCondition, SConditionKey } from '@nestjs-crud/request';
+import { CrudRequestOptions, getAllowedColumns, JoinResolver, QueryTranslator } from '@nestjs-crud/core';
+import {
+  ComparisonOperator,
+  ParsedRequestParams,
+  QueryFilter,
+  QuerySort,
+  SCondition,
+  SConditionKey,
+} from '@nestjs-crud/request';
 import { isArrayFull, isNull, isObject, objKeys } from '@nestjs-crud/util';
 import { Brackets, DataSourceOptions, ObjectLiteral, Repository, SelectQueryBuilder } from 'typeorm';
 
@@ -11,12 +18,18 @@ export interface TypeOrmQueryTranslatorConfig<T extends ObjectLiteral> {
 }
 
 /**
- * Translates `SCondition` search trees into TypeORM `Brackets` predicates.
+ * Translates `SCondition` search trees into TypeORM `Brackets` predicates and
+ * fully composes `SelectQueryBuilder` state (field selection, WHERE, eager
+ * joins, soft-delete filter, sort, pagination, cache) via `applyToQuery`.
  *
  * Implements the shared `QueryTranslator` strategy interface from
  * `@nestjs-crud/core`. Introduced in v2.0.0 as the canonical extension point
  * replacing the deleted `protected` methods `setSearchCondition`, `setAndWhere`,
  * and `setOrWhere` on `TypeOrmCrudService`.
+ *
+ * In Phase 5 ARCH-04 (v2.0.0) this class absorbed `mapSort` + `getFieldWithAlias`
+ * from the service and tightened `mapSort` to assert dotted-path roots against
+ * `joinResolver.getAllowedColumnsFor(relation)` — closing the D-05b SQLi vector.
  *
  * @since 2.0.0
  */
@@ -59,10 +72,56 @@ export class TypeOrmQueryTranslator<T extends ObjectLiteral> implements QueryTra
   public applyToQuery(
     query: SelectQueryBuilder<T>,
     parsed: ParsedRequestParams,
-    _options: CrudRequestOptions,
+    options: CrudRequestOptions,
   ): SelectQueryBuilder<T> {
+    const queryOptions = options?.query ?? {};
+
+    // 1. Field selection (skipped silently if metadata not available)
+    const select = this.getSelect(parsed, queryOptions);
+    if (select.length) {
+      query.select(select);
+    }
+
+    // 2. WHERE
     const where = this.buildWhere(parsed.search);
     if (where) query.andWhere(where);
+
+    // 3. Joins (eager + requested)
+    const joinOptions = queryOptions.join || {};
+    if (objKeys(joinOptions).length) {
+      this.joinResolver.applyJoins(query, parsed.join || [], joinOptions);
+    }
+
+    // 4. Soft-delete
+    if (this.entityHasDeleteColumn && queryOptions.softDelete && parsed.includeDeleted === 1) {
+      query.withDeleted();
+    }
+
+    // 5. Sort
+    const sortInput = (parsed.sort && parsed.sort.length)
+      ? parsed.sort
+      : (queryOptions.sort && queryOptions.sort.length ? queryOptions.sort : []);
+    const sortParams = this.mapSort(sortInput);
+    const sortKeys = objKeys(sortParams);
+    if (sortKeys.length) {
+      query.orderBy(sortParams);
+    }
+
+    // 6. Pagination
+    const take = this.getTake(parsed, queryOptions);
+    if (isFinite(take as number)) {
+      query.take(take as number);
+    }
+    const skip = this.getSkip(parsed, take as number);
+    if (isFinite(skip as number)) {
+      query.skip(skip as number);
+    }
+
+    // 7. Cache
+    if (queryOptions.cache && parsed.cache !== 0) {
+      query.cache(queryOptions.cache);
+    }
+
     return query;
   }
 
@@ -78,6 +137,14 @@ export class TypeOrmQueryTranslator<T extends ObjectLiteral> implements QueryTra
 
   private get dbName(): DataSourceOptions['type'] {
     return this.repo.metadata.connection.options.type;
+  }
+
+  private get entityColumns(): string[] {
+    return this.repo.metadata.columns.map((prop) => (prop.embeddedMetadata ? prop.propertyPath : prop.propertyName));
+  }
+
+  private get entityPrimaryColumns(): string[] {
+    return this.repo.metadata.columns.filter((prop) => prop.isPrimary).map((prop) => prop.propertyName);
   }
 
   private composeBrackets(builder: SelectQueryBuilder<T>, search: SCondition, condition: SConditionKey = '$and'): void {
@@ -421,6 +488,28 @@ export class TypeOrmQueryTranslator<T extends ObjectLiteral> implements QueryTra
     return { str, params };
   }
 
+  private mapSort(sort: QuerySort[]): ObjectLiteral {
+    const params: ObjectLiteral = {};
+
+    for (const s of sort) {
+      if (s.field.includes('.')) {
+        const [relation, column] = s.field.split('.', 2);
+        const allowed = this.joinResolver.getAllowedColumnsFor(relation);
+        if (!allowed.size) {
+          this.onBadRequest(`Invalid relation in sort: '${relation}'`);
+        }
+        if (!allowed.has(column)) {
+          this.onBadRequest(`Invalid column '${column}' for relation '${relation}'`);
+        }
+      } else if (!this.entityColumnsHash[s.field]) {
+        this.onBadRequest(`Invalid sort field: '${s.field}'`);
+      }
+      params[this.getFieldWithAlias(s.field, true)] = s.order;
+    }
+
+    return params;
+  }
+
   private getFieldWithAlias(field: string, sort = false): string {
     /* istanbul ignore next */
     const i = ['mysql', 'mariadb'].includes(this.dbName) ? '`' : '"';
@@ -449,6 +538,43 @@ export class TypeOrmQueryTranslator<T extends ObjectLiteral> implements QueryTra
         return `${i}${last2[0]}${i}.${i}${last2[1]}${i}`;
       }
     }
+  }
+
+  private getSelect(parsed: ParsedRequestParams, options: CrudRequestOptions['query']): string[] {
+    const cols = this.entityColumns;
+    if (!cols.length) return [];
+
+    const opts = options ?? {};
+    const allowed = getAllowedColumns(cols, opts);
+    const columns = parsed.fields && parsed.fields.length
+      ? parsed.fields.filter((field) => allowed.some((col) => field === col))
+      : allowed;
+
+    const select = new Set(
+      [
+        ...(opts.persist && opts.persist.length ? opts.persist : []),
+        ...columns,
+        ...this.entityPrimaryColumns,
+      ].map((col) => `${this.alias}.${col}`),
+    );
+
+    return Array.from(select);
+  }
+
+  private getTake(query: ParsedRequestParams, options: CrudRequestOptions['query']): number | null {
+    const opts = options ?? {};
+    if (query.limit) {
+      return opts.maxLimit ? (query.limit <= opts.maxLimit ? query.limit : opts.maxLimit) : query.limit;
+    }
+    /* istanbul ignore if */
+    if (opts.limit) {
+      return opts.maxLimit ? (opts.limit <= opts.maxLimit ? opts.limit : opts.maxLimit) : opts.limit;
+    }
+    return opts.maxLimit ? opts.maxLimit : null;
+  }
+
+  private getSkip(query: ParsedRequestParams, take: number): number | null {
+    return query.page && take ? take * (query.page - 1) : query.offset ? query.offset : null;
   }
 
   private checkFilterIsArray(cond: QueryFilter, withLength?: boolean): void {
