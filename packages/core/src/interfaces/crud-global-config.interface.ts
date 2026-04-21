@@ -26,4 +26,15 @@ export interface CrudGlobalConfig {
     delete?: false;
     recover?: false;
   };
+  /**
+   * When `true` (default in v2.0+), `InputSanitizer` validates field names
+   * against the entity-column allowlist and throws `BadRequestException` on
+   * miss. When `false`, falls back to v1 denylist regex only.
+   *
+   * @deprecated The opt-out (`false`) path is a v2 migration shim. The flag
+   *             and the v1 denylist behavior will be removed in v3.
+   * @since 2.0.0
+   * @default true
+   */
+  strictSanitization?: boolean;
 }

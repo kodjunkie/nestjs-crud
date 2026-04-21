@@ -31,6 +31,7 @@ export class CrudConfigService {
       recoverOneBase: { interceptors: [], decorators: [], returnRecovered: false },
     },
     params: {},
+    strictSanitization: true,
   };
 
   static load(config: CrudGlobalConfig = {}) {
@@ -43,10 +44,19 @@ export class CrudConfigService {
     const routes = isObjectFull(config.routes) ? config.routes : {};
     const params = isObjectFull(config.params) ? config.params : {};
     const serialize = isObjectFull(config.serialize) ? config.serialize : {};
+    const strictSanitization =
+      typeof config.strictSanitization === 'boolean' ? config.strictSanitization : undefined;
 
     CrudConfigService.config = deepmerge(
       CrudConfigService.config,
-      { auth, query, routes, params, serialize },
+      {
+        auth,
+        query,
+        routes,
+        params,
+        serialize,
+        ...(strictSanitization !== undefined && { strictSanitization }),
+      },
       { arrayMerge: (a, b, _c) => b },
     );
   }
