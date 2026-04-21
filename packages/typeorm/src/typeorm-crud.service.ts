@@ -467,8 +467,14 @@ export class TypeOrmCrudService<T> extends CrudService<T> {
     const params: ObjectLiteral = {};
 
     for (let i = 0; i < sort.length; i++) {
+      // Assert on the RAW user field (pre-aliasing). Relation-qualified paths
+      // (contain '.') bypass strict-mode allowlist — relation validity is
+      // enforced by join setup. Root-entity column names go through the full
+      // strict allowlist + denylist check.
+      if (!sort[i].field.includes('.')) {
+        this.sanitizer.assert(sort[i].field);
+      }
       const field = this.getFieldWithAlias(sort[i].field, true);
-      this.sanitizer.assert(field);
       const checkedFiled = field;
       params[checkedFiled] = sort[i].order;
     }

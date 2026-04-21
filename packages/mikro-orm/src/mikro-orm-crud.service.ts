@@ -1,4 +1,12 @@
-import { CrudService, CrudRequest, CreateManyDto, GetManyDefaultResponse, QueryOptions } from '@nestjs-crud/core';
+import {
+  CrudService,
+  CrudRequest,
+  CreateManyDto,
+  DEFAULT_SQL_INJECTION_REGEX,
+  GetManyDefaultResponse,
+  InputSanitizer,
+  QueryOptions,
+} from '@nestjs-crud/core';
 import { NotFoundException } from '@nestjs/common';
 import { ParsedRequestParams, SCondition, ComparisonOperator } from '@nestjs-crud/request';
 import { hasLength, isArrayFull, isNil, isObject, objKeys, isNull } from '@nestjs-crud/util';
@@ -42,13 +50,7 @@ export class MikroOrmCrudService<T extends object> extends CrudService<T> {
 
   protected relationsHash: Map<string, MikroOrmAllowedRelation> = new Map();
 
-  // Denylist regexes use /i only. Parity verified against packages/drizzle/src/drizzle-crud.service.ts (QUALITY-03, Phase 1 of v1.0.2).
-  protected sqlInjectionRegEx: RegExp[] = [
-    /(%27)|(\')|(--)|(%23)|(#)/i,
-    /((%3D)|(=))[^\n]*((%27)|(\')|(--)|(%3B)|(;))/i,
-    /w*((%27)|(\'))((%6F)|o|(%4F))((%72)|r|(%52))/i,
-    /((%27)|(\'))union/i,
-  ];
+  protected readonly sanitizer: InputSanitizer;
 
   constructor(
     protected em: EntityManager,
@@ -58,6 +60,22 @@ export class MikroOrmCrudService<T extends object> extends CrudService<T> {
     this.metadata = this.em.getMetadata().get(this.entityClass.name);
     this.onInitMapEntityColumns();
     this.detectDialect();
+
+    const strictMode = this.resolveStrictSanitization();
+    this.sanitizer = new InputSanitizer({
+      allowedColumns: new Set(this.entityColumns),
+      onBadRequest: (msg: string) => this.throwBadRequestException(msg),
+      strictMode,
+      denylistRegex: DEFAULT_SQL_INJECTION_REGEX,
+    });
+    /* istanbul ignore if */
+    if (!strictMode && process.env.NODE_ENV !== 'test') {
+      // eslint-disable-next-line no-console
+      console.warn(
+        `[nestjs-crud] strictSanitization: false — running v1 denylist behavior for ${this.constructor.name}. ` +
+          `This flag will be removed in v3. See https://github.com/kodjunkie/nestjs-crud/wiki/v2-migration`,
+      );
+    }
   }
 
   public async getMany(req: CrudRequest): Promise<GetManyDefaultResponse<T> | T[]> {
@@ -305,7 +323,7 @@ export class MikroOrmCrudService<T extends object> extends CrudService<T> {
     const orderBy: Record<string, 'ASC' | 'DESC'> = {};
     for (const s of sorts) {
       if (!this.getColumn(s.field)) continue;
-      this.checkSqlInjection(s.field);
+      this.sanitizer.assert(s.field);
       orderBy[s.field] = s.order === 'DESC' ? 'DESC' : 'ASC';
     }
     return orderBy;
@@ -388,7 +406,7 @@ export class MikroOrmCrudService<T extends object> extends CrudService<T> {
 
   protected buildFieldCondition(field: string, value: any): Record<string, any> | undefined {
     if (!this.getColumn(field)) return undefined;
-    this.checkSqlInjection(field);
+    this.sanitizer.assert(field);
 
     if (!isObject(value)) {
       return { [field]: isNull(value) ? null : value };
@@ -505,12 +523,4 @@ export class MikroOrmCrudService<T extends object> extends CrudService<T> {
     this.dbDialect = 'postgresql';
   }
 
-  private checkSqlInjection(field: string): string {
-    for (let i = 0; i < this.sqlInjectionRegEx.length; i++) {
-      if (this.sqlInjectionRegEx[i].test(field)) {
-        this.throwBadRequestException(`SQL injection detected: "${field}"`);
-      }
-    }
-    return field;
-  }
 }
