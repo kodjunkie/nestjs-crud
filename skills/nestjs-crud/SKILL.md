@@ -1,9 +1,9 @@
 ---
 name: nestjs-crud
-description: Use when working with the @nestjs-crud monorepo — building packages, running tests, fixing ESLint violations, adding features to adapters, or releasing a new version. Covers the 6-package dependency chain, critical linting rules, build gotchas, test infrastructure, and release flow.
+description: Use when working with @nestjs-crud packages — adding features to TypeORM, Drizzle, or MikroORM adapters, running integration tests, fixing ESLint violations, debugging build errors, or releasing a new version.
 ---
 
-# @nestjs-crud Monorepo
+# @nestjs-crud
 
 ## Package Dependency Chain
 
