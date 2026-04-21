@@ -430,21 +430,6 @@ export class TypeOrmCrudService<T> extends CrudService<T> {
       : plainToClass(this.entityType, { ...dto, ...parsed.authPersist }, parsed.classTransformOptions);
   }
 
-  protected getAllowedColumns(columns: string[], options: QueryOptions): string[] {
-    return (!options.exclude || !options.exclude.length) &&
-      (!options.allow || /* istanbul ignore next */ !options.allow.length)
-      ? columns
-      : columns.filter(
-          (column) =>
-            (options.exclude && options.exclude.length
-              ? !options.exclude.some((col) => col === column)
-              : /* istanbul ignore next */ true) &&
-            (options.allow && options.allow.length
-              ? options.allow.some((col) => col === column)
-              : /* istanbul ignore next */ true),
-        );
-  }
-
   protected getEntityColumns(entityMetadata: EntityMetadata): { columns: string[]; primaryColumns: string[] } {
     const columns = entityMetadata.columns.map((prop) => prop.propertyPath) || /* istanbul ignore next */ [];
     const primaryColumns =

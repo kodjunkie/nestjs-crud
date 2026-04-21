@@ -319,16 +319,6 @@ export class DrizzleCrudService<T extends Record<string, unknown>> extends CrudS
     return this.columnsMap[field];
   }
 
-  protected getAllowedColumns(columns: string[], options: QueryOptions): string[] {
-    return (!options.exclude || !options.exclude.length) && (!options.allow || !options.allow.length)
-      ? columns
-      : columns.filter(
-          (column) =>
-            (options.exclude && options.exclude.length ? !options.exclude.some((col) => col === column) : true) &&
-            (options.allow && options.allow.length ? options.allow.some((col) => col === column) : true),
-        );
-  }
-
   protected getSelect(query: ParsedRequestParams, options: QueryOptions): Record<string, Column> {
     const allowed = this.getAllowedColumns(this.entityColumns, options);
     const columns =

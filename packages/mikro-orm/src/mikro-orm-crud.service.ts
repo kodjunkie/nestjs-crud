@@ -282,16 +282,6 @@ export class MikroOrmCrudService<T extends object> extends CrudService<T> {
     return this.propertiesMap[field];
   }
 
-  protected getAllowedColumns(columns: string[], options: QueryOptions): string[] {
-    return (!options.exclude || !options.exclude.length) && (!options.allow || !options.allow.length)
-      ? columns
-      : columns.filter(
-          (column) =>
-            (options.exclude && options.exclude.length ? !options.exclude.some((col) => col === column) : true) &&
-            (options.allow && options.allow.length ? options.allow.some((col) => col === column) : true),
-        );
-  }
-
   protected getSelect(query: ParsedRequestParams, options: QueryOptions): string[] {
     const allowed = this.getAllowedColumns(this.entityColumns, options);
     const columns =
