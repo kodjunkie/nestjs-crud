@@ -4,10 +4,11 @@ import {
   CrudRequestOptions,
   CrudService,
   GetManyDefaultResponse,
+  prepareEntityBeforeSave as prepareEntityBeforeSaveUtil,
   QueryOptions,
 } from '@nestjs-crud/core';
 import { ParsedRequestParams } from '@nestjs-crud/request';
-import { ClassType, hasLength, isArrayFull, isObject, isUndefined, objKeys, isNil } from '@nestjs-crud/util';
+import { ClassType, hasLength, isArrayFull, isObject, isUndefined, isNil } from '@nestjs-crud/util';
 import { plainToClass } from 'class-transformer';
 import { DeepPartial, ObjectLiteral, Repository, SelectQueryBuilder, DataSourceOptions } from 'typeorm';
 
@@ -322,26 +323,8 @@ export class TypeOrmCrudService<T> extends CrudService<T> {
     return found;
   }
 
-  protected prepareEntityBeforeSave(dto: T | Partial<T>, parsed: CrudRequest['parsed']): T {
-    /* istanbul ignore if */
-    if (!isObject(dto)) {
-      return undefined;
-    }
-
-    if (hasLength(parsed.paramsFilter)) {
-      for (const filter of parsed.paramsFilter) {
-        dto[filter.field] = filter.value;
-      }
-    }
-
-    /* istanbul ignore if */
-    if (!hasLength(objKeys(dto))) {
-      return undefined;
-    }
-
-    return dto instanceof this.entityType
-      ? Object.assign(dto, parsed.authPersist)
-      : plainToClass(this.entityType, { ...dto, ...parsed.authPersist }, parsed.classTransformOptions);
+  protected prepareEntityBeforeSave(dto: T | Partial<T>, parsed: CrudRequest['parsed']): T | undefined {
+    return prepareEntityBeforeSaveUtil(dto, parsed, this.entityType);
   }
 
   protected getSelect(query: ParsedRequestParams, options: QueryOptions): string[] {
