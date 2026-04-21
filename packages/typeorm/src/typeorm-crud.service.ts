@@ -3,7 +3,9 @@ import {
   CrudRequest,
   CrudRequestOptions,
   CrudService,
+  DEFAULT_SQL_INJECTION_REGEX,
   GetManyDefaultResponse,
+  InputSanitizer,
   QueryOptions,
 } from '@nestjs-crud/core';
 import { ParsedRequestParams, QuerySort } from '@nestjs-crud/request';
@@ -25,12 +27,7 @@ export class TypeOrmCrudService<T> extends CrudService<T> {
 
   protected entityColumnsHash: ObjectLiteral = {};
 
-  protected sqlInjectionRegEx: RegExp[] = [
-    /(%27)|(\')|(--)|(%23)|(#)/i,
-    /((%3D)|(=))[^\n]*((%27)|(\')|(--)|(%3B)|(;))/i,
-    /w*((%27)|(\'))((%6F)|o|(%4F))((%72)|r|(%52))/i,
-    /((%27)|(\'))union/i,
-  ];
+  protected readonly sanitizer: InputSanitizer;
 
   protected readonly translator: TypeOrmQueryTranslator<T>;
 
@@ -41,6 +38,23 @@ export class TypeOrmCrudService<T> extends CrudService<T> {
 
     this.dbName = this.repo.metadata.connection.options.type;
     this.onInitMapEntityColumns();
+
+    const strictMode = this.resolveStrictSanitization();
+    this.sanitizer = new InputSanitizer({
+      allowedColumns: new Set(Object.keys(this.entityColumnsHash)),
+      onBadRequest: (msg: string) => this.throwBadRequestException(msg),
+      strictMode,
+      denylistRegex: DEFAULT_SQL_INJECTION_REGEX,
+    });
+    /* istanbul ignore if */
+    if (!strictMode && process.env.NODE_ENV !== 'test') {
+      // eslint-disable-next-line no-console
+      console.warn(
+        `[nestjs-crud] strictSanitization: false — running v1 denylist behavior for ${this.constructor.name}. ` +
+          `This flag will be removed in v3. See https://github.com/kodjunkie/nestjs-crud/wiki/v2-migration`,
+      );
+    }
+
     this.joinResolver = new TypeOrmJoinResolver<T>(this.repo, {
       onBadRequest: (msg: string) => this.throwBadRequestException(msg),
     });
@@ -454,24 +468,11 @@ export class TypeOrmCrudService<T> extends CrudService<T> {
 
     for (let i = 0; i < sort.length; i++) {
       const field = this.getFieldWithAlias(sort[i].field, true);
-      const checkedFiled = this.checkSqlInjection(field);
+      this.sanitizer.assert(field);
+      const checkedFiled = field;
       params[checkedFiled] = sort[i].order;
     }
 
     return params;
-  }
-
-  private checkSqlInjection(field: string): string {
-    /* istanbul ignore else */
-    if (this.sqlInjectionRegEx.length) {
-      for (let i = 0; i < this.sqlInjectionRegEx.length; i++) {
-        /* istanbul ignore else */
-        if (this.sqlInjectionRegEx[i].test(field)) {
-          this.throwBadRequestException(`SQL injection detected: "${field}"`);
-        }
-      }
-    }
-
-    return field;
   }
 }

@@ -3,6 +3,7 @@ import { ParsedRequestParams } from '@nestjs-crud/request';
 import { objKeys } from '@nestjs-crud/util';
 
 import { CreateManyDto, CrudRequest, CrudRequestOptions, GetManyDefaultResponse, QueryOptions } from '../interfaces';
+import { CrudConfigService } from '../module/crud-config.service';
 import { getAllowedColumns as getAllowedColumnsUtil } from '../util/get-allowed-columns';
 
 export abstract class CrudService<T> {
@@ -84,6 +85,20 @@ export abstract class CrudService<T> {
 
   protected getAllowedColumns(columns: string[], options: QueryOptions): string[] {
     return getAllowedColumnsUtil(columns, options);
+  }
+
+  /**
+   * Resolve the effective `strictSanitization` flag for this service.
+   *
+   * v2.0 reads the global `CrudConfigService.config.strictSanitization` only
+   * (per-service override via `@Crud()` metadata is type-surface only and
+   * wired in v2.1). Defaults to `true` when unset.
+   *
+   * @since 2.0.0
+   */
+  protected resolveStrictSanitization(): boolean {
+    const global = CrudConfigService.config.strictSanitization;
+    return typeof global === 'boolean' ? global : true;
   }
 
   abstract getMany(req: CrudRequest): Promise<GetManyDefaultResponse<T> | T[]>;
