@@ -16,4 +16,14 @@ export interface JoinResolver<Q> {
    * (possibly mutated) query for chaining.
    */
   applyJoins(query: Q, joins: QueryJoin[], joinOptions: JoinOptions): Q;
+
+  /**
+   * Return the allowed column name set for a given relation (or alias), used
+   * by translators to enforce dotted-path sort allowlist (D-05b mitigation).
+   * Returns an empty Set if the relation is unknown — callers must check
+   * `.size` and reject before letting the identifier reach the SQL builder.
+   *
+   * @since 2.0.0
+   */
+  getAllowedColumnsFor(field: string): ReadonlySet<string>;
 }

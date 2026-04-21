@@ -1,28 +1,57 @@
-import { DataSource, Repository } from 'typeorm';
+import { BadRequestException } from '@nestjs/common';
+import { JoinResolver } from '@nestjs-crud/core';
+import { DataSource, ObjectLiteral, Repository, SelectQueryBuilder } from 'typeorm';
 
-import { TypeOrmCrudService } from '../src/typeorm-crud.service';
+import { TypeOrmJoinResolver } from '../src/typeorm-join-resolver';
 import { TypeOrmQueryTranslator } from '../src/typeorm-query-translator';
-import { TranslatorEntity } from './__fixture__/translator-entity';
-
-class TranslatorTestService extends TypeOrmCrudService<TranslatorEntity> {
-  constructor(repo: Repository<TranslatorEntity>) {
-    super(repo);
-  }
-}
+import { TranslatorEntity, TranslatorRelation } from './__fixture__/translator-entity';
 
 const norm = (s: string): string => s.replace(/\s+/g, ' ').trim();
+
+const throwingOnBadRequest = (msg: string): never => {
+  throw new BadRequestException(msg);
+};
+
+const entityColumnsHash: ObjectLiteral = {
+  id: 'id',
+  name: 'name',
+  age: 'age',
+  status: 'status',
+  email: 'email',
+  relationId: 'relationId',
+  deletedAt: 'deleted_at',
+};
+
+const emptyParsed = {
+  fields: [],
+  paramsFilter: [],
+  authPersist: undefined,
+  classTransformOptions: undefined,
+  search: {},
+  filter: [],
+  or: [],
+  join: [],
+  sort: [],
+  limit: undefined,
+  offset: undefined,
+  page: undefined,
+  cache: undefined,
+  includeDeleted: 0,
+} as any;
+
+const emptyOptions = { query: {}, routes: {}, params: {} } as any;
 
 describe('TypeOrmQueryTranslator', () => {
   let dataSource: DataSource;
   let repo: Repository<TranslatorEntity>;
-  let service: TranslatorTestService;
   let translator: TypeOrmQueryTranslator<TranslatorEntity>;
+  let joinResolver: TypeOrmJoinResolver<TranslatorEntity>;
 
   beforeAll(async () => {
     dataSource = new DataSource({
       type: 'better-sqlite3',
       database: ':memory:',
-      entities: [TranslatorEntity],
+      entities: [TranslatorEntity, TranslatorRelation],
       synchronize: true,
       dropSchema: true,
     });
@@ -35,16 +64,25 @@ describe('TypeOrmQueryTranslator', () => {
   });
 
   beforeEach(() => {
-    service = new TranslatorTestService(repo);
-    translator = (service as unknown as { translator: TypeOrmQueryTranslator<TranslatorEntity> }).translator;
+    joinResolver = new TypeOrmJoinResolver<TranslatorEntity>(repo, { onBadRequest: throwingOnBadRequest });
+    translator = new TypeOrmQueryTranslator<TranslatorEntity>(repo, {
+      entityColumnsHash,
+      entityHasDeleteColumn: true,
+      onBadRequest: throwingOnBadRequest,
+      joinResolver: joinResolver as JoinResolver<SelectQueryBuilder<TranslatorEntity>>,
+    });
   });
 
-  // Helper: apply translator output to a fresh qb and return query + params
   const run = (input: any): { sql: string; params: Record<string, any> } => {
     const where = translator.buildWhere(input);
     const qb = repo.createQueryBuilder('TranslatorEntity');
     if (where) qb.andWhere(where);
     return { sql: norm(qb.getQuery()), params: qb.getParameters() };
+  };
+
+  const applyAll = (parsed: Partial<typeof emptyParsed>, options: any = emptyOptions): SelectQueryBuilder<TranslatorEntity> => {
+    const qb = repo.createQueryBuilder('TranslatorEntity');
+    return translator.applyToQuery(qb, { ...emptyParsed, ...parsed }, options);
   };
 
   describe('edge cases', () => {
@@ -267,7 +305,6 @@ describe('TypeOrmQueryTranslator', () => {
       });
       expect(sql).toMatch(/OR/);
       expect(sql).toMatch(/"status" = :status\d+/);
-      // nested parens expected
       expect((sql.match(/\(/g) || []).length).toBeGreaterThanOrEqual(2);
     });
 
@@ -315,6 +352,121 @@ describe('TypeOrmQueryTranslator', () => {
       const { sql, params } = run({ name: { eq: 'foo' } as any });
       expect(sql).toMatch(/"name" = :name\d+/);
       expect(Object.values(params)).toContain('foo');
+    });
+  });
+
+  describe('applyToQuery — sort', () => {
+    it('single sort field emits ORDER BY with ASC', () => {
+      const qb = applyAll({ sort: [{ field: 'name', order: 'ASC' }] });
+      expect(norm(qb.getQuery())).toMatch(/ORDER BY "TranslatorEntity_name" ASC/);
+    });
+
+    it('multiple sort fields emits both in order', () => {
+      const qb = applyAll({
+        sort: [
+          { field: 'name', order: 'ASC' },
+          { field: 'age', order: 'DESC' },
+        ],
+      });
+      const sql = norm(qb.getQuery());
+      expect(sql).toMatch(/ORDER BY/);
+      expect(sql).toMatch(/"TranslatorEntity_name" ASC/);
+      expect(sql).toMatch(/"TranslatorEntity_age" DESC/);
+    });
+
+    it('empty sort array emits no ORDER BY clause', () => {
+      const qb = applyAll({ sort: [] });
+      expect(norm(qb.getQuery())).not.toMatch(/ORDER BY/);
+    });
+
+    it('falls back to options.query.sort when parsed.sort is empty', () => {
+      const qb = applyAll({ sort: [] }, { query: { sort: [{ field: 'name', order: 'DESC' }] }, routes: {}, params: {} });
+      expect(norm(qb.getQuery())).toMatch(/"TranslatorEntity_name" DESC/);
+    });
+  });
+
+  describe('applyToQuery — pagination', () => {
+    it('page + limit computes take=limit, skip=(page-1)*limit', () => {
+      const qb = applyAll({ page: 2, limit: 10 });
+      expect(qb.expressionMap.take).toBe(10);
+      expect(qb.expressionMap.skip).toBe(10);
+    });
+
+    it('offset + limit uses offset directly as skip', () => {
+      const qb = applyAll({ offset: 20, limit: 5 });
+      expect(qb.expressionMap.take).toBe(5);
+      expect(qb.expressionMap.skip).toBe(20);
+    });
+
+    it('no pagination hints and no maxLimit → neither take nor skip', () => {
+      const qb = applyAll({});
+      expect(qb.expressionMap.take).toBeFalsy();
+      expect(qb.expressionMap.skip).toBeFalsy();
+    });
+
+    it('options.maxLimit caps user-supplied limit', () => {
+      const qb = applyAll({ limit: 9999 }, { query: { maxLimit: 50 }, routes: {}, params: {} });
+      expect(qb.expressionMap.take).toBe(50);
+    });
+  });
+
+  describe('applyToQuery — field selection', () => {
+    it('parsed.fields filters SELECT to requested + primary columns', () => {
+      const qb = applyAll({ fields: ['name'] });
+      const sql = norm(qb.getQuery());
+      expect(sql).toMatch(/"TranslatorEntity"\.\"name\"/);
+      expect(sql).toMatch(/"TranslatorEntity"\.\"id\"/);
+    });
+
+    it('no parsed.fields → SELECT includes entity columns', () => {
+      const qb = applyAll({});
+      const sql = norm(qb.getQuery());
+      expect(sql).toMatch(/"TranslatorEntity"\.\"name\"/);
+      expect(sql).toMatch(/"TranslatorEntity"\.\"age\"/);
+    });
+
+    it('options.query.persist forces columns even when not in parsed.fields', () => {
+      const qb = applyAll({ fields: ['name'] }, { query: { persist: ['email'] }, routes: {}, params: {} });
+      const sql = norm(qb.getQuery());
+      expect(sql).toMatch(/"TranslatorEntity"\.\"email\"/);
+    });
+  });
+
+  describe('applyToQuery — soft-delete', () => {
+    it('includeDeleted=1 + softDelete=true + entity has delete column → calls withDeleted()', () => {
+      const qb = applyAll(
+        { includeDeleted: 1 },
+        { query: { softDelete: true }, routes: {}, params: {} },
+      );
+      expect(qb.expressionMap.withDeleted).toBe(true);
+    });
+
+    it('includeDeleted=0 → does NOT call withDeleted()', () => {
+      const qb = applyAll({ includeDeleted: 0 }, { query: { softDelete: true }, routes: {}, params: {} });
+      expect(qb.expressionMap.withDeleted).toBe(false);
+    });
+  });
+
+  describe('applyToQuery — eager joins', () => {
+    it('options.query.join with eager=true produces LEFT JOIN on relation', () => {
+      const qb = applyAll({}, { query: { join: { relation: { eager: true } } }, routes: {}, params: {} });
+      const sql = norm(qb.getQuery());
+      expect(sql).toMatch(/LEFT JOIN "translator_relation" "relation"/);
+    });
+
+    it('no join options → no JOIN in generated SQL', () => {
+      const qb = applyAll({});
+      expect(norm(qb.getQuery())).not.toMatch(/JOIN/);
+    });
+  });
+
+  describe('applyToQuery — mapSort D-05b allowlist integration', () => {
+    it('throws BadRequestException on unknown single-segment sort field', () => {
+      expect(() => applyAll({ sort: [{ field: 'ssn', order: 'ASC' }] })).toThrow(BadRequestException);
+    });
+
+    it('throws BadRequestException on dotted-path with unknown relation', () => {
+      expect(() => applyAll({ sort: [{ field: 'ghost.name', order: 'ASC' }] })).toThrow(BadRequestException);
     });
   });
 });

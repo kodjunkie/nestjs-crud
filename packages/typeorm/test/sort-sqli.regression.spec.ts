@@ -8,23 +8,32 @@
  * See: .planning/phases/05-arch-04-slim-typeormcrudservice/05-CONTEXT.md D-05..D-05b
  */
 import { BadRequestException } from '@nestjs/common';
+import { JoinResolver } from '@nestjs-crud/core';
 import { DataSource, ObjectLiteral, Repository, SelectQueryBuilder } from 'typeorm';
 
-import { TypeOrmCrudService } from '../src/typeorm-crud.service';
+import { TypeOrmJoinResolver } from '../src/typeorm-join-resolver';
 import { TypeOrmQueryTranslator } from '../src/typeorm-query-translator';
 import { TranslatorEntity, TranslatorRelation } from './__fixture__/translator-entity';
 
 // CONTRACT (PATTERNS.md §5 + input-sanitizer.spec.ts:11-22):
 // `onBadRequest` MUST throw. A silent no-op stub would let a miss return
 // silently — the SQLi bug masked by the test harness. Always a throwing stub.
-const makeThrowingServiceStub = (
+const throwingOnBadRequest = (msg: string): never => {
+  throw new BadRequestException(msg);
+};
+
+const makeTranslator = (
+  repo: Repository<TranslatorEntity>,
   entityColumnsHash: ObjectLiteral,
-): TypeOrmCrudService<TranslatorEntity> => ({
-  entityColumnsHash,
-  throwBadRequestException: (msg: string) => {
-    throw new BadRequestException(msg);
-  },
-} as unknown as TypeOrmCrudService<TranslatorEntity>);
+): TypeOrmQueryTranslator<TranslatorEntity> => {
+  const joinResolver = new TypeOrmJoinResolver<TranslatorEntity>(repo, { onBadRequest: throwingOnBadRequest });
+  return new TypeOrmQueryTranslator<TranslatorEntity>(repo, {
+    entityColumnsHash,
+    entityHasDeleteColumn: true,
+    onBadRequest: throwingOnBadRequest,
+    joinResolver: joinResolver as JoinResolver<SelectQueryBuilder<TranslatorEntity>>,
+  });
+};
 
 describe('mapSort dotted-path SQLi regression (D-05a/D-05b)', () => {
   let dataSource: DataSource;
@@ -59,8 +68,7 @@ describe('mapSort dotted-path SQLi regression (D-05a/D-05b)', () => {
   });
 
   beforeEach(() => {
-    const service = makeThrowingServiceStub({ id: 'id', name: 'name' });
-    translator = new TypeOrmQueryTranslator<TranslatorEntity>(repo, service);
+    translator = makeTranslator(repo, { id: 'id', name: 'name' });
   });
 
   const emptyParsed = {
@@ -82,24 +90,18 @@ describe('mapSort dotted-path SQLi regression (D-05a/D-05b)', () => {
 
   const emptyOptions = { query: {}, routes: {}, params: {} } as any;
 
-  const qb = (): SelectQueryBuilder<TranslatorEntity> =>
-    repo.createQueryBuilder('TranslatorEntity');
+  const qb = (): SelectQueryBuilder<TranslatorEntity> => repo.createQueryBuilder('TranslatorEntity');
 
-  it.each(injectionVectors)(
-    'rejects dotted-path injection vector via BadRequestException: %s',
-    (field) => {
-      const parsed = {
-        ...emptyParsed,
-        sort: [{ field, order: 'ASC' as const }],
-      };
+  it.each(injectionVectors)('rejects dotted-path injection vector via BadRequestException: %s', (field) => {
+    const parsed = {
+      ...emptyParsed,
+      sort: [{ field, order: 'ASC' as const }],
+    };
 
-      // EXPECTED TO FAIL on current dev HEAD: applyToQuery does NOT gate sort
-      // today (only WHERE). Wave 1 plan 03 absorbs mapSort with joinResolver
-      // allowlist, which flips this spec green. Keep assertion stable across
-      // the fix — spec is the contract, not the subject.
-      expect(() => translator.applyToQuery(qb(), parsed, emptyOptions)).toThrow(
-        BadRequestException,
-      );
-    },
-  );
+    // EXPECTED TO FAIL on current dev HEAD: applyToQuery does NOT gate sort
+    // today (only WHERE). Wave 1 plan 03 absorbs mapSort with joinResolver
+    // allowlist, which flips this spec green. Keep assertion stable across
+    // the fix — spec is the contract, not the subject.
+    expect(() => translator.applyToQuery(qb(), parsed, emptyOptions)).toThrow(BadRequestException);
+  });
 });

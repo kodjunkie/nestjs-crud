@@ -47,10 +47,7 @@ export class TypeOrmQueryTranslator<T extends ObjectLiteral> implements QueryTra
 
   private readonly joinResolver: JoinResolver<SelectQueryBuilder<T>>;
 
-  constructor(
-    repo: Repository<T>,
-    config: TypeOrmQueryTranslatorConfig<T>,
-  ) {
+  constructor(repo: Repository<T>, config: TypeOrmQueryTranslatorConfig<T>) {
     this.repo = repo;
     this.entityColumnsHash = config.entityColumnsHash;
     this.entityHasDeleteColumn = config.entityHasDeleteColumn;
@@ -98,9 +95,12 @@ export class TypeOrmQueryTranslator<T extends ObjectLiteral> implements QueryTra
     }
 
     // 5. Sort
-    const sortInput = (parsed.sort && parsed.sort.length)
-      ? parsed.sort
-      : (queryOptions.sort && queryOptions.sort.length ? queryOptions.sort : []);
+    const sortInput =
+      parsed.sort && parsed.sort.length
+        ? parsed.sort
+        : queryOptions.sort && queryOptions.sort.length
+          ? queryOptions.sort
+          : [];
     const sortParams = this.mapSort(sortInput);
     const sortKeys = objKeys(sortParams);
     if (sortKeys.length) {
@@ -546,16 +546,15 @@ export class TypeOrmQueryTranslator<T extends ObjectLiteral> implements QueryTra
 
     const opts = options ?? {};
     const allowed = getAllowedColumns(cols, opts);
-    const columns = parsed.fields && parsed.fields.length
-      ? parsed.fields.filter((field) => allowed.some((col) => field === col))
-      : allowed;
+    const columns =
+      parsed.fields && parsed.fields.length
+        ? parsed.fields.filter((field) => allowed.some((col) => field === col))
+        : allowed;
 
     const select = new Set(
-      [
-        ...(opts.persist && opts.persist.length ? opts.persist : []),
-        ...columns,
-        ...this.entityPrimaryColumns,
-      ].map((col) => `${this.alias}.${col}`),
+      [...(opts.persist && opts.persist.length ? opts.persist : []), ...columns, ...this.entityPrimaryColumns].map(
+        (col) => `${this.alias}.${col}`,
+      ),
     );
 
     return Array.from(select);
