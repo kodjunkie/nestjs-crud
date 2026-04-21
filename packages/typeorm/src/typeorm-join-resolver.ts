@@ -61,6 +61,16 @@ export class TypeOrmJoinResolver<T> implements JoinResolver<SelectQueryBuilder<T
     return query;
   }
 
+  /**
+   * Return the allowed column name set for a given relation (or alias), using
+   * the resolver's cached `entityRelationsHash`. Returns an empty Set if the
+   * relation is unknown — callers must check `.size` and reject.
+   *
+   * Exposed publicly in v2.0.0 (Phase 5 ARCH-04 D-05c) for `mapSort`
+   * dotted-path allowlist enforcement.
+   *
+   * @since 2.0.0
+   */
   public getAllowedColumnsFor(field: string): ReadonlySet<string> {
     const rel = this.entityRelationsHash.get(field) ?? this.entityRelationsHash.get(field.split('.')[0]);
     return new Set(rel?.allowedColumns ?? []);
