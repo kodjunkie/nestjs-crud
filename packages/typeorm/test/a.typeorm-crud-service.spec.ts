@@ -1,48 +1,34 @@
-import { TypeOrmCrudService } from '../src/typeorm-crud.service';
+import { CrudConfigService } from '@nestjs-crud/core';
 
 describe('TypeOrmCrudService', () => {
-  describe('#checkSqlInjection', () => {
-    let service: any;
+  // Legacy `#checkSqlInjection` describe deleted in Plan 04-05:
+  // coverage now lives in packages/core/test/input-sanitizer.spec.ts.
+  //
+  // Opt-out wire (global-only per Plan 04-03 A2 fallback): exercise the
+  // CrudConfigService.strictSanitization flag that `resolveStrictSanitization`
+  // reads on every adapter ctor. This is the sole runtime surface for the
+  // `strictSanitization: false` opt-out in v2.0.
 
-    beforeEach(() => {
-      service = Object.create(TypeOrmCrudService.prototype);
-      service.sqlInjectionRegEx = [
-        /(%27)|(\')|(--)|(%23)|(#)/i,
-        /((%3D)|(=))[^\n]*((%27)|(\')|(--)|(%3B)|(;))/i,
-        /w*((%27)|(\'))((%6F)|o|(%4F))((%72)|r|(%52))/i,
-        /((%27)|(\'))union/i,
-      ];
-      service.throwBadRequestException = (msg: string) => {
-        throw new Error(msg);
-      };
+  describe('InputSanitizer integration (strict opt-out via CrudConfigService)', () => {
+    afterEach(() => {
+      // Reset to default so other specs don't see the mutated global.
+      CrudConfigService.load({ strictSanitization: true });
     });
 
-    it('should detect SQL injection matching pattern 1 (quotes, comments)', () => {
-      expect(() => service.checkSqlInjection("field'--")).toThrow('SQL injection detected');
+    it('defaults strictSanitization to true (strict allowlist enforcement)', () => {
+      // Plan 04-03 wires the default in CrudConfigService.config.
+      expect(CrudConfigService.config.strictSanitization).toBe(true);
     });
 
-    it('should throw deterministically on repeat calls with the same input (regression for /g lastIndex bug)', () => {
-      expect(() => service.checkSqlInjection("field'--")).toThrow('SQL injection detected');
-      expect(() => service.checkSqlInjection("field'--")).toThrow('SQL injection detected');
-      expect(() => service.checkSqlInjection("field'--")).toThrow('SQL injection detected');
+    it('honors strictSanitization: false opt-out via CrudConfigService.load()', () => {
+      CrudConfigService.load({ strictSanitization: false });
+      expect(CrudConfigService.config.strictSanitization).toBe(false);
     });
 
-    it('should detect SQL injection matching pattern 2 (= followed by quotes/semicolons)', () => {
-      expect(() => service.checkSqlInjection('field=%27;')).toThrow('SQL injection detected');
-    });
-
-    it('should detect SQL injection matching pattern 3 (OR keyword)', () => {
-      expect(() => service.checkSqlInjection("w'or")).toThrow('SQL injection detected');
-    });
-
-    it('should detect SQL injection matching pattern 4 (UNION)', () => {
-      expect(() => service.checkSqlInjection("'union")).toThrow('SQL injection detected');
-    });
-
-    it('should allow safe field names', () => {
-      expect(service.checkSqlInjection('users.name')).toBe('users.name');
-      expect(service.checkSqlInjection('id')).toBe('id');
-      expect(service.checkSqlInjection('created_at')).toBe('created_at');
+    it('honors strictSanitization: true re-load after opt-out', () => {
+      CrudConfigService.load({ strictSanitization: false });
+      CrudConfigService.load({ strictSanitization: true });
+      expect(CrudConfigService.config.strictSanitization).toBe(true);
     });
   });
 });

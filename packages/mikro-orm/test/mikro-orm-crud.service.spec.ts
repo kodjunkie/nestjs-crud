@@ -1,5 +1,3 @@
-import * as fs from 'fs';
-import * as path from 'path';
 import { MikroOrmCrudService } from '../src/mikro-orm-crud.service';
 
 // Mock metadata structure matching MikroORM's EntityMetadata.properties
@@ -27,13 +25,14 @@ describe('MikroOrmCrudService', () => {
     service.metadata = mockMetadata;
     service.relationsHash = new Map();
     service.dbDialect = 'postgresql';
-    service.sqlInjectionRegEx = [
-      /(%27)|(\')|(--)|(%23)|(#)/i,
-      /((%3D)|(=))[^\n]*((%27)|(\')|(--)|(%3B)|(;))/i,
-      /w*((%27)|(\'))((%6F)|o|(%4F))((%72)|r|(%52))/i,
-      /((%27)|(\'))union/i,
-    ];
     service.onInitMapEntityColumns();
+    // Stub sanitizer: adapter ctor was bypassed via Object.create, so wire a
+    // no-op sanitizer for method-level unit tests. Denylist coverage lives in
+    // packages/core/test/input-sanitizer.spec.ts.
+    service.sanitizer = {
+      check: () => true,
+      assert: () => undefined,
+    };
   });
 
   describe('#onInitMapEntityColumns', () => {
@@ -131,38 +130,10 @@ describe('MikroOrmCrudService', () => {
     });
   });
 
-  describe('sqlInjectionRegEx parity (QUALITY-03)', () => {
-    // Parity verified against packages/drizzle/src/drizzle-crud.service.ts and
-    // packages/typeorm/src/typeorm-crud.service.ts. Guards against /g or /gi
-    // re-introduction which would cause stateful .test() lastIndex bugs on
-    // repeat calls with the same input (QUALITY-02).
-    const sourcePath = path.resolve(__dirname, '../src/mikro-orm-crud.service.ts');
-    const source = fs.readFileSync(sourcePath, 'utf-8');
-    const arrayMatch = source.match(/sqlInjectionRegEx:\s*RegExp\[\]\s*=\s*\[([\s\S]*?)\];/);
-
-    it('should find the sqlInjectionRegEx array in source', () => {
-      expect(arrayMatch).not.toBeNull();
-    });
-
-    it('should have no /g flag on any entry (regression guard)', () => {
-      const body = arrayMatch![1];
-      expect(body).not.toMatch(/\/gi\b/);
-      expect(body).not.toMatch(/\/g\b/);
-    });
-
-    it('should have no /y (sticky) flag on any entry', () => {
-      const body = arrayMatch![1];
-      expect(body).not.toMatch(/\/y\b/);
-      expect(body).not.toMatch(/\/[a-z]*y[a-z]*,/);
-    });
-
-    it('should have /i flag on all four entries', () => {
-      const body = arrayMatch![1];
-      const flagTokens = body.match(/\/[a-z]+,/g) || [];
-      expect(flagTokens.length).toBe(4);
-      flagTokens.forEach((token) => expect(token).toContain('i'));
-    });
-  });
+  // `sqlInjectionRegEx parity (QUALITY-03)` block deleted in Plan 04-05:
+  // DEFAULT_SQL_INJECTION_REGEX in packages/core/src/util/input-sanitizer.ts
+  // is now the single source of truth (verified by regression guards in
+  // packages/core/test/input-sanitizer.spec.ts). No cross-adapter drift possible.
 
   describe('#getSelect', () => {
     it('should return all columns when no restrictions', () => {
@@ -384,33 +355,8 @@ describe('MikroOrmCrudService', () => {
     });
   });
 
-  describe('SQL injection detection', () => {
-    it('should throw on SQL injection with single quote and comment', () => {
-      expect(() => service['checkSqlInjection']("name'--")).toThrow();
-    });
-
-    it('should throw on union injection', () => {
-      expect(() => service['checkSqlInjection']("'union")).toThrow();
-    });
-
-    it('should throw on hash comment injection', () => {
-      expect(() => service['checkSqlInjection']('field#')).toThrow();
-    });
-
-    it('should throw on encoded single quote', () => {
-      expect(() => service['checkSqlInjection']('field%27')).toThrow();
-    });
-
-    it('should allow safe field names', () => {
-      expect(() => service['checkSqlInjection']('name')).not.toThrow();
-      expect(() => service['checkSqlInjection']('age')).not.toThrow();
-      expect(() => service['checkSqlInjection']('isActive')).not.toThrow();
-    });
-
-    it('should return the field name for safe fields', () => {
-      expect(service['checkSqlInjection']('name')).toBe('name');
-    });
-  });
+  // `SQL injection detection` block deleted in Plan 04-05 — coverage now
+  // lives in packages/core/test/input-sanitizer.spec.ts (class-level unit).
 
   describe('#getColumn', () => {
     it('should return property for existing field', () => {

@@ -19,13 +19,14 @@ describe('DrizzleCrudService', () => {
     service.relationsConfig = {};
     service.relationsHash = new Map();
     service.dbDialect = 'pg';
-    service.sqlInjectionRegEx = [
-      /(%27)|(\')|(--)|(%23)|(#)/gi,
-      /((%3D)|(=))[^\n]*((%27)|(\')|(--)|(%3B)|(;))/gi,
-      /w*((%27)|(\'))((%6F)|o|(%4F))((%72)|r|(%52))/gi,
-      /((%27)|(\'))union/gi,
-    ];
     service.onInitMapEntityColumns();
+    // Stub sanitizer: adapter ctor was bypassed via Object.create, so wire a
+    // no-op sanitizer for method-level unit tests. Denylist coverage lives in
+    // packages/core/test/input-sanitizer.spec.ts.
+    service.sanitizer = {
+      check: () => true,
+      assert: () => undefined,
+    };
   });
 
   describe('#onInitMapEntityColumns', () => {
@@ -354,41 +355,15 @@ describe('DrizzleCrudService', () => {
     });
   });
 
-  describe('SQL injection detection', () => {
-    it('should throw on SQL injection with single quote and comment', () => {
-      expect(() => service['checkSqlInjection']("name'--")).toThrow();
-    });
-
-    it('should throw on union injection', () => {
-      expect(() => service['checkSqlInjection']("'union")).toThrow();
-    });
-
-    it('should throw on hash comment injection', () => {
-      expect(() => service['checkSqlInjection']('field#')).toThrow();
-    });
-
-    it('should throw on encoded single quote', () => {
-      expect(() => service['checkSqlInjection']('field%27')).toThrow();
-    });
-
-    it('should allow safe field names', () => {
-      expect(() => service['checkSqlInjection']('name')).not.toThrow();
-      expect(() => service['checkSqlInjection']('age')).not.toThrow();
-      expect(() => service['checkSqlInjection']('isActive')).not.toThrow();
-    });
-
-    it('should return the field name for safe fields', () => {
-      expect(service['checkSqlInjection']('name')).toBe('name');
-    });
-
-    it('should be triggered via buildFieldCondition for valid columns', () => {
-      // buildFieldCondition calls checkSqlInjection only after column is found
-      // For a valid column name, no throw expected
+  // SQL-injection denylist coverage deleted in Plan 04-05 — now lives in
+  // packages/core/test/input-sanitizer.spec.ts (class-level unit). Kept the
+  // buildFieldCondition gate tests since they assert a different surface.
+  describe('#buildFieldCondition column gating', () => {
+    it('should not throw for valid columns', () => {
       expect(() => service.buildFieldCondition('name', 'John')).not.toThrow();
     });
 
-    it('should return undefined from buildFieldCondition for unknown columns', () => {
-      // Unknown column returns undefined before reaching SQL injection check
+    it('should return undefined for unknown columns (column gate rejects before sanitizer)', () => {
       const result = service.buildFieldCondition('doesNotExist', 'value');
       expect(result).toBeUndefined();
     });
