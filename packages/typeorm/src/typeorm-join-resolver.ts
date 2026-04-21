@@ -166,6 +166,14 @@ export class TypeOrmJoinResolver<T> implements JoinResolver<SelectQueryBuilder<T
           this.entityRelationsHash.set(options.alias, toSave);
         }
 
+        // Also register by leaf name so that dotted-path sort validation
+        // (e.g. `mapSort` for `projects.id` under a `company.projects` nested
+        // join) can resolve via the final alias that TypeORM uses in the
+        // generated SQL — matching the old service's sort-aliasing behavior.
+        if (allowedRelation.nested && allowedRelation.name && !this.entityRelationsHash.has(allowedRelation.name)) {
+          this.entityRelationsHash.set(allowedRelation.name, toSave);
+        }
+
         return toSave;
       }
 

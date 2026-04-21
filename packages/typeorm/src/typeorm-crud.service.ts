@@ -4,10 +4,9 @@ import {
   CrudRequestOptions,
   CrudService,
   GetManyDefaultResponse,
-  InputSanitizer,
   QueryOptions,
 } from '@nestjs-crud/core';
-import { ParsedRequestParams, QuerySort } from '@nestjs-crud/request';
+import { ParsedRequestParams } from '@nestjs-crud/request';
 import { ClassType, hasLength, isArrayFull, isObject, isUndefined, objKeys, isNil } from '@nestjs-crud/util';
 import { plainToClass } from 'class-transformer';
 import { DeepPartial, ObjectLiteral, Repository, SelectQueryBuilder, DataSourceOptions } from 'typeorm';
@@ -26,8 +25,6 @@ export class TypeOrmCrudService<T> extends CrudService<T> {
 
   protected entityColumnsHash: ObjectLiteral = {};
 
-  protected readonly sanitizer: InputSanitizer;
-
   protected readonly translator: TypeOrmQueryTranslator<T>;
 
   protected readonly joinResolver: TypeOrmJoinResolver<T>;
@@ -38,15 +35,15 @@ export class TypeOrmCrudService<T> extends CrudService<T> {
     this.dbName = this.repo.metadata.connection.options.type;
     this.onInitMapEntityColumns();
 
-    this.sanitizer = new InputSanitizer({
-      allowedColumns: () => new Set(Object.keys(this.entityColumnsHash)),
-      onBadRequest: (msg: string) => this.throwBadRequestException(msg),
-    });
-
     this.joinResolver = new TypeOrmJoinResolver<T>(this.repo, {
       onBadRequest: (msg: string) => this.throwBadRequestException(msg),
     });
-    this.translator = new TypeOrmQueryTranslator<T>(this.repo, this);
+    this.translator = new TypeOrmQueryTranslator<T>(this.repo, {
+      entityColumnsHash: this.entityColumnsHash,
+      entityHasDeleteColumn: this.entityHasDeleteColumn,
+      onBadRequest: (msg: string) => this.throwBadRequestException(msg),
+      joinResolver: this.joinResolver,
+    });
   }
 
   public get findOne(): Repository<T>['findOne'] {
@@ -144,6 +141,7 @@ export class TypeOrmCrudService<T> extends CrudService<T> {
    * @param req
    * @param dto
    */
+  // TODO(SEC-03): wrap read-modify-write in QueryRunner — Phase 8 SEC-03
   public async updateOne(req: CrudRequest, dto: T | Partial<T>): Promise<T> {
     const { allowParamsOverride, returnShallow } = req.options.routes.updateOneBase;
     const paramsFilters = this.getParamFilters(req.parsed);
@@ -181,6 +179,7 @@ export class TypeOrmCrudService<T> extends CrudService<T> {
    * @param req
    * @param dto
    */
+  // TODO(SEC-03): wrap read-modify-write in QueryRunner — Phase 8 SEC-03
   public async replaceOne(req: CrudRequest, dto: T | Partial<T>): Promise<T> {
     const { allowParamsOverride, returnShallow } = req.options.routes.replaceOneBase;
     const paramsFilters = this.getParamFilters(req.parsed);
@@ -216,6 +215,7 @@ export class TypeOrmCrudService<T> extends CrudService<T> {
    * Delete one
    * @param req
    */
+  // TODO(SEC-03): wrap read-modify-write in QueryRunner — Phase 8 SEC-03
   public async deleteOne(req: CrudRequest): Promise<void | T> {
     const { returnDeleted } = req.options.routes.deleteOneBase;
     const found = await this.getOneOrFail(req, returnDeleted);
@@ -252,61 +252,11 @@ export class TypeOrmCrudService<T> extends CrudService<T> {
   public async createBuilder(
     parsed: ParsedRequestParams,
     options: CrudRequestOptions,
-    many = true,
+    _many = true,
     withDeleted = false,
   ): Promise<SelectQueryBuilder<T>> {
-    // create query builder
-    const builder = this.repo.createQueryBuilder(this.alias);
-    // get select fields
-    const select = this.getSelect(parsed, options.query);
-    // select fields
-    builder.select(select);
-
-    // search
-    const where = this.translator.buildWhere(parsed.search);
-    if (where) builder.andWhere(where);
-
-    // set joins
-    const joinOptions = options.query.join || {};
-
-    if (hasLength(objKeys(joinOptions))) {
-      this.joinResolver.applyJoins(builder, parsed.join || [], joinOptions);
-    }
-
-    // if soft deleted is enabled add where statement to filter deleted records
-    if (this.entityHasDeleteColumn && options.query.softDelete) {
-      if (parsed.includeDeleted === 1 || withDeleted) {
-        builder.withDeleted();
-      }
-    }
-
-    /* istanbul ignore else */
-    if (many) {
-      // set sort (order by)
-      const sort = this.getSort(parsed, options.query);
-      builder.orderBy(sort);
-
-      // set take
-      const take = this.getTake(parsed, options.query);
-      /* istanbul ignore else */
-      if (isFinite(take)) {
-        builder.take(take);
-      }
-
-      // set skip
-      const skip = this.getSkip(parsed, take);
-      /* istanbul ignore else */
-      if (isFinite(skip)) {
-        builder.skip(skip);
-      }
-    }
-
-    // set cache
-    /* istanbul ignore else */
-    if (options.query.cache && parsed.cache !== 0) {
-      builder.cache(options.query.cache);
-    }
-
+    const builder = this.translator.applyToQuery(this.repo.createQueryBuilder(this.alias), parsed, options);
+    if (withDeleted) builder.withDeleted();
     return builder;
   }
 
@@ -411,62 +361,5 @@ export class TypeOrmCrudService<T> extends CrudService<T> {
     );
 
     return Array.from(select);
-  }
-
-  protected getSort(query: ParsedRequestParams, options: QueryOptions) {
-    return query.sort && query.sort.length
-      ? this.mapSort(query.sort)
-      : options.sort && options.sort.length
-        ? this.mapSort(options.sort)
-        : {};
-  }
-
-  protected getFieldWithAlias(field: string, sort = false) {
-    /* istanbul ignore next */
-    const i = ['mysql', 'mariadb'].includes(this.dbName) ? '`' : '"';
-    const cols = field.split('.');
-
-    switch (cols.length) {
-      case 1: {
-        if (sort) {
-          return `${this.alias}.${field}`;
-        }
-
-        const dbColName = this.entityColumnsHash[field] !== field ? this.entityColumnsHash[field] : field;
-
-        return `${i}${this.alias}${i}.${i}${dbColName}${i}`;
-      }
-      case 2:
-        if (sort) {
-          return field;
-        }
-        return `${i}${cols[0]}${i}.${i}${cols[1]}${i}`;
-      default: {
-        const last2 = cols.slice(cols.length - 2, cols.length);
-        if (sort) {
-          return last2.join('.');
-        }
-        return `${i}${last2[0]}${i}.${i}${last2[1]}${i}`;
-      }
-    }
-  }
-
-  protected mapSort(sort: QuerySort[]) {
-    const params: ObjectLiteral = {};
-
-    for (let i = 0; i < sort.length; i++) {
-      // Assert on the RAW user field (pre-aliasing). Relation-qualified paths
-      // (contain '.') bypass strict-mode allowlist — relation validity is
-      // enforced by join setup. Root-entity column names go through the full
-      // strict allowlist + denylist check.
-      if (!sort[i].field.includes('.')) {
-        this.sanitizer.assert(sort[i].field);
-      }
-      const field = this.getFieldWithAlias(sort[i].field, true);
-      const checkedFiled = field;
-      params[checkedFiled] = sort[i].order;
-    }
-
-    return params;
   }
 }

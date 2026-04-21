@@ -493,7 +493,14 @@ export class TypeOrmQueryTranslator<T extends ObjectLiteral> implements QueryTra
 
     for (const s of sort) {
       if (s.field.includes('.')) {
-        const [relation, column] = s.field.split('.', 2);
+        // Dotted-path sort: validate the relation (or its leaf alias for
+        // nested joins like `company.projects` → alias `projects`) plus
+        // column against the join resolver's allowlist. Closes D-05b SQLi
+        // vector while preserving legacy behavior where TypeORM's generated
+        // SQL aliases nested joins to their final segment name.
+        const segments = s.field.split('.');
+        const relation = segments.slice(0, -1).join('.');
+        const column = segments[segments.length - 1];
         const allowed = this.joinResolver.getAllowedColumnsFor(relation);
         if (!allowed.size) {
           this.onBadRequest(`Invalid relation in sort: '${relation}'`);
