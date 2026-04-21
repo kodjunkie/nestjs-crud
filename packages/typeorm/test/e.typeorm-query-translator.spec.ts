@@ -80,7 +80,10 @@ describe('TypeOrmQueryTranslator', () => {
     return { sql: norm(qb.getQuery()), params: qb.getParameters() };
   };
 
-  const applyAll = (parsed: Partial<typeof emptyParsed>, options: any = emptyOptions): SelectQueryBuilder<TranslatorEntity> => {
+  const applyAll = (
+    parsed: Partial<typeof emptyParsed>,
+    options: any = emptyOptions,
+  ): SelectQueryBuilder<TranslatorEntity> => {
     const qb = repo.createQueryBuilder('TranslatorEntity');
     return translator.applyToQuery(qb, { ...emptyParsed, ...parsed }, options);
   };
@@ -380,7 +383,10 @@ describe('TypeOrmQueryTranslator', () => {
     });
 
     it('falls back to options.query.sort when parsed.sort is empty', () => {
-      const qb = applyAll({ sort: [] }, { query: { sort: [{ field: 'name', order: 'DESC' }] }, routes: {}, params: {} });
+      const qb = applyAll(
+        { sort: [] },
+        { query: { sort: [{ field: 'name', order: 'DESC' }] }, routes: {}, params: {} },
+      );
       expect(norm(qb.getQuery())).toMatch(/"TranslatorEntity_name" DESC/);
     });
   });
@@ -434,10 +440,7 @@ describe('TypeOrmQueryTranslator', () => {
 
   describe('applyToQuery — soft-delete', () => {
     it('includeDeleted=1 + softDelete=true + entity has delete column → calls withDeleted()', () => {
-      const qb = applyAll(
-        { includeDeleted: 1 },
-        { query: { softDelete: true }, routes: {}, params: {} },
-      );
+      const qb = applyAll({ includeDeleted: 1 }, { query: { softDelete: true }, routes: {}, params: {} });
       expect(qb.expressionMap.withDeleted).toBe(true);
     });
 
