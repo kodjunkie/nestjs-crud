@@ -85,10 +85,10 @@ export abstract class CrudService<T> {
     return (!options.exclude || !options.exclude.length) && (!options.allow || !options.allow.length)
       ? columns
       : columns.filter(
-        (column) =>
-          (options.exclude && options.exclude.length ? !options.exclude.some((col) => col === column) : true) &&
-          (options.allow && options.allow.length ? options.allow.some((col) => col === column) : true),
-      );
+          (column) =>
+            (options.exclude && options.exclude.length ? !options.exclude.some((col) => col === column) : true) &&
+            (options.allow && options.allow.length ? options.allow.some((col) => col === column) : true),
+        );
   }
 
   abstract getMany(req: CrudRequest): Promise<GetManyDefaultResponse<T> | T[]>;

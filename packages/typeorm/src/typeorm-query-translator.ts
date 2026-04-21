@@ -1,11 +1,5 @@
 import { CrudRequestOptions, QueryTranslator } from '@nestjs-crud/core';
-import {
-  ComparisonOperator,
-  ParsedRequestParams,
-  QueryFilter,
-  SCondition,
-  SConditionKey,
-} from '@nestjs-crud/request';
+import { ComparisonOperator, ParsedRequestParams, QueryFilter, SCondition, SConditionKey } from '@nestjs-crud/request';
 import { isArrayFull, isNull, isObject, objKeys } from '@nestjs-crud/util';
 import { Brackets, DataSourceOptions, ObjectLiteral, Repository, SelectQueryBuilder } from 'typeorm';
 
@@ -21,8 +15,10 @@ import type { TypeOrmCrudService } from './typeorm-crud.service';
  *
  * @since 2.0.0
  */
-export class TypeOrmQueryTranslator<T extends ObjectLiteral>
-  implements QueryTranslator<SelectQueryBuilder<T>, Brackets> {
+export class TypeOrmQueryTranslator<T extends ObjectLiteral> implements QueryTranslator<
+  SelectQueryBuilder<T>,
+  Brackets
+> {
   private readonly repo: Repository<T>;
 
   private readonly service: TypeOrmCrudService<T>;
@@ -71,11 +67,7 @@ export class TypeOrmQueryTranslator<T extends ObjectLiteral>
     return (this.service as unknown as { entityColumnsHash: ObjectLiteral }).entityColumnsHash;
   }
 
-  private composeBrackets(
-    builder: SelectQueryBuilder<T>,
-    search: SCondition,
-    condition: SConditionKey = '$and',
-  ): void {
+  private composeBrackets(builder: SelectQueryBuilder<T>, search: SCondition, condition: SConditionKey = '$and'): void {
     /* istanbul ignore else */
     if (!isObject(search)) return;
 
@@ -92,11 +84,7 @@ export class TypeOrmQueryTranslator<T extends ObjectLiteral>
     }
   }
 
-  private builderAddBrackets(
-    builder: SelectQueryBuilder<T>,
-    condition: SConditionKey,
-    brackets: Brackets,
-  ): void {
+  private builderAddBrackets(builder: SelectQueryBuilder<T>, condition: SConditionKey, brackets: Brackets): void {
     if (condition === '$and') {
       builder.andWhere(brackets);
     } else {
@@ -139,12 +127,7 @@ export class TypeOrmQueryTranslator<T extends ObjectLiteral>
 
         if (isObject(object.$or)) {
           const orKeys = objKeys(object.$or);
-          this.setSearchFieldObjectCondition(
-            builder,
-            orKeys.length === 1 ? condition : '$or',
-            field,
-            object.$or,
-          );
+          this.setSearchFieldObjectCondition(builder, orKeys.length === 1 ? condition : '$or', field, object.$or);
         } else {
           this.builderSetWhere(builder, condition, field, value, operator);
         }
@@ -436,8 +419,7 @@ export class TypeOrmQueryTranslator<T extends ObjectLiteral>
           return `${this.alias}.${field}`;
         }
 
-        const dbColName =
-          this.entityColumnsHash[field] !== field ? this.entityColumnsHash[field] : field;
+        const dbColName = this.entityColumnsHash[field] !== field ? this.entityColumnsHash[field] : field;
 
         return `${i}${this.alias}${i}.${i}${dbColName}${i}`;
       }
@@ -459,16 +441,19 @@ export class TypeOrmQueryTranslator<T extends ObjectLiteral>
   private checkFilterIsArray(cond: QueryFilter, withLength?: boolean): void {
     /* istanbul ignore if */
     if (!Array.isArray(cond.value)) {
-      (this.service as unknown as { throwBadRequestException: (m: string) => void })
-        .throwBadRequestException(`Invalid column '${cond.field}' value: expected an array`);
+      (this.service as unknown as { throwBadRequestException: (m: string) => void }).throwBadRequestException(
+        `Invalid column '${cond.field}' value: expected an array`,
+      );
     }
     if (!cond.value.length) {
-      (this.service as unknown as { throwBadRequestException: (m: string) => void })
-        .throwBadRequestException(`Invalid column '${cond.field}' value: array must not be empty`);
+      (this.service as unknown as { throwBadRequestException: (m: string) => void }).throwBadRequestException(
+        `Invalid column '${cond.field}' value: array must not be empty`,
+      );
     }
     if (withLength) {
-      (this.service as unknown as { throwBadRequestException: (m: string) => void })
-        .throwBadRequestException(`Invalid column '${cond.field}' value: array length mismatch`);
+      (this.service as unknown as { throwBadRequestException: (m: string) => void }).throwBadRequestException(
+        `Invalid column '${cond.field}' value: array length mismatch`,
+      );
     }
   }
 }

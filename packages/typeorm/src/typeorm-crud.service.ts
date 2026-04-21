@@ -11,14 +11,7 @@ import {
 import { ParsedRequestParams, QueryJoin, QuerySort } from '@nestjs-crud/request';
 import { ClassType, hasLength, isArrayFull, isObject, isUndefined, objKeys, isNil } from '@nestjs-crud/util';
 import { plainToClass } from 'class-transformer';
-import {
-  DeepPartial,
-  ObjectLiteral,
-  Repository,
-  SelectQueryBuilder,
-  DataSourceOptions,
-  EntityMetadata,
-} from 'typeorm';
+import { DeepPartial, ObjectLiteral, Repository, SelectQueryBuilder, DataSourceOptions, EntityMetadata } from 'typeorm';
 
 import { TypeOrmQueryTranslator } from './typeorm-query-translator';
 
