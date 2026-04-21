@@ -130,10 +130,10 @@ describe('MikroOrmCrudService', () => {
     });
   });
 
-  // `sqlInjectionRegEx parity (QUALITY-03)` block deleted in Plan 04-05:
-  // DEFAULT_SQL_INJECTION_REGEX in packages/core/src/util/input-sanitizer.ts
-  // is now the single source of truth (verified by regression guards in
-  // packages/core/test/input-sanitizer.spec.ts). No cross-adapter drift possible.
+  // `sqlInjectionRegEx parity (QUALITY-03)` block deleted in Plan 04-05;
+  // the denylist regex was subsequently removed entirely in the v2.0 cleanup.
+  // Adapters now delegate field validation to `InputSanitizer` (pure allowlist).
+  // See packages/core/test/input-sanitizer.spec.ts for the class-level matrix.
 
   describe('#getSelect', () => {
     it('should return all columns when no restrictions', () => {

@@ -2,7 +2,6 @@ import {
   CrudService,
   CrudRequest,
   CreateManyDto,
-  DEFAULT_SQL_INJECTION_REGEX,
   GetManyDefaultResponse,
   InputSanitizer,
   QueryOptions,
@@ -62,21 +61,10 @@ export class DrizzleCrudService<T extends Record<string, unknown>> extends CrudS
     this.onInitMapEntityColumns();
     this.detectDialect();
 
-    const strictMode = this.resolveStrictSanitization();
     this.sanitizer = new InputSanitizer({
-      allowedColumns: new Set(this.entityColumns),
+      allowedColumns: () => new Set(this.entityColumns),
       onBadRequest: (msg: string) => this.throwBadRequestException(msg),
-      strictMode,
-      denylistRegex: DEFAULT_SQL_INJECTION_REGEX,
     });
-    /* istanbul ignore if */
-    if (!strictMode && process.env.NODE_ENV !== 'test') {
-      // eslint-disable-next-line no-console
-      console.warn(
-        `[nestjs-crud] strictSanitization: false — running v1 denylist behavior for ${this.constructor.name}. ` +
-          `This flag will be removed in v3. See https://github.com/kodjunkie/nestjs-crud/wiki/v2-migration`,
-      );
-    }
   }
 
   // === PUBLIC METHODS (stubs for CRUD - will be implemented in Tasks 7-10) ===
@@ -607,5 +595,4 @@ export class DrizzleCrudService<T extends Record<string, unknown>> extends CrudS
       .filter(Boolean) as SQL[];
     return conditions.length > 1 ? or(...conditions) : conditions[0];
   }
-
 }

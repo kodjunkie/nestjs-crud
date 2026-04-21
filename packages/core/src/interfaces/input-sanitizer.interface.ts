@@ -10,8 +10,7 @@
  */
 export interface InputSanitizer {
   /**
-   * Soft validation: returns `true` when the field is in the allowlist
-   * (and does not match the v1 denylist regex in opt-out mode).
+   * Soft validation: returns `true` when the field is in the allowlist.
    * Does NOT throw. Callers use this when an invalid field should be
    * skipped rather than surface a 400.
    */
@@ -19,8 +18,8 @@ export interface InputSanitizer {
 
   /**
    * Hard validation: throws `BadRequestException` when the field is not
-   * in the allowlist (or matches the denylist in opt-out mode).
-   * Route handlers call this — a thrown exception becomes a 400 to the client.
+   * in the allowlist. Route handlers call this — a thrown exception
+   * becomes a 400 to the client.
    *
    * **Contract:** `assert` signals failure by invoking the `onBadRequest`
    * callback supplied at construction. That callback MUST throw (e.g., by
