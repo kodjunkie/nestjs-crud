@@ -29,11 +29,7 @@ export class TypeOrmJoinResolver<T> implements JoinResolver<SelectQueryBuilder<T
     this.onBadRequest = config.onBadRequest;
   }
 
-  public applyJoins(
-    query: SelectQueryBuilder<T>,
-    joins: QueryJoin[],
-    joinOptions: JoinOptions,
-  ): SelectQueryBuilder<T> {
+  public applyJoins(query: SelectQueryBuilder<T>, joins: QueryJoin[], joinOptions: JoinOptions): SelectQueryBuilder<T> {
     const allowedJoins = Object.keys(joinOptions);
 
     if (!allowedJoins.length) {

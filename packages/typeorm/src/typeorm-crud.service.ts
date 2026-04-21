@@ -4,26 +4,15 @@ import {
   CrudRequestOptions,
   CrudService,
   GetManyDefaultResponse,
-  JoinOption,
-  JoinOptions,
   QueryOptions,
 } from '@nestjs-crud/core';
-import { ParsedRequestParams, QueryJoin, QuerySort } from '@nestjs-crud/request';
+import { ParsedRequestParams, QuerySort } from '@nestjs-crud/request';
 import { ClassType, hasLength, isArrayFull, isObject, isUndefined, objKeys, isNil } from '@nestjs-crud/util';
 import { plainToClass } from 'class-transformer';
-import { DeepPartial, ObjectLiteral, Repository, SelectQueryBuilder, DataSourceOptions, EntityMetadata } from 'typeorm';
+import { DeepPartial, ObjectLiteral, Repository, SelectQueryBuilder, DataSourceOptions } from 'typeorm';
 
+import { TypeOrmJoinResolver } from './typeorm-join-resolver';
 import { TypeOrmQueryTranslator } from './typeorm-query-translator';
-
-interface IAllowedRelation {
-  alias?: string;
-  nested: boolean;
-  name: string;
-  path: string;
-  columns: string[];
-  primaryColumns: string[];
-  allowedColumns: string[];
-}
 
 export class TypeOrmCrudService<T> extends CrudService<T> {
   protected dbName: DataSourceOptions['type'];
@@ -36,8 +25,6 @@ export class TypeOrmCrudService<T> extends CrudService<T> {
 
   protected entityColumnsHash: ObjectLiteral = {};
 
-  protected entityRelationsHash: Map<string, IAllowedRelation> = new Map();
-
   protected sqlInjectionRegEx: RegExp[] = [
     /(%27)|(\')|(--)|(%23)|(#)/i,
     /((%3D)|(=))[^\n]*((%27)|(\')|(--)|(%3B)|(;))/i,
@@ -47,11 +34,16 @@ export class TypeOrmCrudService<T> extends CrudService<T> {
 
   protected readonly translator: TypeOrmQueryTranslator<T>;
 
+  protected readonly joinResolver: TypeOrmJoinResolver<T>;
+
   constructor(protected repo: Repository<T>) {
     super();
 
     this.dbName = this.repo.metadata.connection.options.type;
     this.onInitMapEntityColumns();
+    this.joinResolver = new TypeOrmJoinResolver<T>(this.repo, {
+      onBadRequest: (msg: string) => this.throwBadRequestException(msg),
+    });
     this.translator = new TypeOrmQueryTranslator<T>(this.repo, this);
   }
 
@@ -274,30 +266,9 @@ export class TypeOrmCrudService<T> extends CrudService<T> {
 
     // set joins
     const joinOptions = options.query.join || {};
-    const allowedJoins = objKeys(joinOptions);
 
-    if (hasLength(allowedJoins)) {
-      const eagerJoins: Record<string, boolean> = {};
-
-      for (let i = 0; i < allowedJoins.length; i++) {
-        /* istanbul ignore else */
-        if (joinOptions[allowedJoins[i]].eager) {
-          const cond = parsed.join.find((j) => j && j.field === allowedJoins[i]) || {
-            field: allowedJoins[i],
-          };
-          this.setJoin(cond, joinOptions, builder);
-          eagerJoins[allowedJoins[i]] = true;
-        }
-      }
-
-      if (isArrayFull(parsed.join)) {
-        for (let i = 0; i < parsed.join.length; i++) {
-          /* istanbul ignore else */
-          if (!eagerJoins[parsed.join[i].field]) {
-            this.setJoin(parsed.join[i], joinOptions, builder);
-          }
-        }
-      }
+    if (hasLength(objKeys(joinOptions))) {
+      this.joinResolver.applyJoins(builder, parsed.join || [], joinOptions);
     }
 
     // if soft deleted is enabled add where statement to filter deleted records
@@ -419,141 +390,6 @@ export class TypeOrmCrudService<T> extends CrudService<T> {
     return dto instanceof this.entityType
       ? Object.assign(dto, parsed.authPersist)
       : plainToClass(this.entityType, { ...dto, ...parsed.authPersist }, parsed.classTransformOptions);
-  }
-
-  protected getEntityColumns(entityMetadata: EntityMetadata): { columns: string[]; primaryColumns: string[] } {
-    const columns = entityMetadata.columns.map((prop) => prop.propertyPath) || /* istanbul ignore next */ [];
-    const primaryColumns =
-      entityMetadata.primaryColumns.map((prop) => prop.propertyPath) || /* istanbul ignore next */ [];
-
-    return { columns, primaryColumns };
-  }
-
-  protected getRelationMetadata(field: string, options: JoinOption): IAllowedRelation {
-    try {
-      let allowedRelation;
-      let nested = false;
-
-      if (this.entityRelationsHash.has(field)) {
-        allowedRelation = this.entityRelationsHash.get(field);
-      } else {
-        const fields = field.split('.');
-        let relationMetadata: EntityMetadata;
-        let name: string;
-        let path: string;
-        let parentPath: string;
-
-        if (fields.length === 1) {
-          const found = this.repo.metadata.relations.find((one) => one.propertyName === fields[0]);
-
-          if (found) {
-            name = fields[0];
-            path = `${this.alias}.${fields[0]}`;
-            relationMetadata = found.inverseEntityMetadata;
-          }
-        } else {
-          nested = true;
-          parentPath = '';
-
-          const reduced = fields.reduce(
-            (res, propertyName: string, i) => {
-              const found = res.relations.length
-                ? res.relations.find((one) => one.propertyName === propertyName)
-                : null;
-              const relationMetadata = found ? found.inverseEntityMetadata : null;
-              const relations = relationMetadata ? relationMetadata.relations : [];
-              name = propertyName;
-
-              if (i !== fields.length - 1) {
-                parentPath = !parentPath ? propertyName : /* istanbul ignore next */ `${parentPath}.${propertyName}`;
-              }
-
-              return {
-                relations,
-                relationMetadata,
-              };
-            },
-            {
-              relations: this.repo.metadata.relations,
-              relationMetadata: null,
-            },
-          );
-
-          relationMetadata = reduced.relationMetadata;
-        }
-
-        if (relationMetadata) {
-          const { columns, primaryColumns } = this.getEntityColumns(relationMetadata);
-
-          if (!path && parentPath) {
-            const parentAllowedRelation = this.entityRelationsHash.get(parentPath);
-
-            /* istanbul ignore next */
-            if (parentAllowedRelation) {
-              path = parentAllowedRelation.alias ? `${parentAllowedRelation.alias}.${name}` : field;
-            }
-          }
-
-          allowedRelation = {
-            alias: options.alias,
-            name,
-            path,
-            columns,
-            nested,
-            primaryColumns,
-          };
-        }
-      }
-
-      if (allowedRelation) {
-        const allowedColumns = this.getAllowedColumns(allowedRelation.columns, options);
-        const toSave: IAllowedRelation = { ...allowedRelation, allowedColumns };
-
-        this.entityRelationsHash.set(field, toSave);
-
-        if (options.alias) {
-          this.entityRelationsHash.set(options.alias, toSave);
-        }
-
-        return toSave;
-      }
-    } catch (_) {
-      /* istanbul ignore next */
-      return null;
-    }
-  }
-
-  protected setJoin(cond: QueryJoin, joinOptions: JoinOptions, builder: SelectQueryBuilder<T>) {
-    const options = joinOptions[cond.field];
-
-    if (!options) {
-      return true;
-    }
-
-    const allowedRelation = this.getRelationMetadata(cond.field, options);
-
-    if (!allowedRelation) {
-      return true;
-    }
-
-    const relationType = options.required ? 'innerJoin' : 'leftJoin';
-    const alias = options.alias ? options.alias : allowedRelation.name;
-
-    builder[relationType](allowedRelation.path, alias);
-
-    if (options.select !== false) {
-      const columns = isArrayFull(cond.select)
-        ? cond.select.filter((column) => allowedRelation.allowedColumns.some((allowed) => allowed === column))
-        : allowedRelation.allowedColumns;
-
-      const select = new Set(
-        [...allowedRelation.primaryColumns, ...(isArrayFull(options.persist) ? options.persist : []), ...columns].map(
-          (col) => `${alias}.${col}`,
-        ),
-      );
-
-      builder.addSelect(Array.from(select));
-    }
   }
 
   protected getSelect(query: ParsedRequestParams, options: QueryOptions): string[] {
