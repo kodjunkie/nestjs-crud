@@ -1,3 +1,5 @@
+import { sql } from 'drizzle-orm';
+
 import {
   CANONICAL_SEED_COMPANIES,
   CANONICAL_SEED_USERS,
@@ -10,6 +12,108 @@ import * as mysqlSchema from './schema.mysql';
 export async function seedAll(db: any, dialect: 'postgres' | 'mysql'): Promise<void> {
   const schema = dialect === 'postgres' ? pgSchema : mysqlSchema;
   const { companies, users, projects } = schema;
+
+  // --- Schema bootstrap (idempotent) ---
+  // Drizzle has no migration step in this fixture; CI cells run in isolation,
+  // so we cannot assume TypeORM has created tables first. CREATE TABLE IF NOT EXISTS
+  // is safe to run on every seed invocation.
+  if (dialect === 'postgres') {
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS companies (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(100) NOT NULL,
+        domain VARCHAR(100) NOT NULL UNIQUE,
+        description TEXT,
+        "deletedAt" TIMESTAMP
+      );
+    `);
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS users (
+        id SERIAL PRIMARY KEY,
+        email VARCHAR(255) NOT NULL UNIQUE,
+        "nameFirst" VARCHAR(255),
+        "nameLast" VARCHAR(255),
+        "isActive" BOOLEAN NOT NULL DEFAULT TRUE,
+        "companyId" INTEGER NOT NULL REFERENCES companies(id),
+        "profileId" INTEGER,
+        "deletedAt" TIMESTAMP
+      );
+    `);
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS projects (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(100) NOT NULL UNIQUE,
+        description TEXT,
+        "isActive" BOOLEAN NOT NULL DEFAULT TRUE,
+        "companyId" INTEGER NOT NULL REFERENCES companies(id)
+      );
+    `);
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS user_projects (
+        "projectId" INTEGER NOT NULL,
+        "userId" INTEGER NOT NULL,
+        review VARCHAR(255),
+        PRIMARY KEY ("projectId", "userId")
+      );
+    `);
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS user_licenses (
+        "userId" INTEGER NOT NULL,
+        "licenseId" INTEGER NOT NULL,
+        "yearsActive" INTEGER NOT NULL,
+        PRIMARY KEY ("userId", "licenseId")
+      );
+    `);
+  } else {
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS companies (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        name VARCHAR(100) NOT NULL,
+        domain VARCHAR(100) NOT NULL UNIQUE,
+        description TEXT,
+        deletedAt DATETIME NULL
+      );
+    `);
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS users (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        email VARCHAR(255) NOT NULL UNIQUE,
+        nameFirst VARCHAR(255) NULL,
+        nameLast VARCHAR(255) NULL,
+        isActive BOOLEAN NOT NULL DEFAULT TRUE,
+        companyId INT NOT NULL,
+        profileId INT NULL,
+        deletedAt DATETIME NULL,
+        CONSTRAINT fk_users_company FOREIGN KEY (companyId) REFERENCES companies(id)
+      );
+    `);
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS projects (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        name VARCHAR(100) NOT NULL UNIQUE,
+        description TEXT,
+        isActive BOOLEAN NOT NULL DEFAULT TRUE,
+        companyId INT NOT NULL,
+        CONSTRAINT fk_projects_company FOREIGN KEY (companyId) REFERENCES companies(id)
+      );
+    `);
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS user_projects (
+        projectId INT NOT NULL,
+        userId INT NOT NULL,
+        review VARCHAR(255) NULL,
+        PRIMARY KEY (projectId, userId)
+      );
+    `);
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS user_licenses (
+        userId INT NOT NULL,
+        licenseId INT NOT NULL,
+        yearsActive INT NOT NULL,
+        PRIMARY KEY (userId, licenseId)
+      );
+    `);
+  }
 
   if (dialect === 'mysql') {
     await db.execute('SET FOREIGN_KEY_CHECKS = 0');
