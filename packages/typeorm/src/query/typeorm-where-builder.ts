@@ -54,11 +54,11 @@ export class TypeOrmWhereBuilder<T extends ObjectLiteral> implements WhereBuilde
   }
 
   private composeBrackets(builder: SelectQueryBuilder<T>, search: SCondition, condition: SConditionKey = '$and'): void {
-    /* istanbul ignore else */
+    /* istanbul ignore else -- defensive guard: search tree validated by `build()` and RequestQueryParser upstream */
     if (!isObject(search)) return;
 
     const keys = objKeys(search);
-    /* istanbul ignore else */
+    /* istanbul ignore else -- defensive guard: empty-keys case caught by `build()` upstream */
     if (!keys.length) return;
 
     if (isArrayFull(search.$and)) {
@@ -103,7 +103,7 @@ export class TypeOrmWhereBuilder<T extends ObjectLiteral> implements WhereBuilde
     field: string,
     object: any,
   ): void {
-    /* istanbul ignore else */
+    /* istanbul ignore else -- defensive guard: callers always pass an object after `isObject(value)` checks in handle*Conditions */
     if (isObject(object)) {
       const operators = objKeys(object);
 
@@ -118,7 +118,7 @@ export class TypeOrmWhereBuilder<T extends ObjectLiteral> implements WhereBuilde
           this.builderSetWhere(builder, condition, field, value, operator);
         }
       } else {
-        /* istanbul ignore else */
+        /* istanbul ignore else -- defensive guard: operators.length === 0 unreachable (objKeys excluded from `length === 1` branch above) */
         if (operators.length > 1) {
           this.builderAddBrackets(
             builder,
@@ -260,7 +260,7 @@ export class TypeOrmWhereBuilder<T extends ObjectLiteral> implements WhereBuilde
 
   private mapOperatorsToQuery(cond: QueryFilter, param: any): { str: string; params: ObjectLiteral } {
     const field = this.getFieldWithAlias(cond.field);
-    const likeOperator = this.dbName === 'postgres' ? 'ILIKE' : /* istanbul ignore next */ 'LIKE';
+    const likeOperator = this.dbName === 'postgres' ? 'ILIKE' : 'LIKE';
     let str: string;
     let params: ObjectLiteral;
 
@@ -381,7 +381,7 @@ export class TypeOrmWhereBuilder<T extends ObjectLiteral> implements WhereBuilde
         str = `LOWER(${field}) NOT IN (:...${param})`;
         break;
 
-      /* istanbul ignore next */
+      /* istanbul ignore next -- unreachable: ComparisonOperator is a closed union validated by RequestQueryParser; default exists only for TypeScript exhaustiveness */
       default:
         str = `${field} = :${param}`;
         break;
@@ -395,7 +395,6 @@ export class TypeOrmWhereBuilder<T extends ObjectLiteral> implements WhereBuilde
   }
 
   private getFieldWithAlias(field: string, sort = false): string {
-    /* istanbul ignore next */
     const i = ['mysql', 'mariadb'].includes(this.dbName) ? '`' : '"';
     const cols = field.split('.');
 
@@ -425,7 +424,6 @@ export class TypeOrmWhereBuilder<T extends ObjectLiteral> implements WhereBuilde
   }
 
   private checkFilterIsArray(cond: QueryFilter, withLength?: boolean): void {
-    /* istanbul ignore if */
     if (!Array.isArray(cond.value)) {
       this.onBadRequest(`Invalid column '${cond.field}' value: expected an array`);
     }
