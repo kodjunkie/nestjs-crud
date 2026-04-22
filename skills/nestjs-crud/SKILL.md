@@ -167,7 +167,15 @@ const qb = RequestQueryBuilder.create()
 fetch(`/users?${qb.query()}`);
 ```
 
-**Supported operators:** `$eq`, `$ne`, `$gt`, `$gte`, `$lt`, `$lte`, `$in`, `$notin`, `$isnull`, `$notnull`, `$cont`, `$excl`, `$starts`, `$ends`, `$contL`, `$exclL`, `$startsL`, `$endsL`
+**Supported operators** (23 total — `CondOperator` enum in `@nestjs-crud/request`):
+
+- Equality: `$eq`, `$ne`
+- Comparison: `$gt`, `$gte`, `$lt`, `$lte`
+- Range: `$between` (value = `[min, max]`)
+- Null checks: `$isnull`, `$notnull`
+- Set membership: `$in`, `$notin`
+- String match: `$cont`, `$excl`, `$starts`, `$ends`
+- Case-insensitive counterparts: `$eqL`, `$neL`, `$inL`, `$notinL`, `$contL`, `$exclL`, `$startsL`, `$endsL`
 
 **Raw params:** `?filter=name||$cont||john&sort=createdAt,DESC&limit=25&page=2&join=profile`
 
