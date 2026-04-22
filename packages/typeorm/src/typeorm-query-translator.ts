@@ -21,9 +21,10 @@ export interface TypeOrmQueryTranslatorConfig<T extends ObjectLiteral> {
  *
  * @since 2.0.0
  */
-export class TypeOrmQueryTranslator<T extends ObjectLiteral>
-  implements QueryTranslator<SelectQueryBuilder<T>, Brackets>
-{
+export class TypeOrmQueryTranslator<T extends ObjectLiteral> implements QueryTranslator<
+  SelectQueryBuilder<T>,
+  Brackets
+> {
   private readonly repo: Repository<T>;
 
   private readonly whereBuilder: TypeOrmWhereBuilder<T>;
