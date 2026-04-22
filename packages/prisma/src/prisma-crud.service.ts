@@ -38,10 +38,7 @@ export class PrismaCrudService<T extends Record<string, unknown>> extends CrudSe
         const take = this.getTake(parsed, options.query);
         const skip = this.getSkip(parsed, take as number);
         const delegate = this.getDelegate();
-        const [total, data] = await Promise.all([
-          delegate.count({ where: q.where }),
-          delegate.findMany(q),
-        ]);
+        const [total, data] = await Promise.all([delegate.count({ where: q.where }), delegate.findMany(q)]);
         return this.createPageInfo(data as T[], total, take || total, skip || 0);
       }
 
