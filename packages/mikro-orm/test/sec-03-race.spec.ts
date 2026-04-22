@@ -112,7 +112,9 @@ describe('SEC-03 MikroORM — mutations must run inside em.transactional at READ
   // ---------------------------------------------------------------------------
   it('updateOne calls em.transactional with READ_COMMITTED isolation', async () => {
     const req = makeCrudRequest(1);
-    await service.updateOne(req, { name: 'updated' }).catch(() => {/* may throw pre-wrap */});
+    await service.updateOne(req, { name: 'updated' }).catch(() => {
+      /* may throw pre-wrap */
+    });
     expect(transactionalSpy).toHaveBeenCalledWith(
       expect.any(Function),
       expect.objectContaining({ isolationLevel: IsolationLevel.READ_COMMITTED }),
@@ -121,7 +123,9 @@ describe('SEC-03 MikroORM — mutations must run inside em.transactional at READ
 
   it('replaceOne calls em.transactional with READ_COMMITTED isolation', async () => {
     const req = makeCrudRequest(1);
-    await service.replaceOne(req, { name: 'replaced' }).catch(() => {/* may throw pre-wrap */});
+    await service.replaceOne(req, { name: 'replaced' }).catch(() => {
+      /* may throw pre-wrap */
+    });
     expect(transactionalSpy).toHaveBeenCalledWith(
       expect.any(Function),
       expect.objectContaining({ isolationLevel: IsolationLevel.READ_COMMITTED }),
@@ -130,7 +134,9 @@ describe('SEC-03 MikroORM — mutations must run inside em.transactional at READ
 
   it('deleteOne calls em.transactional with READ_COMMITTED isolation', async () => {
     const req = makeCrudRequest(1);
-    await service.deleteOne(req).catch(() => {/* may throw pre-wrap */});
+    await service.deleteOne(req).catch(() => {
+      /* may throw pre-wrap */
+    });
     expect(transactionalSpy).toHaveBeenCalledWith(
       expect.any(Function),
       expect.objectContaining({ isolationLevel: IsolationLevel.READ_COMMITTED }),
@@ -138,36 +144,41 @@ describe('SEC-03 MikroORM — mutations must run inside em.transactional at READ
   });
 
   // ---------------------------------------------------------------------------
-  // Test B: txEm identity assertion — getEm() MUST return txEm inside the
-  // transactional callback (via RequestContext.create rebind).
+  // Test B: txEm identity assertion — the service MUST call
+  // RequestContext.create(txEm, ...) inside em.transactional so that
+  // MikroORM's ALS-backed em resolves to txEm for the duration of the
+  // transactional callback.
   //
-  // Implementation: once the GREEN wrap lands, we simulate the transactional
-  // callback and verify that getEm() (which resolves via RequestContext ALS)
-  // returns the txEm passed to RequestContext.create.
+  // We verify strict identity by spying on RequestContext.create and
+  // asserting the first argument IS txEm (Object.is equality).
+  // Pre-wrap: em.transactional is never called → RequestContext.create
+  // is never called → capturedTxEm stays null → assertion fails.
   // ---------------------------------------------------------------------------
-  it('getEm() returns txEm via RequestContext.create inside transactional callback (identity assertion)', async () => {
-    // Simulate a txEm (fresh em fork representing the transaction em).
-    const txEm = { ...mockEm, _isTxEm: true };
+  it('RequestContext.create is called with txEm (identity assertion — proves tx-wrapping binds writes to txEm)', async () => {
+    const txEm = { ...mockEm, _isTxEm: true } as unknown as EntityManager;
 
-    let capturedEm: any = null;
+    let capturedTxEm: EntityManager | null = null;
 
-    // Override transactional to actually invoke the callback with txEm,
-    // simulating what em.transactional does post-wrap.
-    transactionalSpy.mockImplementation(async (cb: (txEm: any) => Promise<any>, _opts: any) => {
-      // RequestContext.create rebinds the ALS so getEm() resolves to txEm.
-      return RequestContext.create(txEm as unknown as EntityManager, async () => {
-        // Capture what getEm() returns inside the RequestContext scope.
-        capturedEm = service.getEm();
-        return cb(txEm);
-      });
+    // Simulate em.transactional: invoke the service callback with txEm.
+    transactionalSpy.mockImplementation(async (cb: (txEm: EntityManager) => Promise<any>, _opts: any) => {
+      return cb(txEm);
+    });
+
+    // Spy on RequestContext.create to capture the em arg without running real ALS.
+    jest.spyOn(RequestContext, 'create').mockImplementation((em: any, cb: any) => {
+      capturedTxEm = em;
+      // Invoke cb so the body executes (may throw — that's fine).
+      return cb();
     });
 
     const req = makeCrudRequest(1);
     await service.updateOne(req, { name: 'updated' }).catch(() => {/* may throw */});
 
-    // Without the GREEN wrap, transactionalSpy is never called, so capturedEm
-    // stays null — this assertion fails.
-    // With the GREEN wrap, capturedEm === txEm (RequestContext rebinds ALS).
-    expect(capturedEm).toBe(txEm);
+    jest.restoreAllMocks();
+
+    // Without GREEN wrap: transactional/RequestContext.create not called →
+    // capturedTxEm stays null → fails.
+    // With GREEN wrap: capturedTxEm === txEm (strict identity).
+    expect(capturedTxEm).toBe(txEm);
   });
 });

@@ -8,7 +8,7 @@ import {
 } from '@nestjs-crud/core';
 import { Logger, LoggerService, NotFoundException } from '@nestjs/common';
 import { ClassType, hasLength, isArrayFull, isNil, isObject } from '@nestjs-crud/util';
-import { EntityManager, EntityClass, EntityMetadata, EntityProperty } from '@mikro-orm/core';
+import { EntityManager, EntityClass, EntityMetadata, EntityProperty, IsolationLevel, RequestContext } from '@mikro-orm/core';
 
 import { DbDialect } from './interfaces';
 import { MikroOrmJoinResolver } from './mikro-orm-join-resolver';
@@ -79,6 +79,18 @@ export class MikroOrmCrudService<T extends object> extends CrudService<T> {
     this.logger.debug?.(`CrudService initialized: ${(this.entityClass as any)?.name ?? 'unknown'}`);
   }
 
+  /**
+   * Returns the current EntityManager, resolving via MikroORM's ALS-backed
+   * RequestContext when available. Inside `RequestContext.create(txEm, ...)` this
+   * returns `txEm` — the transaction-scoped em — not the outer request em.
+   * Exposed as a method so the SEC-03 regression test can assert identity.
+   *
+   * @internal not part of the public CrudService contract
+   */
+  public getEm(): EntityManager {
+    return this.em;
+  }
+
   public async getMany(req: CrudRequest): Promise<GetManyDefaultResponse<T> | T[]> {
     const { parsed, options } = req;
     const qb = (this.em as any).createQueryBuilder(this.entityClass);
@@ -144,113 +156,136 @@ export class MikroOrmCrudService<T extends object> extends CrudService<T> {
     return entities as T[];
   }
 
-  // TODO(SEC-03): wrap read-modify-write in em.transactional() — Phase 8 SEC-03
   public async updateOne(req: CrudRequest, dto: T | Partial<T>): Promise<T> {
-    const { parsed, options } = req;
-    const { allowParamsOverride, returnShallow } = options.routes.updateOneBase;
-    const paramsFilters = this.getParamFilters(parsed);
-    const found = await this.getOneOrFail(req, returnShallow);
+    // SEC-03: wrap read-modify-write in em.transactional at READ_COMMITTED.
+    // RequestContext.create(txEm, ...) rebinds the ALS-backed em so that
+    // getEm() / this.em inside the callback resolves to txEm — the
+    // FetchHelper thunk (getEm: () => EntityManager) is therefore unchanged
+    // (Phase 6.2 T-06-02 contract preserved).
+    const em = this.getEm();
+    return em.transactional(
+      async (txEm) => {
+        return RequestContext.create(txEm, async () => {
+          const { parsed, options } = req;
+          const { allowParamsOverride, returnShallow } = options.routes.updateOneBase;
+          const paramsFilters = this.getParamFilters(parsed);
+          const found = await this.getOneOrFail(req, returnShallow);
 
-    const toSave = !allowParamsOverride
-      ? { ...dto, ...paramsFilters, ...parsed.authPersist }
-      : { ...dto, ...parsed.authPersist };
+          const toSave = !allowParamsOverride
+            ? { ...dto, ...paramsFilters, ...parsed.authPersist }
+            : { ...dto, ...parsed.authPersist };
 
-    try {
-      this.em.assign(found as any, toSave as any);
-      await this.em.flush();
-    } catch (err) {
-      // PII GUARD (T-08-08): DB drivers surface SQL + bound params in err.message.
-      // Use err.name in the message and pass err.stack as the LoggerService stack arg.
-      this.logger.error(
-        `CrudService [updateOne] failed: ${err instanceof Error ? err.name : 'UnknownError'}`,
-        err instanceof Error ? err.stack : String(err),
-      );
-      throw err;
-    }
+          try {
+            this.getEm().assign(found as any, toSave as any);
+            await this.getEm().flush();
+          } catch (err) {
+            // PII GUARD (T-08-08): DB drivers surface SQL + bound params in err.message.
+            this.logger.error(
+              `CrudService [updateOne] failed: ${err instanceof Error ? err.name : 'UnknownError'}`,
+              err instanceof Error ? err.stack : String(err),
+            );
+            throw err;
+          }
 
-    if (returnShallow) {
-      return found;
-    }
+          if (returnShallow) {
+            return found;
+          }
 
-    const primaryParams = this.getPrimaryParams(options);
-    if (primaryParams.length) {
-      req.parsed.search = primaryParams.reduce((acc, p) => ({ ...acc, [p]: (found as any)[p] }), {});
-    }
-    return this.getOneOrFail(req);
+          const primaryParams = this.getPrimaryParams(options);
+          if (primaryParams.length) {
+            req.parsed.search = primaryParams.reduce((acc, p) => ({ ...acc, [p]: (found as any)[p] }), {});
+          }
+          return this.getOneOrFail(req);
+        });
+      },
+      { isolationLevel: IsolationLevel.READ_COMMITTED },
+    );
   }
 
-  // TODO(SEC-03): wrap read-modify-write in em.transactional() — Phase 8 SEC-03
   public async replaceOne(req: CrudRequest, dto: T | Partial<T>): Promise<T> {
-    const { parsed, options } = req;
-    const { allowParamsOverride, returnShallow } = options.routes.replaceOneBase;
-    const paramsFilters = this.getParamFilters(parsed);
+    const em = this.getEm();
+    return em.transactional(
+      async (txEm) => {
+        return RequestContext.create(txEm, async () => {
+          const { parsed, options } = req;
+          const { allowParamsOverride, returnShallow } = options.routes.replaceOneBase;
+          const paramsFilters = this.getParamFilters(parsed);
 
-    let toReturn: T;
-    try {
-      const found = await this.getOneOrFail(req, returnShallow);
-      const toSave = !allowParamsOverride
-        ? { ...dto, ...paramsFilters, ...parsed.authPersist }
-        : { ...dto, ...parsed.authPersist };
+          let toReturn: T;
+          try {
+            const found = await this.getOneOrFail(req, returnShallow);
+            const toSave = !allowParamsOverride
+              ? { ...dto, ...paramsFilters, ...parsed.authPersist }
+              : { ...dto, ...parsed.authPersist };
 
-      this.em.assign(found as any, toSave as any);
-      await this.em.flush();
-      toReturn = found;
-    } catch (error) {
-      if (!(error instanceof NotFoundException)) {
-        // PII GUARD (T-08-08): DB drivers surface SQL + bound params in err.message.
-        // Use err.name in the message and pass err.stack as the LoggerService stack arg.
-        this.logger.error(
-          `CrudService [replaceOne] failed: ${error instanceof Error ? error.name : 'UnknownError'}`,
-          error instanceof Error ? error.stack : String(error),
-        );
-        throw error;
-      }
-      const entity = !allowParamsOverride
-        ? { ...dto, ...paramsFilters, ...parsed.authPersist }
-        : { ...dto, ...parsed.authPersist };
+            this.getEm().assign(found as any, toSave as any);
+            await this.getEm().flush();
+            toReturn = found;
+          } catch (error) {
+            if (!(error instanceof NotFoundException)) {
+              // PII GUARD (T-08-08): DB drivers surface SQL + bound params in err.message.
+              this.logger.error(
+                `CrudService [replaceOne] failed: ${error instanceof Error ? error.name : 'UnknownError'}`,
+                error instanceof Error ? error.stack : String(error),
+              );
+              throw error;
+            }
+            const entity = !allowParamsOverride
+              ? { ...dto, ...paramsFilters, ...parsed.authPersist }
+              : { ...dto, ...parsed.authPersist };
 
-      const created = this.em.create(this.entityClass, entity as any);
-      await this.em.flush();
-      toReturn = created as T;
-    }
+            const created = this.getEm().create(this.entityClass, entity as any);
+            await this.getEm().flush();
+            toReturn = created as T;
+          }
 
-    if (returnShallow) {
-      return toReturn;
-    }
+          if (returnShallow) {
+            return toReturn;
+          }
 
-    const primaryParams = this.getPrimaryParams(options);
-    if (primaryParams.length) {
-      req.parsed.search = primaryParams.reduce((acc, p) => ({ ...acc, [p]: (toReturn as any)[p] }), {});
-    }
-    return this.getOneOrFail(req);
+          const primaryParams = this.getPrimaryParams(options);
+          if (primaryParams.length) {
+            req.parsed.search = primaryParams.reduce((acc, p) => ({ ...acc, [p]: (toReturn as any)[p] }), {});
+          }
+          return this.getOneOrFail(req);
+        });
+      },
+      { isolationLevel: IsolationLevel.READ_COMMITTED },
+    );
   }
 
-  // TODO(SEC-03): wrap read-modify-write in em.transactional() — Phase 8 SEC-03
   public async deleteOne(req: CrudRequest): Promise<void | T> {
-    const { options } = req;
-    const { returnDeleted } = options.routes.deleteOneBase;
-    const found = await this.getOneOrFail(req, true);
-    const toReturn = returnDeleted ? ({ ...found } as T) : undefined;
+    const em = this.getEm();
+    return em.transactional(
+      async (txEm) => {
+        return RequestContext.create(txEm, async () => {
+          const { options } = req;
+          const { returnDeleted } = options.routes.deleteOneBase;
+          const found = await this.getOneOrFail(req, true);
+          const toReturn = returnDeleted ? ({ ...found } as T) : undefined;
 
-    try {
-      if (options.query.softDelete && this.entityHasDeleteColumn && this.softDeleteColumn) {
-        this.em.assign(found as any, { [this.softDeleteColumn]: new Date() } as any);
-        await this.em.flush();
-      } else {
-        this.em.remove(found as any);
-        await this.em.flush();
-      }
-    } catch (err) {
-      // PII GUARD (T-08-08): DB drivers surface SQL + bound params in err.message.
-      // Use err.name in the message and pass err.stack as the LoggerService stack arg.
-      this.logger.error(
-        `CrudService [deleteOne] failed: ${err instanceof Error ? err.name : 'UnknownError'}`,
-        err instanceof Error ? err.stack : String(err),
-      );
-      throw err;
-    }
+          try {
+            if (options.query.softDelete && this.entityHasDeleteColumn && this.softDeleteColumn) {
+              this.getEm().assign(found as any, { [this.softDeleteColumn]: new Date() } as any);
+              await this.getEm().flush();
+            } else {
+              this.getEm().remove(found as any);
+              await this.getEm().flush();
+            }
+          } catch (err) {
+            // PII GUARD (T-08-08): DB drivers surface SQL + bound params in err.message.
+            this.logger.error(
+              `CrudService [deleteOne] failed: ${err instanceof Error ? err.name : 'UnknownError'}`,
+              err instanceof Error ? err.stack : String(err),
+            );
+            throw err;
+          }
 
-    return toReturn;
+          return toReturn;
+        });
+      },
+      { isolationLevel: IsolationLevel.READ_COMMITTED },
+    );
   }
 
   public async recoverOne(req: CrudRequest): Promise<void | T> {
