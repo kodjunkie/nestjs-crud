@@ -1,9 +1,9 @@
 import { defineConfig } from '@mikro-orm/postgresql';
 
-import { Company, Project, User } from './entities';
+import { CompanySchema, ProjectSchema, UserSchema } from './entities';
 
 export default defineConfig({
-  entities: [Company, User, Project],
+  entities: [CompanySchema, UserSchema, ProjectSchema],
   host: 'localhost',
   port: 5455,
   user: 'root',

@@ -48,7 +48,11 @@ export class MikroOrmQueryTranslator<T extends object> implements QueryTranslato
     return this.whereBuilder.build(search);
   }
 
-  public applyToQuery(query: QueryBuilder<T>, parsed: ParsedRequestParams, options: CrudRequestOptions): QueryBuilder<T> {
+  public applyToQuery(
+    query: QueryBuilder<T>,
+    parsed: ParsedRequestParams,
+    options: CrudRequestOptions,
+  ): QueryBuilder<T> {
     return this.composer.applyToQuery(query, parsed, options);
   }
 

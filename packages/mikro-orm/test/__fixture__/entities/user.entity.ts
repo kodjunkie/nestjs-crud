@@ -1,34 +1,43 @@
-import { Entity, ManyToOne, PrimaryKey, Property, Unique } from '@mikro-orm/core';
+import { EntitySchema } from '@mikro-orm/core';
 
 import { Company } from './company.entity';
 
-@Entity({ tableName: 'users' })
 export class User {
-  @PrimaryKey()
   id!: number;
 
-  @Unique()
-  @Property({ length: 255 })
   email!: string;
 
-  @Property({ length: 255 })
   password!: string;
 
-  @Property({ fieldName: 'name_first', length: 255 })
   nameFirst!: string;
 
-  @Property({ fieldName: 'name_last', length: 255 })
   nameLast!: string;
 
-  @Property({ default: true })
   isActive!: boolean;
 
-  @ManyToOne(() => Company, { fieldName: 'company_id' })
   company!: Company;
 
-  @Property({ fieldName: 'profile_id', nullable: true })
   profileId?: number | null;
 
-  @Property({ fieldName: 'deleted_at', nullable: true })
   deletedAt?: Date | null;
 }
+
+export const UserSchema = new EntitySchema<User>({
+  class: User,
+  tableName: 'users',
+  properties: {
+    id: { primary: true, type: 'number' },
+    email: { type: 'string', length: 255, unique: true },
+    password: { type: 'string', length: 255 },
+    nameFirst: { type: 'string', length: 255, fieldName: 'name_first' },
+    nameLast: { type: 'string', length: 255, fieldName: 'name_last' },
+    isActive: { type: 'boolean', default: true },
+    company: {
+      kind: 'm:1',
+      entity: () => Company,
+      fieldName: 'company_id',
+    },
+    profileId: { type: 'number', fieldName: 'profile_id', nullable: true },
+    deletedAt: { type: 'Date', fieldName: 'deleted_at', nullable: true },
+  },
+});

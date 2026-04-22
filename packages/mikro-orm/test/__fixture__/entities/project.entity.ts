@@ -1,21 +1,31 @@
-import { Entity, ManyToOne, PrimaryKey, Property } from '@mikro-orm/core';
+import { EntitySchema } from '@mikro-orm/core';
 
 import { Company } from './company.entity';
 
-@Entity({ tableName: 'projects' })
 export class Project {
-  @PrimaryKey()
   id!: number;
 
-  @Property({ length: 255 })
   name!: string;
 
-  @Property({ length: 500, nullable: true })
   description?: string | null;
 
-  @ManyToOne(() => Company, { fieldName: 'company_id' })
   company!: Company;
 
-  @Property({ default: true })
   isActive!: boolean;
 }
+
+export const ProjectSchema = new EntitySchema<Project>({
+  class: Project,
+  tableName: 'projects',
+  properties: {
+    id: { primary: true, type: 'number' },
+    name: { type: 'string', length: 255 },
+    description: { type: 'string', length: 500, nullable: true },
+    company: {
+      kind: 'm:1',
+      entity: () => Company,
+      fieldName: 'company_id',
+    },
+    isActive: { type: 'boolean', default: true },
+  },
+});

@@ -3,7 +3,7 @@ import { APP_FILTER } from '@nestjs/core';
 import { Test } from '@nestjs/testing';
 import { MikroORM } from '@mikro-orm/core';
 import { RequestQueryBuilder } from '@nestjs-crud/request';
-import * as request from 'supertest';
+import request from 'supertest';
 
 import { AppModule } from './__fixture__/app/app.module';
 import { HttpExceptionFilter } from './__fixture__/app/http-exception.filter';
@@ -30,6 +30,15 @@ const runSuite = dialect === 'postgres' || dialect === 'mysql';
   let qb: RequestQueryBuilder;
 
   beforeAll(async () => {
+    // Standalone MikroORM instance for seeding — initialized directly so the schema
+    // extension from @mikro-orm/postgresql or @mikro-orm/mysql is properly registered
+    // (the Nest-provided MikroORM proxy may not expose orm.schema reliably in test context).
+    const configModule =
+      dialect === 'postgres'
+        ? await import('./__fixture__/mikro-orm.postgres.config')
+        : await import('./__fixture__/mikro-orm.mysql.config');
+    orm = await MikroORM.init(configModule.default);
+
     const moduleRef = await Test.createTestingModule({
       imports: [await AppModule.forRoot(dialect!)],
       providers: [{ provide: APP_FILTER, useClass: HttpExceptionFilter }],
@@ -38,21 +47,21 @@ const runSuite = dialect === 'postgres' || dialect === 'mysql';
     app = moduleRef.createNestApplication();
     await app.init();
     server = app.getHttpServer();
-
-    // MikroORM instance — used for seeding via seedAll(orm)
-    orm = moduleRef.get(MikroORM);
-  });
-
-  beforeEach(async () => {
-    qb = RequestQueryBuilder.create();
-    // Reseed before each test: drops + recreates schema + inserts canonical data
-    await seedAll(orm);
   });
 
   afterAll(async () => {
     if (app) {
       await app.close();
     }
+    if (orm) {
+      await orm.close(true);
+    }
+  });
+
+  beforeEach(async () => {
+    qb = RequestQueryBuilder.create();
+    // Reseed before each test: drops + recreates schema + inserts canonical data
+    await seedAll(orm);
   });
 
   // Scenario 1: GET /users — returns all 10 seeded users

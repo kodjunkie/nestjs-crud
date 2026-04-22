@@ -1,11 +1,16 @@
 import { RequestQueryBuilder } from '@nestjs-crud/request';
 import { isString, objKeys } from '@nestjs-crud/util';
 import { HttpStatus } from '@nestjs/common';
+// ESM-safe: pluralize is a hard dep; import * as unwraps correctly in both CJS (ts-jest
+// default-esm preset returns the function directly) and native ESM (function at .default).
+import * as pluralizeNs from 'pluralize';
 import { MergedCrudOptions, ParamsOptions } from '../interfaces';
 import { BaseRouteName } from '../types';
 import { safeRequire } from '../util';
 import { R } from './reflection.helper';
-const pluralize = safeRequire('pluralize', () => require('pluralize'));
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const pluralize: (word: string) => string =
+  typeof pluralizeNs === 'function' ? (pluralizeNs as any) : (pluralizeNs as any).default;
 
 export const swagger = safeRequire('@nestjs/swagger', () => require('@nestjs/swagger'));
 export const swaggerConst = safeRequire('@nestjs/swagger/dist/constants', () =>

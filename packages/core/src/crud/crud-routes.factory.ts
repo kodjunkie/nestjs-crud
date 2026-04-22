@@ -12,7 +12,15 @@ import {
   isNil,
   isUndefined,
 } from '@nestjs-crud/util';
-import * as deepmerge from 'deepmerge';
+import * as deepmergeNs from 'deepmerge';
+// ESM-safe callable: deepmerge ships CJS-only. Under Jest ESM (--experimental-vm-modules),
+// `import * as` yields a namespace where the function lives at .default. Under ts-jest CJS
+// compilation for the other 5 packages, the namespace IS the callable function directly.
+// Normalise to a callable regardless of how the module loader wrapped the CJS export.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const deepmerge: typeof deepmergeNs = (
+  typeof (deepmergeNs as any).default === 'function' ? (deepmergeNs as any).default : deepmergeNs
+) as typeof deepmergeNs;
 
 import { R } from './reflection.helper';
 import { SerializeHelper } from './serialize.helper';

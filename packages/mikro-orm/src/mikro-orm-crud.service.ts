@@ -263,8 +263,13 @@ export class MikroOrmCrudService<T extends object> extends CrudService<T> {
     this.entityHasDeleteColumn = false;
     this.softDeleteColumn = null;
 
+    // Relation kinds to skip: MikroORM v7 uses ReferenceKind enum strings.
+    // Decorator-based entities leave scalar `kind` undefined; EntitySchema-based entities
+    // set it to 'scalar'. We must NOT skip scalars — only skip actual relation/embedded kinds.
+    const RELATION_KINDS = new Set(['m:1', '1:m', 'm:n', '1:1', 'embedded']);
+
     for (const [name, prop] of Object.entries(props)) {
-      if (prop.kind && typeof prop.kind === 'string') {
+      if (prop.kind && RELATION_KINDS.has(prop.kind as string)) {
         continue;
       }
 
@@ -305,8 +310,11 @@ export class MikroOrmCrudService<T extends object> extends CrudService<T> {
     return filters;
   }
 
-  protected async getOneOrFail(req: CrudRequest, _shallow = false, _withDeleted = false): Promise<T> {
-    return this.translator.findOneOrFail(req.parsed, req.options, {
+  protected async getOneOrFail(req: CrudRequest, _shallow = false, withDeleted = false): Promise<T> {
+    // When recovering a soft-deleted entity, override includeDeleted so the
+    // soft-delete WHERE clause is skipped and the deleted row is found.
+    const parsed = withDeleted ? { ...req.parsed, includeDeleted: 1 as const } : req.parsed;
+    return this.translator.findOneOrFail(parsed, req.options, {
       entityClass: this.entityClass,
       onNotFound: () => new NotFoundException(`${this.tableName} not found`),
     });
