@@ -25,6 +25,8 @@
     "db:seeds:typeorm": "yarn db:cli:typeorm migration:run",
     "db:prepare:typeorm:postgres": "yarn db:drop:typeorm -d=orm.postgres.ts && yarn db:sync:typeorm -d=orm.postgres.ts && yarn db:seeds:typeorm -d=orm.postgres.ts",
     "db:prepare:typeorm:mysql": "yarn db:drop:typeorm -d=orm.mysql.ts && yarn db:sync:typeorm -d=orm.mysql.ts && yarn db:seeds:typeorm -d=orm.mysql.ts",
+    "db:prepare:drizzle:postgres": "npx ts-node -T --project packages/drizzle/tsconfig.json packages/drizzle/test/__fixture__/seeds.ts postgres",
+    "db:prepare:drizzle:mysql": "npx ts-node -T --project packages/drizzle/tsconfig.json packages/drizzle/test/__fixture__/seeds.ts mysql",
     "format": "npx pretty-quick --pattern \"packages/**/!(*.d).ts\"",
     "lint": "npx eslint \"packages/**/!(*.d).ts\" --fix",
     "commit": "npx git-cz",
