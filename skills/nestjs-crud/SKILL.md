@@ -1,6 +1,6 @@
 ---
 name: nestjs-crud
-description: Use when integrating @nestjs-crud into a NestJS project — setting up CRUD controllers, configuring query filters and pagination, scoping requests with @CrudAuth, overriding generated endpoints, or troubleshooting relations, validation, and Swagger.
+description: Use when integrating @nestjs-crud into a NestJS project — setting up CRUD controllers, configuring query filters and pagination, scoping requests with @CrudAuth, overriding generated endpoints, troubleshooting relations, validation, Swagger, or debugging symptoms like `getManyBase returned a flat array`, `@CrudAuth filter not applying`, `validation always fails on update`, `maxLimit exceeded`, `repo.createQueryBuilder is not a function` after installing the adapter package, or `@deprecated` warnings on `DrizzleCrudService.db` / `ParamOption.enum`.
 ---
 
 # @nestjs-crud
@@ -19,7 +19,15 @@ npm install @nestjs-crud/core @nestjs-crud/mikro-orm
 npm install @nestjs-crud/request
 ```
 
-Peer deps required: `class-validator`, `class-transformer`. Swagger is optional — install `@nestjs/swagger` and decoration auto-generates.
+**Peer deps (required, install explicitly):**
+- `@nestjs-crud/core` peers: `class-validator`, `class-transformer`
+- `@nestjs-crud/typeorm` ALSO needs: `typeorm`, `@nestjs/typeorm`, `@nestjs/common`
+- `@nestjs-crud/drizzle` ALSO needs: `drizzle-orm` (≥ 0.36.0), `@nestjs/common`
+- `@nestjs-crud/mikro-orm` ALSO needs: `@mikro-orm/core` (≥ 6.0.0), `@mikro-orm/knex` (≥ 6.0.0), `@nestjs/common`
+
+**Heads-up (v1.0.2):** `@nestjs-crud/typeorm`'s `package.json` does NOT declare these as peerDependencies yet, so `npm install` will NOT warn you if you forget them. If you see `TypeError: repo.createQueryBuilder is not a function` at runtime or `Cannot find module 'typeorm'`, install the peers explicitly. This is scheduled to be fixed in v2.
+
+Swagger is optional — install `@nestjs/swagger` and decoration auto-generates. If `@nestjs/swagger` is absent, the library silently skips Swagger setup (via internal `safeRequire`).
 
 ## Global Defaults — `CrudConfigService.load()`
 
@@ -59,15 +67,11 @@ Call `load()` **at module load time** (top of `main.ts`, before `NestFactory.cre
 
 ## Quickstart
 
-```typescript
-// user.service.ts
-@Injectable()
-export class UsersService extends TypeOrmCrudService<User> {
-  constructor(@InjectRepository(User) repo: Repository<User>) {
-    super(repo);
-  }
-}
+The controller + `@Crud()` decorator are identical across adapters — only the service's base class and DI wiring change.
 
+### Controller (all adapters)
+
+```typescript
 // user.controller.ts
 @Crud({
   model: { type: User },
@@ -83,6 +87,52 @@ export class UsersService extends TypeOrmCrudService<User> {
 @Controller('users')
 export class UsersController implements CrudController<User> {
   constructor(public service: UsersService) {}
+}
+```
+
+### TypeORM service
+
+```typescript
+// user.service.ts
+import { TypeOrmCrudService } from '@nestjs-crud/typeorm';
+
+@Injectable()
+export class UsersService extends TypeOrmCrudService<User> {
+  constructor(@InjectRepository(User) repo: Repository<User>) {
+    super(repo);
+  }
+}
+```
+
+### Drizzle service
+
+```typescript
+// user.service.ts
+import { DrizzleCrudService } from '@nestjs-crud/drizzle';
+import { users } from './schema';
+import type { db } from './db';  // your Drizzle instance type
+
+@Injectable()
+export class UsersService extends DrizzleCrudService<typeof users.$inferSelect> {
+  constructor(@Inject('DB') drizzleDb: typeof db) {
+    super(drizzleDb, users);  // (db instance, table reference)
+  }
+}
+```
+
+### MikroORM service
+
+```typescript
+// user.service.ts
+import { MikroOrmCrudService } from '@nestjs-crud/mikro-orm';
+import { InjectRepository } from '@mikro-orm/nestjs';
+import { EntityRepository } from '@mikro-orm/core';
+
+@Injectable()
+export class UsersService extends MikroOrmCrudService<User> {
+  constructor(@InjectRepository(User) repo: EntityRepository<User>) {
+    super(repo);
+  }
 }
 ```
 
@@ -357,6 +407,18 @@ Place auth guard on the controller class (not individual routes) so it runs befo
 
 **`@CrudAuth` filter not applying:** Ensure your auth guard runs BEFORE `CrudRequestInterceptor`. Guard must populate `req.user` (or your configured `property`) for the filter to resolve.
 
-**Empty response instead of `{ data, count, total, page, pageCount }`:** `getManyBase` returns a flat array by default. Set `alwaysPaginate: true` in `@Crud()` query options to always return the paginated shape.
+**Empty response / flat array instead of `{ data, count, total, page, pageCount }`:** `getManyBase` returns a flat array by default. Set `alwaysPaginate: true` inside the `query:` block in `@Crud()` (NOT top-level):
+```typescript
+@Crud({ model: { type: User }, query: { alwaysPaginate: true } })
+```
+Or set it globally once via `CrudConfigService.load({ query: { alwaysPaginate: true } })`.
 
-**`@deprecated` IDE warnings on `DrizzleCrudService.db` or `MikroOrmCrudService`:** Expected in v1.0.2 — these surfaces change in v2. No action needed; code continues to work.
+**`TypeError: repo.createQueryBuilder is not a function` / `Cannot find module 'typeorm'`:** TypeORM peer not installed. See the "Heads-up (v1.0.2)" note in the Install section — `@nestjs-crud/typeorm` does not yet declare peerDependencies, so `npm install` doesn't warn. Run `yarn add typeorm @nestjs/typeorm @nestjs/common` (or the equivalent for your ORM adapter).
+
+**Swagger routes documented but metadata missing / empty:** `@nestjs/swagger` not installed as a peer. The library's `safeRequire` silently skips Swagger setup when the peer is absent. Install `@nestjs/swagger` and restart.
+
+**`@deprecated` IDE warnings on `DrizzleCrudService.db` or `ParamOption.enum`:** Expected in v1.0.2 — these surfaces change in v2. No action needed; code continues to work.
+
+## Planning a v2 Upgrade?
+
+v2 is a coordinated breaking release currently in development on the `dev` branch — not yet published. If you're evaluating the upgrade path, see the `nestjs-crud-migration` skill for the full change list (allowlist validation, deleted service internals, new `QueryTranslator<Q, W>` contract, MikroORM `getEm` thunk, etc.). Until v2 publishes, pin to `^1.0.2` and stay on the patterns documented here.

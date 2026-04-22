@@ -66,7 +66,9 @@ yarn test:coverage
 
 - **`packages/core/test/`** — Unit tests for decorators, interceptors, config service. No database needed.
 - **`packages/request/test/`** — Unit tests for query builder/parser. No database needed.
-- **`packages/typeorm/test/`** — Integration tests requiring a live database. Tests use the `integration/typeorm/` app as a fixture (entities, services, seeds).
+- **`packages/typeorm/test/`** — Integration tests requiring a live database. Tests use `packages/typeorm/test/__fixture__/app/` as the fixture — a self-contained NestJS app (entities, modules, services, seeds, ORM configs) imported directly by the spec files.
+
+Rule: **test fixtures live in the package they test (`packages/{adapter}/test/__fixture__/`); runnable demos live in `examples/`** (e.g., `examples/typeorm-demo/`). The demo must not import from `test/`. This separation keeps the test harness from being load-bearing on a consumer-facing app, and gives consumers a standalone reference they can point at.
 
 ### Database for integration tests
 
@@ -79,31 +81,6 @@ yarn db:prepare:typeorm:mysql           # Drop + sync + seed MySQL
 ```
 
 Set `TYPEORM_CONNECTION=mysql` to run against MySQL instead of the default Postgres.
-
-## Repo Gotchas — Rules That Prevent Real Recurring Mistakes
-
-These have burned me or an executor more than once. Treat as non-negotiable.
-
-- **`.planning/` is gitignored** (see `.gitignore`). `git add .planning/...` silently skips — SUMMARY.md / STATE.md / CONTEXT.md / PLAN.md / VALIDATION.md all live on the filesystem only. Commit source-code changes only. `commit_docs: false` in `.planning/config.json` codifies this — don't flip it.
-
-- **`yarn clean` before `yarn build` when editing core interfaces.** TypeScript composite project refs raise TS5055 when a `lib/` dir already exists for a package whose `src/` just changed. `yarn rebuild` (= clean + build) is the script for this. If a build fails with TS5055, the fix is always `yarn clean && yarn build` — don't chase the error.
-
-- **Never `/g` flag on regex used with `.test()`.** `RegExp` with `/g` carries stateful `lastIndex`, so `.test()` on the same regex against the same input returns different values across calls. This caused v1.0.2 QUALITY-02/03 bugs. If you MUST match globally, use `.match()` or construct a fresh `RegExp` per call — never reuse a `/g` regex with `.test()`.
-
-- **Commit specific files by path, never `git add -A` / `git commit -a`.** The root `package.json` regularly carries unstaged in-progress dep bumps (MikroORM, NestJS minors, typescript-eslint) that belong to separate concerns. A wide `add` bundles them into the wrong commit. Narrow stage → review diff → commit. If your change is in `packages/foo/`, `git add packages/foo/...` — nothing more.
-
-- **ESLint rules that bite when adding classes:**
-  - `@typescript-eslint/member-ordering`: fields → constructor → methods; within each, public → protected → private
-  - `lines-between-class-members: always` — blank line between EVERY class member (including consecutive private fields)
-  - `max-len: 150` — break long signatures / template literals across lines
-  - `comma-dangle: always-multiline` — trailing commas on multi-line objects / arrays / params
-  - Prettier runs as `pretty-quick` pre-commit hook and will reformat files outside your diff — after committing, `git checkout -- <file>` to unwind unrelated reformats and keep scope tight.
-
-- **Jest `moduleNameMapper` resolves `@nestjs-crud/*` to `packages/*/src`** (root `jest.config.js`). Tests run without `yarn build` — new `src/` files + exports are visible to tests immediately. Do NOT add `yarn build` as a prerequisite to a test-only change.
-
-- **`integration/typeorm/` demo app is known-broken against TypeORM v0.3.x.** `integration/typeorm/auth.guard.ts:12` calls the deleted `findOne(id)` signature. Not in CI matrix. If you need a cold-start smoke, expect `TS2559` — this is pre-existing, not your regression. Fix lands with Phase 6 REFACTOR-01 (decouple integration app from fixture).
-
-- **`.planning/` is the GSD workflow directory.** Phase-based planning artifacts live here (`phases/NN-name/NN-{CONTEXT,RESEARCH,VALIDATION,PLAN,SUMMARY,DISCUSSION-LOG,UAT}.md`). Orchestrated by `/gsd-*` skills (discuss → research → plan → execute → verify). `STATE.md` is the live project state; `ROADMAP.md` defines phases; Known Risks surfaces forward-flagged debt from prior phases. Read the relevant `NN-CONTEXT.md` before touching any file in its scope.
 
 ## Architecture
 
@@ -130,6 +107,8 @@ HTTP Request
 
 - **Entity-as-DTO is the default, but dedicated DTOs are also supported**: Most users let `class-validator` groups (`CrudValidationGroups.CREATE` / `UPDATE`) on the entity handle create-vs-update validation. When a stricter API boundary is needed, `@Crud({ dto: { create, update, replace } })` wires separate DTO classes; `@Crud({ serialize: {...} })` wires per-route response DTOs. Don't assume "no DTO classes" — the package supports both patterns. Details in `skills/nestjs-crud/SKILL.md`.
 - **Search conditions**: MongoDB-like `SCondition` syntax (`$and`, `$or`, `$eq`, `$gt`, `$cont`, etc.) gets recursively translated to TypeORM `Brackets`/`andWhere`/`orWhere`.
-- **`integration/typeorm/`** is both a runnable NestJS app and the test fixture for integration tests. Tests import entities/services from there directly.
+- **Adapter shape**: every adapter service delegates composition to a `QueryTranslator<Q, W>` facade (public contract in `@nestjs-crud/core`); each facade in turn composes 3 internal pieces — `WhereBuilder<Q, W>` (compiles `SCondition` to the ORM's predicate type), `QueryComposer<Q>` (applies WHERE + sort + pagination + field selection + soft-delete + eager joins to `Q`), and `FetchHelper<Q>` (executes prepared queries: `count`, `findOneOrFail`, `executeMany`). Pieces are `@internal`, exported only via `@nestjs-crud/core/query` subpath. A new adapter follows this exact shape.
+- **Config-object ctors at every boundary**: translator and each piece take a single `config` object (`{ entityColumnsHash, entityHasDeleteColumn, onBadRequest, joinResolver, ... }`) — no service-locator casts, no backrefs from pieces to services. The D-05b SQLi guard (`joinResolver.getAllowedColumnsFor` + throwing `onBadRequest`) concentrates in `QueryComposer`'s sort branch.
+- **MikroORM em is a thunk, never a captured field**: `MikroOrmFetchHelper` receives `getEm: () => EntityManager` and calls `this.getEm()` fresh per method — never caches it. Caching `em` across calls reintroduces cross-request identity-map pollution that MikroORM's request-scope lifecycle is designed to prevent. Applies to any future MikroORM subclass or helper.
 - **Metadata-driven**: All route configuration flows through `Reflect.defineMetadata`. The reflection helper `R` (in `packages/core/src/crud/reflection.helper.ts`) centralizes all metadata access. Constants are in `packages/core/src/constants.ts`.
 - **Swagger is optional**: `safeRequire` gracefully skips Swagger setup if `@nestjs/swagger` is not installed.
