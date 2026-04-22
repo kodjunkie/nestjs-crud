@@ -472,4 +472,43 @@ describe('TypeOrmQueryTranslator', () => {
       expect(() => applyAll({ sort: [{ field: 'ghost.name', order: 'ASC' }] })).toThrow(BadRequestException);
     });
   });
+
+  describe('count', () => {
+    beforeAll(async () => {
+      await repo.clear();
+      await repo.save([
+        { name: 'alpha', age: 20, status: 'active', email: 'a@x', relationId: null },
+        { name: 'alpha', age: 21, status: 'active', email: 'b@x', relationId: null },
+        { name: 'beta', age: 30, status: 'inactive', email: 'c@x', relationId: null },
+      ] as any);
+    });
+
+    afterAll(async () => {
+      await repo.clear();
+    });
+
+    it('returns total row count for unfiltered qb', async () => {
+      const qb = repo.createQueryBuilder('TranslatorEntity');
+      const total = await translator.count(qb);
+      const rows = await qb.getMany();
+      expect(total).toBe(rows.length);
+      expect(total).toBe(3);
+    });
+
+    it('returns filtered count when WHERE from buildWhere is applied', async () => {
+      const where = translator.buildWhere({ name: { $eq: 'alpha' } } as any);
+      const qb = repo.createQueryBuilder('TranslatorEntity');
+      if (where) qb.andWhere(where);
+      const total = await translator.count(qb);
+      expect(total).toBe(2);
+    });
+
+    it('returns 0 for a zero-match WHERE', async () => {
+      const where = translator.buildWhere({ name: { $eq: '__nope__' } } as any);
+      const qb = repo.createQueryBuilder('TranslatorEntity');
+      if (where) qb.andWhere(where);
+      const total = await translator.count(qb);
+      expect(total).toBe(0);
+    });
+  });
 });
