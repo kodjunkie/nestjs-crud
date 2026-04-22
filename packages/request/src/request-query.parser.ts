@@ -144,8 +144,28 @@ export class RequestQueryParser implements ParsedRequestParams {
     return this;
   }
 
-  setAuthPersist(persist: ObjectLiteral = {}) {
+  setAuthPersist(
+    persist: ObjectLiteral = {},
+    entityColumnsHash?: ObjectLiteral,
+    logger?: { warn?: (msg: string) => void },
+  ) {
     this.authPersist = persist || /* istanbul ignore next */ {};
+
+    // SEC-02: runtime key validation — throws on previously-silent typos.
+    if (entityColumnsHash && persist) {
+      const invalidKeys = Object.keys(persist).filter((k) => !(k in entityColumnsHash));
+
+      if (invalidKeys.length > 0) {
+        // D-05 logger.warn sanitization: emit KEY NAMES ONLY. Keys come from the
+        // consumer's @CrudAuth decorator (their typos), not end-user request bodies.
+        // DO NOT interpolate the `persist` object — that contains runtime persist
+        // values (tenant IDs, user IDs) supplied by the auth pipeline. Those are PII.
+        logger?.warn?.(`@CrudAuth persist: invalid key(s) "${invalidKeys.join('", "')}"`);
+        throw new RequestQueryException(
+          `@CrudAuth persist: invalid key(s) "${invalidKeys.join('", "')}" — not columns on the target entity`,
+        );
+      }
+    }
   }
 
   setClassTransformOptions(options: ClassTransformOptions = {}) {
