@@ -13,9 +13,10 @@ import { PrismaQueryComposer } from './query/prisma-query-composer';
 import { PrismaWhereBuilder } from './query/prisma-where-builder';
 
 // TYPES-01 debt: Prisma client delegate types are model-specific structural — adapters pin `any` at the piece boundary and carry forward.
-export class PrismaQueryTranslator<T extends Record<string, unknown>>
-  implements QueryTranslator<any, Record<string, any>>
-{
+export class PrismaQueryTranslator<T extends Record<string, unknown>> implements QueryTranslator<
+  any,
+  Record<string, any>
+> {
   private readonly whereBuilder: PrismaWhereBuilder;
 
   private readonly queryComposer: PrismaQueryComposer;
@@ -48,12 +49,12 @@ export class PrismaQueryTranslator<T extends Record<string, unknown>>
     });
   }
 
-  public buildWhere(_search: SCondition): Record<string, any> | undefined {
-    throw new Error('not implemented — Plan 02');
+  public buildWhere(search: SCondition): Record<string, any> | undefined {
+    return this.whereBuilder.build(search);
   }
 
-  public applyToQuery(_q: any, _parsed: ParsedRequestParams, _options: CrudRequestOptions): any {
-    throw new Error('not implemented — Plan 03');
+  public applyToQuery(q: any, parsed: ParsedRequestParams, options: CrudRequestOptions): any {
+    return this.queryComposer.applyToQuery(q, parsed, options);
   }
 
   public newQuery(select?: string[]): any {
