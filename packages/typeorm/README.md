@@ -62,3 +62,11 @@ export class CompaniesController implements CrudController<Company> {
   constructor(public service: CompaniesService) {}
 }
 ```
+
+## Caching
+
+See the [Caching guide](https://github.com/kodjunkie/nestjs-crud/wiki/Caching) on the project Wiki for:
+
+- Wiring TypeORM `DataSource({ cache: ... })` (Redis, database table, or in-memory).
+- Using `@Crud({ query: { cache: <ttl-ms> } })` per controller.
+- Understanding `CrudCacheNotConfiguredError` (v2.0.0) and how to fix it.
