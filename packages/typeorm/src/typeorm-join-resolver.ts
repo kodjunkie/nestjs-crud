@@ -39,7 +39,6 @@ export class TypeOrmJoinResolver<T> implements JoinResolver<SelectQueryBuilder<T
     const eagerJoins: Record<string, boolean> = {};
 
     for (let i = 0; i < allowedJoins.length; i++) {
-      /* istanbul ignore else */
       if (joinOptions[allowedJoins[i]].eager) {
         const cond = (joins || []).find((j) => j && j.field === allowedJoins[i]) || {
           field: allowedJoins[i],
@@ -51,7 +50,6 @@ export class TypeOrmJoinResolver<T> implements JoinResolver<SelectQueryBuilder<T
 
     if (isArrayFull(joins)) {
       for (let i = 0; i < joins.length; i++) {
-        /* istanbul ignore else */
         if (!eagerJoins[joins[i].field]) {
           this.setJoinInternal(joins[i], joinOptions, query);
         }
@@ -116,7 +114,8 @@ export class TypeOrmJoinResolver<T> implements JoinResolver<SelectQueryBuilder<T
               name = propertyName;
 
               if (i !== fields.length - 1) {
-                parentPath = !parentPath ? propertyName : /* istanbul ignore next */ `${parentPath}.${propertyName}`;
+                /* istanbul ignore next -- unreachable with current fixtures: requires a >2-segment dotted relation path (e.g. `a.b.c`); existing OneToMany chain in fixtures tops out at 2 segments */
+                parentPath = !parentPath ? propertyName : `${parentPath}.${propertyName}`;
               }
 
               return {
@@ -139,7 +138,6 @@ export class TypeOrmJoinResolver<T> implements JoinResolver<SelectQueryBuilder<T
           if (!path && parentPath) {
             const parentAllowedRelation = this.entityRelationsHash.get(parentPath);
 
-            /* istanbul ignore next */
             if (parentAllowedRelation) {
               path = parentAllowedRelation.alias ? `${parentAllowedRelation.alias}.${name}` : field;
             }
@@ -179,8 +177,7 @@ export class TypeOrmJoinResolver<T> implements JoinResolver<SelectQueryBuilder<T
 
       return null;
     } catch (_) {
-      // TODO(COVERAGE-01): surface these errors — swallowing with null hides metadata problems
-      /* istanbul ignore next */
+      /* istanbul ignore next -- TODO Phase 11 followup: surface metadata errors via `onBadRequest` instead of swallowing (refactor scope deferred to keep Plan 05 atomic) */
       return null;
     }
   }
@@ -219,9 +216,8 @@ export class TypeOrmJoinResolver<T> implements JoinResolver<SelectQueryBuilder<T
   }
 
   private getEntityColumns(entityMetadata: EntityMetadata): { columns: string[]; primaryColumns: string[] } {
-    const columns = entityMetadata.columns.map((prop) => prop.propertyPath) || /* istanbul ignore next */ [];
-    const primaryColumns =
-      entityMetadata.primaryColumns.map((prop) => prop.propertyPath) || /* istanbul ignore next */ [];
+    const columns = entityMetadata.columns.map((prop) => prop.propertyPath);
+    const primaryColumns = entityMetadata.primaryColumns.map((prop) => prop.propertyPath);
 
     return { columns, primaryColumns };
   }

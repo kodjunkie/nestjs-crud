@@ -349,4 +349,67 @@ describe('TypeOrmJoinResolver', () => {
       expect(cols.size).toBe(0);
     });
   });
+
+  // ---------------------------------------------------------------------------
+  // COVERAGE-01 D-17 pragma sweep — explicit branch coverage for sites where
+  // pragmas were removed in Plan 05 Task 3. (Existing tests above also exercise
+  // these branches; the cases below pin the contract.)
+  // ---------------------------------------------------------------------------
+  describe('applyJoins — eager-flag branch coverage (L42 sweep)', () => {
+    it('skips the eager auto-add path for non-eager joinOptions', () => {
+      const builder = qb();
+      // joinOptions has `profile` but eager is unset/falsy — the eager loop
+      // must NOT auto-seed `profile`; only the client-requested join below adds it.
+      resolver.applyJoins(builder, [], { profile: { eager: false }, projects: { eager: false } });
+      expect(builder.expressionMap.joinAttributes).toHaveLength(0);
+    });
+
+    it('only the eager-flagged option is auto-added when mixed with non-eager', () => {
+      const builder = qb();
+      resolver.applyJoins(builder, [], { profile: { eager: true }, projects: { eager: false } });
+      expect(joinAliases(builder)).toEqual(['profile']);
+    });
+  });
+
+  describe('applyJoins — !eagerJoins[field] branch coverage (L54 sweep)', () => {
+    it('client-requested join is applied when no eager joins exist', () => {
+      const builder = qb();
+      resolver.applyJoins(builder, [{ field: 'profile' }], { profile: {} });
+      expect(joinAliases(builder)).toEqual(['profile']);
+    });
+
+    it('client-requested join skipped when same field was already eager-loaded', () => {
+      const builder = qb();
+      // `profile` is eager AND in client joins — must appear exactly once.
+      resolver.applyJoins(builder, [{ field: 'profile' }], { profile: { eager: true } });
+      expect(joinAliases(builder).filter((a) => a === 'profile')).toHaveLength(1);
+    });
+  });
+
+  describe('applyJoins — parentAllowedRelation truthy branch coverage (L142 sweep)', () => {
+    it('nested join with seeded parent resolves path via parentAllowedRelation cache hit', () => {
+      const builder = qb();
+      // Seeding `profile` first populates entityRelationsHash; then the nested
+      // `profile.licenses` resolution must hit the truthy `parentAllowedRelation`
+      // branch (not the unseeded-parent error path).
+      resolver.applyJoins(builder, [{ field: 'profile' }, { field: 'profile.licenses' }], {
+        profile: {},
+        'profile.licenses': {},
+      });
+      const aliases = joinAliases(builder);
+      expect(aliases).toContain('profile');
+      expect(aliases).toContain('licenses');
+    });
+
+    it('nested join with seeded parent + alias propagates parent alias into nested path', () => {
+      const builder = qb();
+      resolver.applyJoins(builder, [{ field: 'profile' }, { field: 'profile.licenses' }], {
+        profile: { alias: 'prof' },
+        'profile.licenses': {},
+      });
+      const aliases = joinAliases(builder);
+      expect(aliases).toContain('prof');
+      expect(aliases).toContain('licenses');
+    });
+  });
 });
