@@ -131,6 +131,37 @@ export class TypeOrmQueryTranslator<T extends ObjectLiteral> implements QueryTra
     return qb;
   }
 
+  /**
+   * Find one entity or invoke `onNotFound`. Absorbed from `TypeOrmCrudService.getOneOrFail`
+   * in Phase 5 Plan 06.5 — centralizes the shallow-vs-full query branch that previously
+   * straddled service + translator.
+   *
+   * @since 2.0.0
+   */
+  public async findOneOrFail(
+    parsed: ParsedRequestParams,
+    options: CrudRequestOptions,
+    hooks: { shallow?: boolean; withDeleted?: boolean; onNotFound: () => void },
+  ): Promise<T> {
+    const { shallow = false, withDeleted = false, onNotFound } = hooks;
+    const builder = shallow
+      ? this.repo.createQueryBuilder(this.alias)
+      : this.applyToQuery(this.repo.createQueryBuilder(this.alias), parsed, options);
+
+    if (shallow) {
+      const where = this.buildWhere(parsed.search);
+      if (where) builder.andWhere(where);
+    }
+
+    const found = withDeleted ? await builder.withDeleted().getOne() : await builder.getOne();
+
+    if (!found) {
+      onNotFound();
+    }
+
+    return found as T;
+  }
+
   private get alias(): string {
     return this.repo.metadata.targetName;
   }
