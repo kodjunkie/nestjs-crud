@@ -25,11 +25,9 @@ export function getSelect(
       ? parsed.fields.filter((field) => allowed.some((col) => field === col))
       : allowed;
   const select = new Set(
-    [
-      ...(options.persist && options.persist.length ? options.persist : []),
-      ...columns,
-      ...entityPrimaryColumns,
-    ].map((col) => `${alias}.${col}`),
+    [...(options.persist && options.persist.length ? options.persist : []), ...columns, ...entityPrimaryColumns].map(
+      (col) => `${alias}.${col}`,
+    ),
   );
   return Array.from(select);
 }

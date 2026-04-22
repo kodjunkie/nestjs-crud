@@ -7,8 +7,7 @@ import { JrLicense, JrProfile, JrProject, JrTask, JrUser } from './__fixture__/j
 
 const norm = (s: string): string => s.replace(/\s+/g, ' ').trim();
 
-const joinAliases = (qb: SelectQueryBuilder<any>): string[] =>
-  qb.expressionMap.joinAttributes.map((j) => j.alias.name);
+const joinAliases = (qb: SelectQueryBuilder<any>): string[] => qb.expressionMap.joinAttributes.map((j) => j.alias.name);
 
 const joinMap = (qb: SelectQueryBuilder<any>): Record<string, { relation: string; direction: string }> => {
   const out: Record<string, { relation: string; direction: string }> = {};
@@ -111,11 +110,7 @@ describe('TypeOrmJoinResolver', () => {
 
     it('ignores columns in QueryJoin.select that are not in allowedColumns', () => {
       const builder = qb();
-      resolver.applyJoins(
-        builder,
-        [{ field: 'profile', select: ['name', 'ghost'] }],
-        { profile: { allow: ['name'] } },
-      );
+      resolver.applyJoins(builder, [{ field: 'profile', select: ['name', 'ghost'] }], { profile: { allow: ['name'] } });
       const sql = norm(builder.getQuery());
       expect(sql).toMatch(/"profile"\."name"/);
       expect(sql).not.toMatch(/ghost/);
@@ -139,11 +134,7 @@ describe('TypeOrmJoinResolver', () => {
 
     it('adds joinOption.persist columns to the select list unconditionally', () => {
       const builder = qb();
-      resolver.applyJoins(
-        builder,
-        [{ field: 'profile', select: ['name'] }],
-        { profile: { persist: ['bio'] } },
-      );
+      resolver.applyJoins(builder, [{ field: 'profile', select: ['name'] }], { profile: { persist: ['bio'] } });
       const sql = norm(builder.getQuery());
       expect(sql).toMatch(/"profile"\."bio"/);
       expect(sql).toMatch(/"profile"\."name"/);
@@ -190,11 +181,7 @@ describe('TypeOrmJoinResolver', () => {
 
     it('uses client-provided select list for an eager join when also requested', () => {
       const builder = qb();
-      resolver.applyJoins(
-        builder,
-        [{ field: 'profile', select: ['name'] }],
-        { profile: { eager: true } },
-      );
+      resolver.applyJoins(builder, [{ field: 'profile', select: ['name'] }], { profile: { eager: true } });
       const sql = norm(builder.getQuery());
       expect(sql).toMatch(/"profile"\."name"/);
       expect(sql).not.toMatch(/"profile"\."bio"/);
@@ -202,11 +189,7 @@ describe('TypeOrmJoinResolver', () => {
 
     it('adds multiple eager joins in joinOptions order', () => {
       const builder = qb();
-      resolver.applyJoins(
-        builder,
-        [],
-        { profile: { eager: true }, projects: { eager: true } },
-      );
+      resolver.applyJoins(builder, [], { profile: { eager: true }, projects: { eager: true } });
       expect(joinAliases(builder)).toEqual(['profile', 'projects']);
     });
   });
@@ -217,11 +200,10 @@ describe('TypeOrmJoinResolver', () => {
   describe('applyJoins — nested 1-level', () => {
     it('applies a `profile.licenses` nested join once the parent join is seeded', () => {
       const builder = qb();
-      resolver.applyJoins(
-        builder,
-        [{ field: 'profile' }, { field: 'profile.licenses' }],
-        { profile: {}, 'profile.licenses': {} },
-      );
+      resolver.applyJoins(builder, [{ field: 'profile' }, { field: 'profile.licenses' }], {
+        profile: {},
+        'profile.licenses': {},
+      });
       const aliases = joinAliases(builder);
       expect(aliases).toContain('profile');
       expect(aliases).toContain('licenses');
@@ -229,11 +211,7 @@ describe('TypeOrmJoinResolver', () => {
 
     it('applies nested join via eager parent + eager nested', () => {
       const builder = qb();
-      resolver.applyJoins(
-        builder,
-        [],
-        { profile: { eager: true }, 'profile.licenses': { eager: true } },
-      );
+      resolver.applyJoins(builder, [], { profile: { eager: true }, 'profile.licenses': { eager: true } });
       const aliases = joinAliases(builder);
       expect(aliases).toContain('profile');
       expect(aliases).toContain('licenses');
@@ -241,11 +219,10 @@ describe('TypeOrmJoinResolver', () => {
 
     it('narrows select on nested relation when QueryJoin.select provided', () => {
       const builder = qb();
-      resolver.applyJoins(
-        builder,
-        [{ field: 'profile' }, { field: 'profile.licenses', select: ['code'] }],
-        { profile: {}, 'profile.licenses': {} },
-      );
+      resolver.applyJoins(builder, [{ field: 'profile' }, { field: 'profile.licenses', select: ['code'] }], {
+        profile: {},
+        'profile.licenses': {},
+      });
       const sql = norm(builder.getQuery());
       expect(sql).toMatch(/"licenses"\."code"/);
       expect(sql).toMatch(/"licenses"\."id"/); // primary
@@ -253,11 +230,10 @@ describe('TypeOrmJoinResolver', () => {
 
     it('honors alias on nested join when specified in joinOptions', () => {
       const builder = qb();
-      resolver.applyJoins(
-        builder,
-        [{ field: 'profile' }, { field: 'profile.licenses' }],
-        { profile: {}, 'profile.licenses': { alias: 'lic' } },
-      );
+      resolver.applyJoins(builder, [{ field: 'profile' }, { field: 'profile.licenses' }], {
+        profile: {},
+        'profile.licenses': { alias: 'lic' },
+      });
       expect(joinAliases(builder)).toContain('lic');
     });
 
@@ -266,13 +242,7 @@ describe('TypeOrmJoinResolver', () => {
       // undefined (parent not in entityRelationsHash). This is a known brittleness of the
       // pre-refactor setJoin that the VERBATIM port preserves (see COVERAGE-01 / Phase 5).
       const builder = qb();
-      expect(() =>
-        resolver.applyJoins(
-          builder,
-          [{ field: 'profile.licenses' }],
-          { 'profile.licenses': {} },
-        ),
-      ).toThrow();
+      expect(() => resolver.applyJoins(builder, [{ field: 'profile.licenses' }], { 'profile.licenses': {} })).toThrow();
       expect(onBadRequest).not.toHaveBeenCalled();
     });
   });
@@ -283,11 +253,10 @@ describe('TypeOrmJoinResolver', () => {
   describe('applyJoins — nested 2-level', () => {
     it('applies `projects.tasks` chain given parent join seeded', () => {
       const builder = qb();
-      resolver.applyJoins(
-        builder,
-        [{ field: 'projects' }, { field: 'projects.tasks' }],
-        { projects: {}, 'projects.tasks': {} },
-      );
+      resolver.applyJoins(builder, [{ field: 'projects' }, { field: 'projects.tasks' }], {
+        projects: {},
+        'projects.tasks': {},
+      });
       const aliases = joinAliases(builder);
       expect(aliases).toContain('projects');
       expect(aliases).toContain('tasks');
@@ -295,22 +264,17 @@ describe('TypeOrmJoinResolver', () => {
 
     it('produces both joins in client-requested order', () => {
       const builder = qb();
-      resolver.applyJoins(
-        builder,
-        [{ field: 'projects' }, { field: 'projects.tasks' }],
-        { projects: {}, 'projects.tasks': {} },
-      );
+      resolver.applyJoins(builder, [{ field: 'projects' }, { field: 'projects.tasks' }], {
+        projects: {},
+        'projects.tasks': {},
+      });
       const aliases = joinAliases(builder);
       expect(aliases.indexOf('projects')).toBeLessThan(aliases.indexOf('tasks'));
     });
 
     it('applies eager chain without client input', () => {
       const builder = qb();
-      resolver.applyJoins(
-        builder,
-        [],
-        { projects: { eager: true }, 'projects.tasks': { eager: true } },
-      );
+      resolver.applyJoins(builder, [], { projects: { eager: true }, 'projects.tasks': { eager: true } });
       const aliases = joinAliases(builder);
       expect(aliases).toContain('projects');
       expect(aliases).toContain('tasks');
