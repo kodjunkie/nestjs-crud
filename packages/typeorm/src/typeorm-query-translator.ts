@@ -132,6 +132,16 @@ export class TypeOrmQueryTranslator<T extends ObjectLiteral> implements QueryTra
   }
 
   /**
+   * Execute a COUNT against the composed query. Delegates to the stable
+   * TypeORM public API `SelectQueryBuilder.getCount()` (Phase 6 ARCH-05 D-01).
+   *
+   * @since 2.0.0
+   */
+  public count(query: SelectQueryBuilder<T>): Promise<number> {
+    return query.getCount();
+  }
+
+  /**
    * Find one entity or invoke `onNotFound`. Absorbed from `TypeOrmCrudService.getOneOrFail`
    * in Phase 5 Plan 06.5 — centralizes the shallow-vs-full query branch that previously
    * straddled service + translator.
