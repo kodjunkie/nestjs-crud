@@ -110,7 +110,11 @@ export class MikroOrmJoinResolver implements JoinResolver<any> {
 
       for (const [colName, colProp] of Object.entries(targetProps)) {
         if ((colProp as any).persist === false) continue;
-        if ((colProp as any).kind && typeof (colProp as any).kind === 'string') continue;
+        // MikroORM v7 sets `kind: 'scalar'` on scalar props too; only skip
+        // relation kinds (m:1, 1:m, m:n, 1:1, embedded). Treat 'scalar' as a
+        // regular column for allowlist purposes (D-05b dotted-path gate).
+        const kind = (colProp as any).kind;
+        if (kind && typeof kind === 'string' && kind !== 'scalar') continue;
         columns.push(colName);
         if ((colProp as any).primary) {
           primaryColumns.push(colName);
