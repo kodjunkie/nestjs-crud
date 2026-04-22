@@ -312,10 +312,7 @@ export class MikroOrmCrudService<T extends object> extends CrudService<T> {
     });
   }
 
-  protected prepareEntityBeforeSave(
-    dto: T | Partial<T>,
-    parsed: CrudRequest['parsed'],
-  ): T | undefined {
+  protected prepareEntityBeforeSave(dto: T | Partial<T>, parsed: CrudRequest['parsed']): T | undefined {
     return prepareEntityBeforeSaveUtil(dto, parsed, this.entityClass as ClassType<T>);
   }
 
