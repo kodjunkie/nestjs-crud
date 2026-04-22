@@ -4,7 +4,13 @@ import globals from 'globals';
 
 export default tseslint.config(
   {
-    ignores: ['**/lib/**', '**/node_modules/**', '.mrepo/**', 'coverage/**'],
+    ignores: [
+      '**/lib/**',
+      '**/node_modules/**',
+      '.mrepo/**',
+      'coverage/**',
+      'packages/typeorm/test/__fixture__/app/**',
+    ],
   },
   ...tseslint.configs.recommended,
   {
