@@ -37,7 +37,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        adapter: [typeorm, drizzle, mikro-orm]
+        adapter: [typeorm, drizzle, mikro-orm, prisma]
         db: [postgres, mysql]
     env:
       COMPOSE_FILE: ./compose.yml
