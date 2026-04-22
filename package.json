@@ -19,7 +19,7 @@
     "test:mysql": "yarn db:prepare:typeorm:mysql && TYPEORM_CONNECTION=mysql yarn test",
     "test:mikro-orm": "NODE_OPTIONS=--experimental-vm-modules npx jest --config packages/mikro-orm/jest.config.js",
     "start:typeorm": "cd examples/typeorm-demo && yarn start:dev",
-    "db:cli:typeorm": "cd ./packages/typeorm/test/__fixture__/app && npx ts-node --project tsconfig.cli.json -r tsconfig-paths/register ../../../../../node_modules/typeorm/cli.js",
+    "db:cli:typeorm": "cd ./packages/typeorm/test/__fixture__/app && node \"$(pwd)/../../../../../node_modules/ts-node/dist/bin.js\" --project \"$(pwd)/tsconfig.cli.json\" -r tsconfig-paths/register \"$(pwd)/../../../../../node_modules/typeorm/cli.js\"",
     "db:sync:typeorm": "yarn db:cli:typeorm schema:sync",
     "db:drop:typeorm": "yarn db:cli:typeorm schema:drop",
     "db:seeds:typeorm": "yarn db:cli:typeorm migration:run",
