@@ -6,6 +6,7 @@ import { Table, Column, SQL, and, eq, sql, getTableColumns, getTableName } from 
 import { DrizzleJoinResolver } from './drizzle-join-resolver';
 import { DrizzleQueryTranslator } from './drizzle-query-translator';
 import { DrizzleRelationsConfig } from './interfaces';
+import { DrizzleClient } from './interfaces/drizzle-client.interface';
 
 export class DrizzleCrudService<T extends Record<string, unknown>> extends CrudService<T> {
   protected dbDialect: string;
@@ -24,17 +25,8 @@ export class DrizzleCrudService<T extends Record<string, unknown>> extends CrudS
 
   protected readonly joinResolver: DrizzleJoinResolver;
 
-  /**
-   * @deprecated Since v1.0.2. The `db` constructor parameter is typed `any`
-   * in v1.x. In v2.0 it will require a typed Drizzle database client
-   * (see v2 TYPES-01). Consumer subclasses that rely on the `any`
-   * permissiveness will need to migrate.
-   *
-   * Migration guide:
-   * {@link https://github.com/kodjunkie/nestjs-crud/wiki/v2-migration}
-   */
   constructor(
-    protected db: any,
+    protected db: DrizzleClient,
     protected table: Table,
     protected relationsConfig: DrizzleRelationsConfig = {},
   ) {
@@ -118,7 +110,7 @@ export class DrizzleCrudService<T extends Record<string, unknown>> extends CrudS
       this.throwBadRequestException('Empty data. Nothing to save.');
     }
 
-    const results = await this.db.transaction(async (tx: any) => {
+    const results = await this.db.transaction(async (tx: DrizzleClient) => {
       const inserted: T[] = [];
       for (let i = 0; i < bulk.length; i += 50) {
         const chunk = bulk.slice(i, i + 50);
@@ -402,9 +394,9 @@ export class DrizzleCrudService<T extends Record<string, unknown>> extends CrudS
   // === PRIVATE HELPERS ===
 
   private detectDialect() {
-    const dialect = (this.db as any).dialect;
-    if (dialect && typeof dialect === 'object' && 'name' in dialect) {
-      this.dbDialect = dialect.name;
+    const dialect = this.db.dialect;
+    if (dialect && typeof dialect === 'object' && 'name' in (dialect as object)) {
+      this.dbDialect = (dialect as Record<string, unknown>).name as string;
     } else if (this.db.constructor?.name?.toLowerCase().includes('pg')) {
       this.dbDialect = 'pg';
     } else if (this.db.constructor?.name?.toLowerCase().includes('mysql')) {
