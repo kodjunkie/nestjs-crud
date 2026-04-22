@@ -48,5 +48,11 @@
   },
   "scripts": {
     "build": "npx tsc -b"
+  },
+  "peerDependencies": {
+    "@nestjs-crud/core": "^2.0.0",
+    "@nestjs/common": "^10.0.0",
+    "@nestjs/typeorm": "^10.0.0",
+    "typeorm": "^0.3.0"
   }
 }
