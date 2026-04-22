@@ -20,19 +20,33 @@ export interface PrismaFetchHelperConfig {
 export class PrismaFetchHelper implements FetchHelper<any> {
   constructor(private readonly config: PrismaFetchHelperConfig) {}
 
-  public async count(_qb: any): Promise<number> {
-    throw new Error('not implemented — Plan 04');
+  public async count(qb: any): Promise<number> {
+    const delegate = this.config.getDelegate();
+    return delegate.count({ where: qb.where });
   }
 
-  public async findOneOrFail<R = unknown>(_qb: any, _opts: FetchHelperFindOneOpts): Promise<R> {
-    throw new Error('not implemented — Plan 04');
+  public async findOneOrFail<R = unknown>(qb: any, opts: FetchHelperFindOneOpts): Promise<R> {
+    const delegate = this.config.getDelegate();
+    const { include, select, where } = qb;
+    const args: any = { where };
+    if (select) {
+      args.select = select;
+    } else if (include) {
+      args.include = include;
+    }
+    const row = await delegate.findFirst(args);
+    if (!row) {
+      (opts.onNotFound ?? this.config.onNotFound)('');
+    }
+    return row as R;
   }
 
   public async executeMany<R = unknown>(
-    _qb: any,
+    qb: any,
     _parsed: ParsedRequestParams,
     _options: CrudRequestOptions,
   ): Promise<R[]> {
-    throw new Error('not implemented — Plan 04');
+    const delegate = this.config.getDelegate();
+    return delegate.findMany(qb) as unknown as R[];
   }
 }

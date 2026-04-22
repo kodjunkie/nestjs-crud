@@ -20,7 +20,11 @@ export interface PrismaQueryTranslatorConfig<_T> {
 }
 
 export interface PrismaClientLike {
-  $transaction: <R>(fn: (tx: any) => Promise<R>, opts?: { isolationLevel?: string }) => Promise<R>;
+  // Interactive (callback) form — SEC-03 write paths
+  $transaction<R>(fn: (tx: any) => Promise<R>, opts?: { isolationLevel?: string }): Promise<R>;
+
+  // Array form — D-03 createMany (C3: native createMany returns { count } only)
+  $transaction<R>(ops: Promise<R>[]): Promise<R[]>;
 
   [model: string]: any;
 }

@@ -62,8 +62,8 @@ export class PrismaQueryTranslator<T extends Record<string, unknown>> implements
     return select?.length ? { select: Object.fromEntries(select.map((c) => [c, true])) } : {};
   }
 
-  public async count(_q: any): Promise<number> {
-    throw new Error('not implemented — Plan 04');
+  public async count(q: any): Promise<number> {
+    return (this.prisma as any)[this.modelName].count({ where: q.where });
   }
 
   /** SEC-03 scope-clone hook (Plan 04 will implement). */
