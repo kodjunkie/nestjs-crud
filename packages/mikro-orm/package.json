@@ -48,5 +48,8 @@
     "@nestjs-crud/util": "^1.0.0",
     "@nestjs/common": ">=10.0.0"
   },
-  "gitHead": "6f5fb9b83cde621265e4268c904c6ee98ae89142"
+  "gitHead": "6f5fb9b83cde621265e4268c904c6ee98ae89142",
+  "devDependencies": {
+    "@mikro-orm/nestjs": "^7"
+  }
 }

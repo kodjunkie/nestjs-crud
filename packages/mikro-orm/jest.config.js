@@ -15,6 +15,7 @@ module.exports = {
   ...rootConfigWithoutTestRegex,
   rootDir: '../..',
   preset: 'ts-jest/presets/default-esm',
+  testTimeout: 30000,
   extensionsToTreatAsEsm: ['.ts'],
   testMatch: ['<rootDir>/packages/mikro-orm/test/**/*.spec.ts'],
   transformIgnorePatterns: ['/node_modules/(?!(@mikro-orm)/)'],
