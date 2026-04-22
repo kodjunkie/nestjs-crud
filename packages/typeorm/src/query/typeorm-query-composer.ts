@@ -69,10 +69,27 @@ export class TypeOrmQueryComposer<T extends ObjectLiteral> implements QueryCompo
     const where = this.whereBuilder.build(parsed.search);
     if (where) query.andWhere(where);
 
-    // 3. Joins (eager + requested)
+    // 3. Joins (eager + requested) — D-02/D-03 amended: strategy switch.
     const joinOptions = queryOptions.join || {};
     if (objKeys(joinOptions).length) {
-      this.joinResolver.applyJoins(query, parsed.join || [], joinOptions);
+      const strategy = queryOptions.relationLoadStrategy ?? 'join';
+      if (strategy === 'query') {
+        // PERF-01 split-query path: translate our JoinOptions + requested joins
+        // into FindOptionsRelations<T> and let TypeORM emit per-relation
+        // queries via setFindOptions. The manual joinResolver.applyJoins is
+        // bypassed here because relationLoadStrategy is honored by TypeORM
+        // *only* through setFindOptions (verified against SelectQueryBuilder
+        // source — there is no public setRelationLoadStrategy method).
+        const relations = this.buildRelationsTree(parsed.join || [], joinOptions);
+        if (objKeys(relations).length) {
+          query.setFindOptions({
+            relations: relations as any,
+            relationLoadStrategy: 'query',
+          });
+        }
+      } else {
+        this.joinResolver.applyJoins(query, parsed.join || [], joinOptions);
+      }
     }
 
     // 4. Soft-delete
@@ -155,6 +172,61 @@ export class TypeOrmQueryComposer<T extends ObjectLiteral> implements QueryCompo
     }
 
     return params;
+  }
+
+  /**
+   * Translate our JoinOptions + requested joins into TypeORM's
+   * `FindOptionsRelations<T>` tree for the `relationLoadStrategy: 'query'`
+   * branch (PERF-01 / Phase 10 D-02/D-03 amended).
+   *
+   * Server allowlist (`joinOptions` from `@Crud()`) is the upper bound — only
+   * relations declared there are eligible. Within that allowlist we union:
+   *   - eager-flagged relations (always loaded), and
+   *   - request-side `parsed.join` fields whose top-level segment is in the
+   *     allowlist.
+   *
+   * Dotted paths like `'company.projects'` produce nested objects:
+   *   `{ company: { projects: true } }`.
+   *
+   * @internal — never exported from the package barrel; consumed only by
+   * `applyToQuery`'s strategy-aware join branch.
+   */
+  private buildRelationsTree(
+    requestedJoins: NonNullable<ParsedRequestParams['join']>,
+    joinOptions: NonNullable<CrudRequestOptions['query']>['join'],
+  ): Record<string, any> {
+    const allowedKeys = new Set(objKeys(joinOptions || {}));
+    const requestedFields = (requestedJoins || []).map((j) => j.field);
+
+    const eagerKeys = objKeys(joinOptions || {}).filter((k) => (joinOptions as any)?.[k]?.eager === true);
+
+    const effective = new Set<string>([
+      ...eagerKeys,
+      ...requestedFields.filter((f) => {
+        // Allow if the full dotted path OR its top-level segment is in allowlist.
+        if (allowedKeys.has(f)) return true;
+        const top = f.split('.')[0];
+        return allowedKeys.has(top);
+      }),
+    ]);
+
+    const tree: Record<string, any> = {};
+    for (const path of effective) {
+      const segments = path.split('.');
+      let cursor = tree;
+      for (let i = 0; i < segments.length; i++) {
+        const seg = segments[i];
+        const isLeaf = i === segments.length - 1;
+        if (isLeaf) {
+          // Preserve any deeper nesting already set by another path.
+          cursor[seg] = cursor[seg] && typeof cursor[seg] === 'object' ? cursor[seg] : true;
+        } else {
+          if (!cursor[seg] || cursor[seg] === true) cursor[seg] = {};
+          cursor = cursor[seg];
+        }
+      }
+    }
+    return tree;
   }
 
   private getSortFieldWithAlias(field: string): string {
