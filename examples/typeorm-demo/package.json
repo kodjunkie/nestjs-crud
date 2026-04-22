@@ -1,0 +1,35 @@
+{
+  "name": "typeorm-demo",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Standalone runnable demo of @nestjs-crud/typeorm",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/main.js",
+    "start:dev": "ts-node -r tsconfig-paths/register src/main.ts",
+    "start:watch": "nodemon --watch src -e ts --exec \"ts-node -r tsconfig-paths/register src/main.ts\""
+  },
+  "dependencies": {
+    "@nestjs-crud/core": "file:../../packages/core",
+    "@nestjs-crud/request": "file:../../packages/request",
+    "@nestjs-crud/typeorm": "file:../../packages/typeorm",
+    "@nestjs-crud/util": "file:../../packages/util",
+    "@nestjs/common": "^11.1.19",
+    "@nestjs/core": "^11.1.19",
+    "@nestjs/platform-express": "^11.1.19",
+    "@nestjs/typeorm": "^11.0.1",
+    "class-transformer": "0.5.1",
+    "class-validator": "0.15.1",
+    "pg": "8.20.0",
+    "reflect-metadata": "0.2.2",
+    "rxjs": "7.8.2",
+    "typeorm": "^0.3.28"
+  },
+  "devDependencies": {
+    "@types/node": "^22.19.17",
+    "nodemon": "3.1.14",
+    "ts-node": "10.9.2",
+    "tsconfig-paths": "4.2.0",
+    "typescript": "5.9.3"
+  }
+}
