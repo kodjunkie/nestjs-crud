@@ -5,7 +5,6 @@ import type { User } from './user.entity';
 
 @Entity({ tableName: 'companies' })
 export class Company {
-
   @PrimaryKey()
   id!: number;
 
@@ -23,5 +22,4 @@ export class Company {
 
   @OneToMany('Project', 'company')
   projects = new Collection<Project>(this);
-
 }

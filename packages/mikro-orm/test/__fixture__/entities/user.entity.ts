@@ -4,7 +4,6 @@ import { Company } from './company.entity';
 
 @Entity({ tableName: 'users' })
 export class User {
-
   @PrimaryKey()
   id!: number;
 
@@ -32,5 +31,4 @@ export class User {
 
   @Property({ fieldName: 'deleted_at', nullable: true })
   deletedAt?: Date | null;
-
 }

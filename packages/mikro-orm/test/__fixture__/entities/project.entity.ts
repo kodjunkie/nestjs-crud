@@ -4,7 +4,6 @@ import { Company } from './company.entity';
 
 @Entity({ tableName: 'projects' })
 export class Project {
-
   @PrimaryKey()
   id!: number;
 
@@ -19,5 +18,4 @@ export class Project {
 
   @Property({ default: true })
   isActive!: boolean;
-
 }
