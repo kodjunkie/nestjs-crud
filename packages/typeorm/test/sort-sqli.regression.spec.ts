@@ -1,18 +1,20 @@
 /**
  * @description D-05b regression: proves dotted-path SQLi vector is REAL on dev
  * HEAD post-commits 7cb3534 (denylist removal) + 31d2edf (mapSort raw-field
- * assert). Expected to FAIL on current HEAD and FLIP GREEN after Wave 1
- * mapSort allowlist tightening lands in TypeOrmQueryTranslator.applyToQuery.
+ * assert). System-Under-Test retargeted in Phase 6.2 Plan 02 onto
+ * `TypeOrmQueryComposer` — D-05b SQLi invariant now concentrates there (D-06).
  *
  * Closes v1→v2 regression from denylist removal + mapSort raw-field decision.
  * See: .planning/phases/05-arch-04-slim-typeormcrudservice/05-CONTEXT.md D-05..D-05b
+ *      .planning/phases/06.2-... 06.2-CONTEXT.md D-05..D-06
  */
 import { BadRequestException } from '@nestjs/common';
 import { JoinResolver } from '@nestjs-crud/core';
-import { DataSource, ObjectLiteral, Repository, SelectQueryBuilder } from 'typeorm';
+import { Brackets, DataSource, ObjectLiteral, Repository, SelectQueryBuilder } from 'typeorm';
 
+import { TypeOrmQueryComposer } from '../src/query/typeorm-query-composer';
+import { TypeOrmWhereBuilder } from '../src/query/typeorm-where-builder';
 import { TypeOrmJoinResolver } from '../src/typeorm-join-resolver';
-import { TypeOrmQueryTranslator } from '../src/typeorm-query-translator';
 import { TranslatorEntity, TranslatorRelation } from './__fixture__/translator-entity';
 
 // CONTRACT (PATTERNS.md §5 + input-sanitizer.spec.ts:11-22):
@@ -22,23 +24,32 @@ const throwingOnBadRequest = (msg: string): never => {
   throw new BadRequestException(msg);
 };
 
-const makeTranslator = (
+const makeComposer = (
   repo: Repository<TranslatorEntity>,
   entityColumnsHash: ObjectLiteral,
-): TypeOrmQueryTranslator<TranslatorEntity> => {
+): TypeOrmQueryComposer<TranslatorEntity> => {
   const joinResolver = new TypeOrmJoinResolver<TranslatorEntity>(repo, { onBadRequest: throwingOnBadRequest });
-  return new TypeOrmQueryTranslator<TranslatorEntity>(repo, {
+  const whereBuilder = new TypeOrmWhereBuilder<TranslatorEntity>({
+    repo,
+    entityColumnsHash,
+    onBadRequest: throwingOnBadRequest,
+  });
+  return new TypeOrmQueryComposer<TranslatorEntity>({
+    repo,
     entityColumnsHash,
     entityHasDeleteColumn: true,
     onBadRequest: throwingOnBadRequest,
     joinResolver: joinResolver as JoinResolver<SelectQueryBuilder<TranslatorEntity>>,
+    whereBuilder: whereBuilder as unknown as {
+      build: (search: any) => Brackets;
+    } as any,
   });
 };
 
-describe('mapSort dotted-path SQLi regression (D-05a/D-05b)', () => {
+describe('TypeOrmQueryComposer mapSort dotted-path SQLi regression (D-05a/D-05b)', () => {
   let dataSource: DataSource;
   let repo: Repository<TranslatorEntity>;
-  let translator: TypeOrmQueryTranslator<TranslatorEntity>;
+  let composer: TypeOrmQueryComposer<TranslatorEntity>;
 
   // ≥4 injection vectors — representative dotted-path surfaces that today reach
   // the SQL builder unescaped via `addOrderBy(column)` (TypeORM does not
@@ -68,7 +79,7 @@ describe('mapSort dotted-path SQLi regression (D-05a/D-05b)', () => {
   });
 
   beforeEach(() => {
-    translator = makeTranslator(repo, { id: 'id', name: 'name' });
+    composer = makeComposer(repo, { id: 'id', name: 'name' });
   });
 
   const emptyParsed = {
@@ -98,10 +109,6 @@ describe('mapSort dotted-path SQLi regression (D-05a/D-05b)', () => {
       sort: [{ field, order: 'ASC' as const }],
     };
 
-    // EXPECTED TO FAIL on current dev HEAD: applyToQuery does NOT gate sort
-    // today (only WHERE). Wave 1 plan 03 absorbs mapSort with joinResolver
-    // allowlist, which flips this spec green. Keep assertion stable across
-    // the fix — spec is the contract, not the subject.
-    expect(() => translator.applyToQuery(qb(), parsed, emptyOptions)).toThrow(BadRequestException);
+    expect(() => composer.applyToQuery(qb(), parsed, emptyOptions)).toThrow(BadRequestException);
   });
 });

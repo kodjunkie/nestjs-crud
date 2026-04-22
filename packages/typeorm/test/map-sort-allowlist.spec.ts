@@ -1,10 +1,13 @@
 /**
- * Nyquist-matrix spec for `TypeOrmQueryTranslator.mapSort` allowlist (D-05b
- * mitigation). Single-segment fields assert against `entityColumnsHash`;
- * dotted-path fields assert against `joinResolver.getAllowedColumnsFor(relation)`.
- * Unknown relation OR unknown relation-column throws `BadRequestException`
- * BEFORE the identifier reaches `addOrderBy` (TypeORM does not parameterize
- * column identifiers — the allowlist is the only defense).
+ * Nyquist-matrix spec for dotted-path sort allowlist (D-05b mitigation).
+ * Single-segment fields assert against `entityColumnsHash`; dotted-path fields
+ * assert against `joinResolver.getAllowedColumnsFor(relation)`. Unknown relation
+ * OR unknown relation-column throws `BadRequestException` BEFORE the identifier
+ * reaches `addOrderBy` (TypeORM does not parameterize column identifiers — the
+ * allowlist is the only defense).
+ *
+ * Phase 6.2 Plan 02: SUT retargeted from `TypeOrmQueryTranslator` to
+ * `TypeOrmQueryComposer` per D-06 (D-05b invariant concentrates in composer).
  *
  * Harness contract (PATTERNS.md §5): `onBadRequest` MUST throw. A silent
  * no-op stub would let a miss pass through undetected, masking the bug the
@@ -14,10 +17,11 @@
  */
 import { BadRequestException } from '@nestjs/common';
 import { JoinResolver } from '@nestjs-crud/core';
-import { DataSource, ObjectLiteral, Repository, SelectQueryBuilder } from 'typeorm';
+import { Brackets, DataSource, ObjectLiteral, Repository, SelectQueryBuilder } from 'typeorm';
 
+import { TypeOrmQueryComposer } from '../src/query/typeorm-query-composer';
+import { TypeOrmWhereBuilder } from '../src/query/typeorm-where-builder';
 import { TypeOrmJoinResolver } from '../src/typeorm-join-resolver';
-import { TypeOrmQueryTranslator } from '../src/typeorm-query-translator';
 import { TranslatorEntity, TranslatorRelation } from './__fixture__/translator-entity';
 
 const throwingOnBadRequest = (msg: string): never => {
@@ -43,10 +47,10 @@ const emptyParsed = {
   includeDeleted: 0,
 } as any;
 
-describe('TypeOrmQueryTranslator.mapSort allowlist (D-05b)', () => {
+describe('TypeOrmQueryComposer mapSort allowlist (D-05b)', () => {
   let dataSource: DataSource;
   let repo: Repository<TranslatorEntity>;
-  let translator: TypeOrmQueryTranslator<TranslatorEntity>;
+  let composer: TypeOrmQueryComposer<TranslatorEntity>;
   let joinResolver: TypeOrmJoinResolver<TranslatorEntity>;
 
   const entityColumnsHash: ObjectLiteral = { id: 'id', name: 'name', age: 'age', relationId: 'relationId' };
@@ -73,18 +77,28 @@ describe('TypeOrmQueryTranslator.mapSort allowlist (D-05b)', () => {
     const primeQb = repo.createQueryBuilder('TranslatorEntity');
     joinResolver.applyJoins(primeQb, [], { relation: { eager: true } });
 
-    translator = new TypeOrmQueryTranslator<TranslatorEntity>(repo, {
+    const whereBuilder = new TypeOrmWhereBuilder<TranslatorEntity>({
+      repo,
+      entityColumnsHash,
+      onBadRequest: throwingOnBadRequest,
+    });
+
+    composer = new TypeOrmQueryComposer<TranslatorEntity>({
+      repo,
       entityColumnsHash,
       entityHasDeleteColumn: true,
       onBadRequest: throwingOnBadRequest,
       joinResolver: joinResolver as JoinResolver<SelectQueryBuilder<TranslatorEntity>>,
+      whereBuilder: whereBuilder as unknown as {
+        build: (search: any) => Brackets;
+      } as any,
     });
   });
 
   const qb = (): SelectQueryBuilder<TranslatorEntity> => repo.createQueryBuilder('TranslatorEntity');
 
   const applyWithSort = (field: string): void => {
-    translator.applyToQuery(qb(), { ...emptyParsed, sort: [{ field, order: 'ASC' as const }] }, emptyOptions);
+    composer.applyToQuery(qb(), { ...emptyParsed, sort: [{ field, order: 'ASC' as const }] }, emptyOptions);
   };
 
   describe('single-segment field', () => {
