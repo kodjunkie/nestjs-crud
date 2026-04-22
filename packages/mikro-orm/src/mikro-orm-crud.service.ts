@@ -166,6 +166,7 @@ export class MikroOrmCrudService<T extends object> extends CrudService<T> {
     return entities as unknown as T[];
   }
 
+  // TODO(SEC-03): wrap read-modify-write in em.transactional() — Phase 8 SEC-03
   public async updateOne(req: CrudRequest, dto: T | Partial<T>): Promise<T> {
     const { parsed, options } = req;
     const { allowParamsOverride, returnShallow } = options.routes.updateOneBase;
@@ -190,6 +191,7 @@ export class MikroOrmCrudService<T extends object> extends CrudService<T> {
     return this.getOneOrFail(req);
   }
 
+  // TODO(SEC-03): wrap read-modify-write in em.transactional() — Phase 8 SEC-03
   public async replaceOne(req: CrudRequest, dto: T | Partial<T>): Promise<T> {
     const { parsed, options } = req;
     const { allowParamsOverride, returnShallow } = options.routes.replaceOneBase;
@@ -229,6 +231,7 @@ export class MikroOrmCrudService<T extends object> extends CrudService<T> {
     return this.getOneOrFail(req);
   }
 
+  // TODO(SEC-03): wrap read-modify-write in em.transactional() — Phase 8 SEC-03
   public async deleteOne(req: CrudRequest): Promise<void | T> {
     const { options } = req;
     const { returnDeleted } = options.routes.deleteOneBase;
