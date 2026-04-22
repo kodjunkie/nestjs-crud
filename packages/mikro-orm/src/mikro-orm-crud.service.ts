@@ -6,7 +6,7 @@ import {
   InputSanitizer,
   prepareEntityBeforeSave as prepareEntityBeforeSaveUtil,
 } from '@nestjs-crud/core';
-import { NotFoundException } from '@nestjs/common';
+import { Logger, LoggerService, NotFoundException } from '@nestjs/common';
 import { ClassType, hasLength, isArrayFull, isNil, isObject } from '@nestjs-crud/util';
 import { EntityManager, EntityClass, EntityMetadata, EntityProperty } from '@mikro-orm/core';
 
@@ -29,6 +29,8 @@ export class MikroOrmCrudService<T extends object> extends CrudService<T> {
 
   protected propertiesMap: Record<string, EntityProperty>;
 
+  protected readonly logger: LoggerService;
+
   protected readonly sanitizer: InputSanitizer;
 
   protected translator: MikroOrmQueryTranslator<T>;
@@ -38,8 +40,10 @@ export class MikroOrmCrudService<T extends object> extends CrudService<T> {
   constructor(
     protected em: EntityManager,
     protected entityClass: EntityClass<T>,
+    logger?: LoggerService,
   ) {
     super();
+    this.logger = logger ?? new Logger(MikroOrmCrudService.name);
     this.metadata = this.em.getMetadata().get(this.entityClass);
     this.onInitMapEntityColumns();
     this.detectDialect();
@@ -65,9 +69,14 @@ export class MikroOrmCrudService<T extends object> extends CrudService<T> {
       entityHasDeleteColumn: this.entityHasDeleteColumn,
       softDeleteColumn: this.softDeleteColumn,
       dbDialect: this.dbDialect,
-      onBadRequest: (msg: string) => this.throwBadRequestException(msg),
+      onBadRequest: (msg: string) => {
+        this.logger.warn(`SQLi guard rejected field: ${msg}`);
+        this.throwBadRequestException(msg);
+      },
       joinResolver: this.joinResolver,
     });
+
+    this.logger.debug?.(`CrudService initialized: ${(this.entityClass as any)?.name ?? 'unknown'}`);
   }
 
   public async getMany(req: CrudRequest): Promise<GetManyDefaultResponse<T> | T[]> {
@@ -146,8 +155,18 @@ export class MikroOrmCrudService<T extends object> extends CrudService<T> {
       ? { ...dto, ...paramsFilters, ...parsed.authPersist }
       : { ...dto, ...parsed.authPersist };
 
-    this.em.assign(found as any, toSave as any);
-    await this.em.flush();
+    try {
+      this.em.assign(found as any, toSave as any);
+      await this.em.flush();
+    } catch (err) {
+      // PII GUARD (T-08-08): DB drivers surface SQL + bound params in err.message.
+      // Use err.name in the message and pass err.stack as the LoggerService stack arg.
+      this.logger.error(
+        `CrudService [updateOne] failed: ${err instanceof Error ? err.name : 'UnknownError'}`,
+        err instanceof Error ? err.stack : String(err),
+      );
+      throw err;
+    }
 
     if (returnShallow) {
       return found;
@@ -178,6 +197,12 @@ export class MikroOrmCrudService<T extends object> extends CrudService<T> {
       toReturn = found;
     } catch (error) {
       if (!(error instanceof NotFoundException)) {
+        // PII GUARD (T-08-08): DB drivers surface SQL + bound params in err.message.
+        // Use err.name in the message and pass err.stack as the LoggerService stack arg.
+        this.logger.error(
+          `CrudService [replaceOne] failed: ${error instanceof Error ? error.name : 'UnknownError'}`,
+          error instanceof Error ? error.stack : String(error),
+        );
         throw error;
       }
       const entity = !allowParamsOverride
@@ -207,12 +232,22 @@ export class MikroOrmCrudService<T extends object> extends CrudService<T> {
     const found = await this.getOneOrFail(req, true);
     const toReturn = returnDeleted ? ({ ...found } as T) : undefined;
 
-    if (options.query.softDelete && this.entityHasDeleteColumn && this.softDeleteColumn) {
-      this.em.assign(found as any, { [this.softDeleteColumn]: new Date() } as any);
-      await this.em.flush();
-    } else {
-      this.em.remove(found as any);
-      await this.em.flush();
+    try {
+      if (options.query.softDelete && this.entityHasDeleteColumn && this.softDeleteColumn) {
+        this.em.assign(found as any, { [this.softDeleteColumn]: new Date() } as any);
+        await this.em.flush();
+      } else {
+        this.em.remove(found as any);
+        await this.em.flush();
+      }
+    } catch (err) {
+      // PII GUARD (T-08-08): DB drivers surface SQL + bound params in err.message.
+      // Use err.name in the message and pass err.stack as the LoggerService stack arg.
+      this.logger.error(
+        `CrudService [deleteOne] failed: ${err instanceof Error ? err.name : 'UnknownError'}`,
+        err instanceof Error ? err.stack : String(err),
+      );
+      throw err;
     }
 
     return toReturn;

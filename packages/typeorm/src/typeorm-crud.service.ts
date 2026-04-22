@@ -11,6 +11,7 @@ import {
 import { ParsedRequestParams } from '@nestjs-crud/request';
 import { ClassType, hasLength, isArrayFull, isObject, isUndefined } from '@nestjs-crud/util';
 import { plainToClass } from 'class-transformer';
+import { Logger, LoggerService } from '@nestjs/common';
 import { DeepPartial, ObjectLiteral, Repository, SelectQueryBuilder, DataSourceOptions } from 'typeorm';
 
 import { TypeOrmJoinResolver } from './typeorm-join-resolver';
@@ -27,13 +28,16 @@ export class TypeOrmCrudService<T> extends CrudService<T> {
 
   protected entityColumnsHash: ObjectLiteral = {};
 
+  protected readonly logger: LoggerService;
+
   protected readonly translator: TypeOrmQueryTranslator<T>;
 
   protected readonly joinResolver: TypeOrmJoinResolver<T>;
 
-  constructor(protected repo: Repository<T>) {
+  constructor(protected repo: Repository<T>, logger?: LoggerService) {
     super();
 
+    this.logger = logger ?? new Logger(TypeOrmCrudService.name);
     this.dbName = this.repo.metadata.connection.options.type;
     this.onInitMapEntityColumns();
 
@@ -43,9 +47,14 @@ export class TypeOrmCrudService<T> extends CrudService<T> {
     this.translator = new TypeOrmQueryTranslator<T>(this.repo, {
       entityColumnsHash: this.entityColumnsHash,
       entityHasDeleteColumn: this.entityHasDeleteColumn,
-      onBadRequest: (msg: string) => this.throwBadRequestException(msg),
+      onBadRequest: (msg: string) => {
+        this.logger.warn(`SQLi guard rejected field: ${msg}`);
+        this.throwBadRequestException(msg);
+      },
       joinResolver: this.joinResolver,
     });
+
+    this.logger.debug?.(`CrudService initialized: ${(this.entityType as any)?.name ?? 'unknown'}`);
   }
 
   public get findOne(): Repository<T>['findOne'] {
@@ -122,18 +131,29 @@ export class TypeOrmCrudService<T> extends CrudService<T> {
     const toSave = !allowParamsOverride
       ? { ...found, ...dto, ...paramsFilters, ...req.parsed.authPersist }
       : { ...found, ...dto, ...req.parsed.authPersist };
-    const updated = await this.repo.save(
-      plainToClass(this.entityType, toSave, req.parsed.classTransformOptions) as DeepPartial<T>,
-    );
 
-    if (returnShallow) {
-      return updated;
+    try {
+      const updated = await this.repo.save(
+        plainToClass(this.entityType, toSave, req.parsed.classTransformOptions) as DeepPartial<T>,
+      );
+
+      if (returnShallow) {
+        return updated;
+      }
+
+      req.parsed.paramsFilter.forEach((filter) => {
+        filter.value = updated[filter.field];
+      });
+      return this.getOneOrFail(req);
+    } catch (err) {
+      // PII GUARD (T-08-08): DB drivers surface SQL + bound params in err.message.
+      // Use err.name in the message and pass err.stack as the LoggerService stack arg.
+      this.logger.error(
+        `CrudService [updateOne] failed: ${err instanceof Error ? err.name : 'UnknownError'}`,
+        err instanceof Error ? err.stack : String(err),
+      );
+      throw err;
     }
-
-    req.parsed.paramsFilter.forEach((filter) => {
-      filter.value = updated[filter.field];
-    });
-    return this.getOneOrFail(req);
   }
 
   public async recoverOne(req: CrudRequest): Promise<T> {
@@ -154,21 +174,32 @@ export class TypeOrmCrudService<T> extends CrudService<T> {
           ...dto,
           ...req.parsed.authPersist,
         };
-    const replaced = await this.repo.save(
-      plainToClass(this.entityType, toSave, req.parsed.classTransformOptions) as DeepPartial<T>,
-    );
 
-    if (returnShallow) {
-      return replaced;
-    }
+    try {
+      const replaced = await this.repo.save(
+        plainToClass(this.entityType, toSave, req.parsed.classTransformOptions) as DeepPartial<T>,
+      );
 
-    const primaryParams = this.getPrimaryParams(req.options);
-    /* istanbul ignore if */
-    if (!primaryParams.length) {
-      return replaced;
+      if (returnShallow) {
+        return replaced;
+      }
+
+      const primaryParams = this.getPrimaryParams(req.options);
+      /* istanbul ignore if */
+      if (!primaryParams.length) {
+        return replaced;
+      }
+      req.parsed.search = primaryParams.reduce((acc, p) => ({ ...acc, [p]: replaced[p] }), {});
+      return this.getOneOrFail(req);
+    } catch (err) {
+      // PII GUARD (T-08-08): DB drivers surface SQL + bound params in err.message.
+      // Use err.name in the message and pass err.stack as the LoggerService stack arg.
+      this.logger.error(
+        `CrudService [replaceOne] failed: ${err instanceof Error ? err.name : 'UnknownError'}`,
+        err instanceof Error ? err.stack : String(err),
+      );
+      throw err;
     }
-    req.parsed.search = primaryParams.reduce((acc, p) => ({ ...acc, [p]: replaced[p] }), {});
-    return this.getOneOrFail(req);
   }
 
   // TODO(SEC-03): wrap read-modify-write in QueryRunner — Phase 8 SEC-03
@@ -178,11 +209,23 @@ export class TypeOrmCrudService<T> extends CrudService<T> {
     const toReturn = returnDeleted
       ? plainToClass(this.entityType, { ...found }, req.parsed.classTransformOptions)
       : undefined;
-    if (req.options.query.softDelete === true) {
-      await this.repo.softRemove(found as DeepPartial<T>);
-    } else {
-      await this.repo.remove(found);
+
+    try {
+      if (req.options.query.softDelete === true) {
+        await this.repo.softRemove(found as DeepPartial<T>);
+      } else {
+        await this.repo.remove(found);
+      }
+    } catch (err) {
+      // PII GUARD (T-08-08): DB drivers surface SQL + bound params in err.message.
+      // Use err.name in the message and pass err.stack as the LoggerService stack arg.
+      this.logger.error(
+        `CrudService [deleteOne] failed: ${err instanceof Error ? err.name : 'UnknownError'}`,
+        err instanceof Error ? err.stack : String(err),
+      );
+      throw err;
     }
+
     return toReturn;
   }
 

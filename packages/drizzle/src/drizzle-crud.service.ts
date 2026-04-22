@@ -1,5 +1,5 @@
 import { CrudService, CrudRequest, CreateManyDto, GetManyDefaultResponse } from '@nestjs-crud/core';
-import { NotFoundException } from '@nestjs/common';
+import { Logger, LoggerService, NotFoundException } from '@nestjs/common';
 import { hasLength, isArrayFull, isNil, isObject, objKeys } from '@nestjs-crud/util';
 import { Table, Column, SQL, and, eq, sql, getTableColumns, getTableName } from 'drizzle-orm';
 
@@ -21,6 +21,8 @@ export class DrizzleCrudService<T extends Record<string, unknown>> extends CrudS
 
   protected columnsMap: Record<string, Column>;
 
+  protected readonly logger: LoggerService;
+
   protected readonly translator: DrizzleQueryTranslator<T>;
 
   protected readonly joinResolver: DrizzleJoinResolver;
@@ -29,8 +31,10 @@ export class DrizzleCrudService<T extends Record<string, unknown>> extends CrudS
     protected db: DrizzleClient,
     protected table: Table,
     protected relationsConfig: DrizzleRelationsConfig = {},
+    logger?: LoggerService,
   ) {
     super();
+    this.logger = logger ?? new Logger(DrizzleCrudService.name);
     this.onInitMapEntityColumns();
     this.detectDialect();
 
@@ -45,9 +49,14 @@ export class DrizzleCrudService<T extends Record<string, unknown>> extends CrudS
       entityHasDeleteColumn: this.entityHasDeleteColumn,
       softDeleteColumn: this.softDeleteColumn,
       dbDialect: this.dbDialect,
-      onBadRequest: (msg: string) => this.throwBadRequestException(msg),
+      onBadRequest: (msg: string) => {
+        this.logger.warn(`SQLi guard rejected field: ${msg}`);
+        this.throwBadRequestException(msg);
+      },
       joinResolver: this.joinResolver,
     });
+
+    this.logger.debug?.(`CrudService initialized: ${this.tableName}`);
   }
 
   // === PUBLIC CRUD VERBS ===
@@ -139,18 +148,28 @@ export class DrizzleCrudService<T extends Record<string, unknown>> extends CrudS
       ? { ...found, ...dto, ...paramsFilters, ...parsed.authPersist }
       : { ...found, ...dto, ...parsed.authPersist };
 
-    const pkCondition = this.buildPrimaryKeyCondition(found);
-    const updated = await this.updateReturning(toSave, pkCondition);
+    try {
+      const pkCondition = this.buildPrimaryKeyCondition(found);
+      const updated = await this.updateReturning(toSave, pkCondition);
 
-    if (returnShallow) {
-      return updated;
-    }
+      if (returnShallow) {
+        return updated;
+      }
 
-    const primaryParams = this.getPrimaryParams(options);
-    if (primaryParams.length) {
-      req.parsed.search = primaryParams.reduce((acc, p) => ({ ...acc, [p]: (updated as any)[p] }), {});
+      const primaryParams = this.getPrimaryParams(options);
+      if (primaryParams.length) {
+        req.parsed.search = primaryParams.reduce((acc, p) => ({ ...acc, [p]: (updated as any)[p] }), {});
+      }
+      return this.getOneOrFail(req);
+    } catch (err) {
+      // PII GUARD (T-08-08): DB drivers surface SQL + bound params in err.message.
+      // Use err.name in the message and pass err.stack as the LoggerService stack arg.
+      this.logger.error(
+        `CrudService [updateOne] failed: ${err instanceof Error ? err.name : 'UnknownError'}`,
+        err instanceof Error ? err.stack : String(err),
+      );
+      throw err;
     }
-    return this.getOneOrFail(req);
   }
 
   public async replaceOne(req: CrudRequest, dto: T | Partial<T>): Promise<T> {
@@ -169,6 +188,12 @@ export class DrizzleCrudService<T extends Record<string, unknown>> extends CrudS
       toReturn = await this.updateReturning(toSave, pkCondition);
     } catch (error) {
       if (!(error instanceof NotFoundException)) {
+        // PII GUARD (T-08-08): DB drivers surface SQL + bound params in err.message.
+        // Use err.name in the message and pass err.stack as the LoggerService stack arg.
+        this.logger.error(
+          `CrudService [replaceOne] failed: ${error instanceof Error ? error.name : 'UnknownError'}`,
+          error instanceof Error ? error.stack : String(error),
+        );
         throw error;
       }
       const entity = !allowParamsOverride
@@ -197,13 +222,23 @@ export class DrizzleCrudService<T extends Record<string, unknown>> extends CrudS
 
     const pkCondition = this.buildPrimaryKeyCondition(found);
 
-    if (options.query.softDelete && this.entityHasDeleteColumn && this.softDeleteColumn) {
-      await this.db
-        .update(this.table)
-        .set({ [this.getSoftDeleteColumnName()]: this.dbDialect === 'sqlite' ? sql`datetime('now')` : sql`NOW()` })
-        .where(pkCondition);
-    } else {
-      await this.db.delete(this.table).where(pkCondition);
+    try {
+      if (options.query.softDelete && this.entityHasDeleteColumn && this.softDeleteColumn) {
+        await this.db
+          .update(this.table)
+          .set({ [this.getSoftDeleteColumnName()]: this.dbDialect === 'sqlite' ? sql`datetime('now')` : sql`NOW()` })
+          .where(pkCondition);
+      } else {
+        await this.db.delete(this.table).where(pkCondition);
+      }
+    } catch (err) {
+      // PII GUARD (T-08-08): DB drivers surface SQL + bound params in err.message.
+      // Use err.name in the message and pass err.stack as the LoggerService stack arg.
+      this.logger.error(
+        `CrudService [deleteOne] failed: ${err instanceof Error ? err.name : 'UnknownError'}`,
+        err instanceof Error ? err.stack : String(err),
+      );
+      throw err;
     }
 
     return toReturn;
