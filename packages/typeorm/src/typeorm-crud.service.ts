@@ -9,7 +9,7 @@ import {
   QueryOptions,
 } from '@nestjs-crud/core';
 import { ParsedRequestParams } from '@nestjs-crud/request';
-import { ClassType, hasLength, isArrayFull, isObject, isUndefined, isNil } from '@nestjs-crud/util';
+import { ClassType, hasLength, isArrayFull, isObject, isUndefined } from '@nestjs-crud/util';
 import { plainToClass } from 'class-transformer';
 import { DeepPartial, ObjectLiteral, Repository, SelectQueryBuilder, DataSourceOptions } from 'typeorm';
 
@@ -91,17 +91,11 @@ export class TypeOrmCrudService<T> extends CrudService<T> {
 
     if (returnShallow) {
       return saved;
-    } else {
-      const primaryParams = this.getPrimaryParams(req.options);
-
-      /* istanbul ignore next */
-      if (!primaryParams.length && primaryParams.some((p) => isNil(saved[p]))) {
-        return saved;
-      } else {
-        req.parsed.search = primaryParams.reduce((acc, p) => ({ ...acc, [p]: saved[p] }), {});
-        return this.getOneOrFail(req);
-      }
     }
+
+    const primaryParams = this.getPrimaryParams(req.options);
+    req.parsed.search = primaryParams.reduce((acc, p) => ({ ...acc, [p]: saved[p] }), {});
+    return this.getOneOrFail(req);
   }
 
   public async createMany(req: CrudRequest, dto: CreateManyDto<T | Partial<T>>): Promise<T[]> {
@@ -134,13 +128,12 @@ export class TypeOrmCrudService<T> extends CrudService<T> {
 
     if (returnShallow) {
       return updated;
-    } else {
-      req.parsed.paramsFilter.forEach((filter) => {
-        filter.value = updated[filter.field];
-      });
-
-      return this.getOneOrFail(req);
     }
+
+    req.parsed.paramsFilter.forEach((filter) => {
+      filter.value = updated[filter.field];
+    });
+    return this.getOneOrFail(req);
   }
 
   public async recoverOne(req: CrudRequest): Promise<T> {
@@ -156,7 +149,7 @@ export class TypeOrmCrudService<T> extends CrudService<T> {
     const toSave = !allowParamsOverride
       ? { ...(found || {}), ...dto, ...paramsFilters, ...req.parsed.authPersist }
       : {
-          ...(found || /* istanbul ignore next */ {}),
+          ...(found || {}),
           ...paramsFilters,
           ...dto,
           ...req.parsed.authPersist,
@@ -167,17 +160,15 @@ export class TypeOrmCrudService<T> extends CrudService<T> {
 
     if (returnShallow) {
       return replaced;
-    } else {
-      const primaryParams = this.getPrimaryParams(req.options);
-
-      /* istanbul ignore if */
-      if (!primaryParams.length) {
-        return replaced;
-      }
-
-      req.parsed.search = primaryParams.reduce((acc, p) => ({ ...acc, [p]: replaced[p] }), {});
-      return this.getOneOrFail(req);
     }
+
+    const primaryParams = this.getPrimaryParams(req.options);
+    /* istanbul ignore if */
+    if (!primaryParams.length) {
+      return replaced;
+    }
+    req.parsed.search = primaryParams.reduce((acc, p) => ({ ...acc, [p]: replaced[p] }), {});
+    return this.getOneOrFail(req);
   }
 
   // TODO(SEC-03): wrap read-modify-write in QueryRunner — Phase 8 SEC-03
@@ -197,14 +188,12 @@ export class TypeOrmCrudService<T> extends CrudService<T> {
 
   public getParamFilters(parsed: CrudRequest['parsed']): ObjectLiteral {
     const filters = {};
-
     /* istanbul ignore else */
     if (hasLength(parsed.paramsFilter)) {
       for (const filter of parsed.paramsFilter) {
         filters[filter.field] = filter.value;
       }
     }
-
     return filters;
   }
 
@@ -224,30 +213,22 @@ export class TypeOrmCrudService<T> extends CrudService<T> {
     query: ParsedRequestParams,
     options: CrudRequestOptions,
   ): Promise<GetManyDefaultResponse<T> | T[]> {
-    if (this.decidePagination(query, options)) {
-      const [data, total] = await builder.getManyAndCount();
-      const limit = this.getTake(query, options.query);
-      const offset = this.getSkip(query, limit);
-
-      return this.createPageInfo(data, total, limit || total, offset || 0);
-    }
-
-    return builder.getMany();
+    if (!this.decidePagination(query, options)) return builder.getMany();
+    const [data, total] = await builder.getManyAndCount();
+    const limit = this.getTake(query, options.query);
+    const offset = this.getSkip(query, limit);
+    return this.createPageInfo(data, total, limit || total, offset || 0);
   }
 
   protected onInitMapEntityColumns() {
-    this.entityColumns = this.repo.metadata.columns.map((prop) => {
-      if (prop.embeddedMetadata) {
-        this.entityColumnsHash[prop.propertyPath] = prop.databasePath;
-        return prop.propertyPath;
-      }
-      this.entityColumnsHash[prop.propertyName] = prop.databasePath;
-      return prop.propertyName;
+    const cols = this.repo.metadata.columns;
+    this.entityColumns = cols.map((prop) => {
+      const key = prop.embeddedMetadata ? prop.propertyPath : prop.propertyName;
+      this.entityColumnsHash[key] = prop.databasePath;
+      return key;
     });
-    this.entityPrimaryColumns = this.repo.metadata.columns
-      .filter((prop) => prop.isPrimary)
-      .map((prop) => prop.propertyName);
-    this.entityHasDeleteColumn = this.repo.metadata.columns.filter((prop) => prop.isDeleteDate).length > 0;
+    this.entityPrimaryColumns = cols.filter((p) => p.isPrimary).map((p) => p.propertyName);
+    this.entityHasDeleteColumn = cols.some((p) => p.isDeleteDate);
   }
 
   protected async getOneOrFail(req: CrudRequest, shallow = false, withDeleted = false): Promise<T> {
