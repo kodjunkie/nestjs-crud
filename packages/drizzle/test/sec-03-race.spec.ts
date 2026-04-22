@@ -108,7 +108,9 @@ describe('SEC-03 Drizzle — mutations must run inside db.transaction at read co
   it('updateOne calls db.transaction with isolationLevel read committed', async () => {
     const req = makeCrudRequest(1);
     // Before the wrap lands, updateOne does NOT call db.transaction.
-    await service.updateOne(req, { name: 'updated' }).catch(() => {/* may throw without real tx */});
+    await service.updateOne(req, { name: 'updated' }).catch(() => {
+      /* may throw without real tx */
+    });
     expect(transactionSpy).toHaveBeenCalledWith(
       expect.any(Function),
       expect.objectContaining({ isolationLevel: 'read committed' }),
@@ -117,7 +119,9 @@ describe('SEC-03 Drizzle — mutations must run inside db.transaction at read co
 
   it('replaceOne calls db.transaction with isolationLevel read committed', async () => {
     const req = makeCrudRequest(1);
-    await service.replaceOne(req, { name: 'replaced' }).catch(() => {/* may throw without real tx */});
+    await service.replaceOne(req, { name: 'replaced' }).catch(() => {
+      /* may throw without real tx */
+    });
     expect(transactionSpy).toHaveBeenCalledWith(
       expect.any(Function),
       expect.objectContaining({ isolationLevel: 'read committed' }),
@@ -126,7 +130,9 @@ describe('SEC-03 Drizzle — mutations must run inside db.transaction at read co
 
   it('deleteOne calls db.transaction with isolationLevel read committed', async () => {
     const req = makeCrudRequest(1);
-    await service.deleteOne(req).catch(() => {/* may throw without real tx */});
+    await service.deleteOne(req).catch(() => {
+      /* may throw without real tx */
+    });
     expect(transactionSpy).toHaveBeenCalledWith(
       expect.any(Function),
       expect.objectContaining({ isolationLevel: 'read committed' }),

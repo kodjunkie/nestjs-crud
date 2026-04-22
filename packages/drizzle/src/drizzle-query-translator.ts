@@ -2,6 +2,7 @@ import { CrudRequestOptions, QueryTranslator } from '@nestjs-crud/core';
 import { ParsedRequestParams, SCondition } from '@nestjs-crud/request';
 import { Column, SQL, Table } from 'drizzle-orm';
 
+import { DrizzleClient } from './interfaces/drizzle-client.interface';
 import { DrizzleQueryTranslatorConfig } from './interfaces';
 import { DrizzleFetchHelper } from './query/drizzle-fetch-helper';
 import { DrizzleQueryComposer } from './query/drizzle-query-composer';
@@ -30,7 +31,17 @@ export class DrizzleQueryTranslator<T extends Record<string, unknown>> implement
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   private readonly fetchHelper: DrizzleFetchHelper;
 
+  /** Stored for `cloneFor(tx)` — allows creating a tx-scoped copy. */
+  private readonly _db: any;
+
+  private readonly _table: Table;
+
+  private readonly _config: DrizzleQueryTranslatorConfig<T>;
+
   constructor(db: any, table: Table, config: DrizzleQueryTranslatorConfig<T>) {
+    this._db = db;
+    this._table = table;
+    this._config = config;
     this.whereBuilder = new DrizzleWhereBuilder({
       columnsMap: config.columnsMap,
       dbDialect: config.dbDialect,
@@ -51,6 +62,27 @@ export class DrizzleQueryTranslator<T extends Record<string, unknown>> implement
     this.fetchHelper = new DrizzleFetchHelper({
       onNotFound: /* istanbul ignore next */ () => undefined,
     });
+  }
+
+  /**
+   * SEC-03: Returns a new translator sharing the same config but bound to `tx`.
+   * All internal pieces (WhereBuilder, QueryComposer, FetchHelper) are rebuilt
+   * against `tx` so reads + writes inside the transaction stay scoped.
+   *
+   * The D-05b SQLi guard in QueryComposer is preserved — it stays centralised
+   * in the facade, not duplicated at callsites.
+   */
+  public cloneFor(tx: DrizzleClient): DrizzleQueryTranslator<T> {
+    return new DrizzleQueryTranslator<T>(tx, this._table, this._config);
+  }
+
+  /**
+   * Returns the underlying db client bound to this translator.
+   * Used by the service's internal mutation helpers to issue direct
+   * DML (update/insert/delete) scoped to the same db/tx connection.
+   */
+  public getDb(): DrizzleClient {
+    return this._db;
   }
 
   public buildWhere(search: SCondition): SQL | undefined {

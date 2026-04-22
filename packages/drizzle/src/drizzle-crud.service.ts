@@ -139,109 +139,36 @@ export class DrizzleCrudService<T extends Record<string, unknown>> extends CrudS
   }
 
   public async updateOne(req: CrudRequest, dto: T | Partial<T>): Promise<T> {
-    const { parsed, options } = req;
-    const { allowParamsOverride, returnShallow } = options.routes.updateOneBase;
-    const paramsFilters = this.getParamFilters(parsed);
-    const found = await this.getOneOrFail(req, returnShallow);
-
-    const toSave = !allowParamsOverride
-      ? { ...found, ...dto, ...paramsFilters, ...parsed.authPersist }
-      : { ...found, ...dto, ...parsed.authPersist };
-
-    try {
-      const pkCondition = this.buildPrimaryKeyCondition(found);
-      const updated = await this.updateReturning(toSave, pkCondition);
-
-      if (returnShallow) {
-        return updated;
-      }
-
-      const primaryParams = this.getPrimaryParams(options);
-      if (primaryParams.length) {
-        req.parsed.search = primaryParams.reduce((acc, p) => ({ ...acc, [p]: (updated as any)[p] }), {});
-      }
-      return this.getOneOrFail(req);
-    } catch (err) {
-      // PII GUARD (T-08-08): DB drivers surface SQL + bound params in err.message.
-      // Use err.name in the message and pass err.stack as the LoggerService stack arg.
-      this.logger.error(
-        `CrudService [updateOne] failed: ${err instanceof Error ? err.name : 'UnknownError'}`,
-        err instanceof Error ? err.stack : String(err),
-      );
-      throw err;
-    }
+    // SEC-03: wrap read-modify-write in db.transaction at READ COMMITTED.
+    // All reads + writes go through scopedTranslator — service never calls
+    // tx.update/insert/delete directly (D-05b SQLi guard stays in QueryComposer).
+    return this.db.transaction(
+      async (tx: DrizzleClient) => {
+        const scopedTranslator = this.translator.cloneFor(tx);
+        return this.doUpdateOneInternal(req, dto, scopedTranslator);
+      },
+      { isolationLevel: 'read committed' },
+    );
   }
 
   public async replaceOne(req: CrudRequest, dto: T | Partial<T>): Promise<T> {
-    const { parsed, options } = req;
-    const { allowParamsOverride, returnShallow } = options.routes.replaceOneBase;
-    const paramsFilters = this.getParamFilters(parsed);
-
-    let toReturn: T;
-    try {
-      const found = await this.getOneOrFail(req, returnShallow);
-      const toSave = !allowParamsOverride
-        ? { ...found, ...dto, ...paramsFilters, ...parsed.authPersist }
-        : { ...found, ...dto, ...parsed.authPersist };
-
-      const pkCondition = this.buildPrimaryKeyCondition(found);
-      toReturn = await this.updateReturning(toSave, pkCondition);
-    } catch (error) {
-      if (!(error instanceof NotFoundException)) {
-        // PII GUARD (T-08-08): DB drivers surface SQL + bound params in err.message.
-        // Use err.name in the message and pass err.stack as the LoggerService stack arg.
-        this.logger.error(
-          `CrudService [replaceOne] failed: ${error instanceof Error ? error.name : 'UnknownError'}`,
-          error instanceof Error ? error.stack : String(error),
-        );
-        throw error;
-      }
-      const entity = !allowParamsOverride
-        ? { ...dto, ...paramsFilters, ...parsed.authPersist }
-        : { ...dto, ...parsed.authPersist };
-
-      toReturn = await this.insertReturning(entity);
-    }
-
-    if (returnShallow) {
-      return toReturn;
-    }
-
-    const primaryParams = this.getPrimaryParams(options);
-    if (primaryParams.length) {
-      req.parsed.search = primaryParams.reduce((acc, p) => ({ ...acc, [p]: (toReturn as any)[p] }), {});
-    }
-    return this.getOneOrFail(req);
+    return this.db.transaction(
+      async (tx: DrizzleClient) => {
+        const scopedTranslator = this.translator.cloneFor(tx);
+        return this.doReplaceOneInternal(req, dto, scopedTranslator);
+      },
+      { isolationLevel: 'read committed' },
+    );
   }
 
   public async deleteOne(req: CrudRequest): Promise<void | T> {
-    const { options } = req;
-    const { returnDeleted } = options.routes.deleteOneBase;
-    const found = await this.getOneOrFail(req, true);
-    const toReturn = returnDeleted ? ({ ...found } as T) : undefined;
-
-    const pkCondition = this.buildPrimaryKeyCondition(found);
-
-    try {
-      if (options.query.softDelete && this.entityHasDeleteColumn && this.softDeleteColumn) {
-        await this.db
-          .update(this.table)
-          .set({ [this.getSoftDeleteColumnName()]: this.dbDialect === 'sqlite' ? sql`datetime('now')` : sql`NOW()` })
-          .where(pkCondition);
-      } else {
-        await this.db.delete(this.table).where(pkCondition);
-      }
-    } catch (err) {
-      // PII GUARD (T-08-08): DB drivers surface SQL + bound params in err.message.
-      // Use err.name in the message and pass err.stack as the LoggerService stack arg.
-      this.logger.error(
-        `CrudService [deleteOne] failed: ${err instanceof Error ? err.name : 'UnknownError'}`,
-        err instanceof Error ? err.stack : String(err),
-      );
-      throw err;
-    }
-
-    return toReturn;
+    return this.db.transaction(
+      async (tx: DrizzleClient) => {
+        const scopedTranslator = this.translator.cloneFor(tx);
+        return this.doDeleteOneInternal(req, scopedTranslator);
+      },
+      { isolationLevel: 'read committed' },
+    );
   }
 
   public async recoverOne(req: CrudRequest): Promise<void | T> {
@@ -301,18 +228,24 @@ export class DrizzleCrudService<T extends Record<string, unknown>> extends CrudS
     return filters;
   }
 
-  protected async getOneOrFail(req: CrudRequest, shallow = false, withDeleted = false): Promise<T> {
+  protected async getOneOrFail(
+    req: CrudRequest,
+    shallow = false,
+    withDeleted = false,
+    t: DrizzleQueryTranslator<T> = this.translator,
+  ): Promise<T> {
     const { parsed, options } = req;
+    const db = t.getDb();
     const selectMap = shallow
       ? (Object.fromEntries(this.entityColumns.map((c) => [c, this.columnsMap[c]])) as Record<string, Column>)
-      : this.translator.getSelect(parsed, options.query);
+      : t.getSelect(parsed, options.query);
 
-    const query = this.db.select(selectMap).from(this.table).$dynamic();
+    const query = db.select(selectMap).from(this.table).$dynamic();
 
-    const searchWhere = this.translator.buildWhere(parsed.search);
+    const searchWhere = t.buildWhere(parsed.search);
     const softDeleteWhere =
       !withDeleted && options.query.softDelete && this.entityHasDeleteColumn && parsed.includeDeleted !== 1
-        ? this.translator.getSoftDeleteCondition()
+        ? t.getSoftDeleteCondition()
         : undefined;
 
     const allConditions = [searchWhere, softDeleteWhere].filter(Boolean) as SQL[];
@@ -397,9 +330,13 @@ export class DrizzleCrudService<T extends Record<string, unknown>> extends CrudS
    * the auto-generated PK back into the entity so callers can do a re-fetch.
    * Postgres and SQLite use RETURNING for an exact round-trip.
    */
-  protected async insertReturning(entity: Record<string, any>): Promise<T> {
+  protected async insertReturning(
+    entity: Record<string, any>,
+    t: DrizzleQueryTranslator<T> = this.translator,
+  ): Promise<T> {
+    const db = t.getDb();
     if (this.dbDialect === 'mysql') {
-      const [result] = await this.db.insert(this.table).values(entity);
+      const [result] = await db.insert(this.table).values(entity);
       const pkField = this.entityPrimaryColumns[0];
       const insertedId = (result as any)?.insertId;
       const saved = { ...entity } as Record<string, any>;
@@ -408,7 +345,7 @@ export class DrizzleCrudService<T extends Record<string, unknown>> extends CrudS
       }
       return saved as T;
     }
-    const result = await this.db.insert(this.table).values(entity).returning();
+    const result = await db.insert(this.table).values(entity).returning();
     return (result[0] || entity) as T;
   }
 
@@ -417,16 +354,133 @@ export class DrizzleCrudService<T extends Record<string, unknown>> extends CrudS
    * MySQL does not support RETURNING — fall back to the `toSave` object.
    * Callers that need a fresh round-trip should call getOneOrFail afterward.
    */
-  protected async updateReturning(toSave: Record<string, any>, condition: SQL): Promise<T> {
+  protected async updateReturning(
+    toSave: Record<string, any>,
+    condition: SQL,
+    t: DrizzleQueryTranslator<T> = this.translator,
+  ): Promise<T> {
+    const db = t.getDb();
     if (this.dbDialect === 'mysql') {
-      await this.db.update(this.table).set(toSave).where(condition);
+      await db.update(this.table).set(toSave).where(condition);
       return toSave as T;
     }
-    const result = await this.db.update(this.table).set(toSave).where(condition).returning();
+    const result = await db.update(this.table).set(toSave).where(condition).returning();
     return (result[0] || toSave) as T;
   }
 
   // === PRIVATE HELPERS ===
+
+  private async doUpdateOneInternal(
+    req: CrudRequest,
+    dto: T | Partial<T>,
+    t: DrizzleQueryTranslator<T>,
+  ): Promise<T> {
+    const { parsed, options } = req;
+    const { allowParamsOverride, returnShallow } = options.routes.updateOneBase;
+    const paramsFilters = this.getParamFilters(parsed);
+    const found = await this.getOneOrFail(req, returnShallow, false, t);
+
+    const toSave = !allowParamsOverride
+      ? { ...found, ...dto, ...paramsFilters, ...parsed.authPersist }
+      : { ...found, ...dto, ...parsed.authPersist };
+
+    try {
+      const pkCondition = this.buildPrimaryKeyCondition(found);
+      const updated = await this.updateReturning(toSave, pkCondition, t);
+
+      if (returnShallow) {
+        return updated;
+      }
+
+      const primaryParams = this.getPrimaryParams(options);
+      if (primaryParams.length) {
+        req.parsed.search = primaryParams.reduce((acc, p) => ({ ...acc, [p]: (updated as any)[p] }), {});
+      }
+      return this.getOneOrFail(req, false, false, t);
+    } catch (err) {
+      // PII GUARD (T-08-08): DB drivers surface SQL + bound params in err.message.
+      this.logger.error(
+        `CrudService [updateOne] failed: ${err instanceof Error ? err.name : 'UnknownError'}`,
+        err instanceof Error ? err.stack : String(err),
+      );
+      throw err;
+    }
+  }
+
+  private async doReplaceOneInternal(
+    req: CrudRequest,
+    dto: T | Partial<T>,
+    t: DrizzleQueryTranslator<T>,
+  ): Promise<T> {
+    const { parsed, options } = req;
+    const { allowParamsOverride, returnShallow } = options.routes.replaceOneBase;
+    const paramsFilters = this.getParamFilters(parsed);
+
+    let toReturn: T;
+    try {
+      const found = await this.getOneOrFail(req, returnShallow, false, t);
+      const toSave = !allowParamsOverride
+        ? { ...found, ...dto, ...paramsFilters, ...parsed.authPersist }
+        : { ...found, ...dto, ...parsed.authPersist };
+
+      const pkCondition = this.buildPrimaryKeyCondition(found);
+      toReturn = await this.updateReturning(toSave, pkCondition, t);
+    } catch (error) {
+      if (!(error instanceof NotFoundException)) {
+        // PII GUARD (T-08-08): DB drivers surface SQL + bound params in err.message.
+        this.logger.error(
+          `CrudService [replaceOne] failed: ${error instanceof Error ? error.name : 'UnknownError'}`,
+          error instanceof Error ? error.stack : String(error),
+        );
+        throw error;
+      }
+      const entity = !allowParamsOverride
+        ? { ...dto, ...paramsFilters, ...parsed.authPersist }
+        : { ...dto, ...parsed.authPersist };
+
+      toReturn = await this.insertReturning(entity, t);
+    }
+
+    if (returnShallow) {
+      return toReturn;
+    }
+
+    const primaryParams = this.getPrimaryParams(options);
+    if (primaryParams.length) {
+      req.parsed.search = primaryParams.reduce((acc, p) => ({ ...acc, [p]: (toReturn as any)[p] }), {});
+    }
+    return this.getOneOrFail(req, false, false, t);
+  }
+
+  private async doDeleteOneInternal(req: CrudRequest, t: DrizzleQueryTranslator<T>): Promise<void | T> {
+    const { options } = req;
+    const { returnDeleted } = options.routes.deleteOneBase;
+    const found = await this.getOneOrFail(req, true, false, t);
+    const toReturn = returnDeleted ? ({ ...found } as T) : undefined;
+
+    const pkCondition = this.buildPrimaryKeyCondition(found);
+    const db = t.getDb();
+
+    try {
+      if (options.query.softDelete && this.entityHasDeleteColumn && this.softDeleteColumn) {
+        await db
+          .update(this.table)
+          .set({ [this.getSoftDeleteColumnName()]: this.dbDialect === 'sqlite' ? sql`datetime('now')` : sql`NOW()` })
+          .where(pkCondition);
+      } else {
+        await db.delete(this.table).where(pkCondition);
+      }
+    } catch (err) {
+      // PII GUARD (T-08-08): DB drivers surface SQL + bound params in err.message.
+      this.logger.error(
+        `CrudService [deleteOne] failed: ${err instanceof Error ? err.name : 'UnknownError'}`,
+        err instanceof Error ? err.stack : String(err),
+      );
+      throw err;
+    }
+
+    return toReturn;
+  }
 
   private detectDialect() {
     const dialect = this.db.dialect;
