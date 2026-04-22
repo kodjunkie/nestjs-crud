@@ -5,12 +5,40 @@ on:
     branches: [master]
   pull_request:
     branches: [master]
-
   workflow_dispatch:
 
 jobs:
+  parity:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Pin Yarn version
+        # Pins Yarn to the version that matches yarn.lock (cacheKey 10c0 / lockfile version 8).
+        # "yarn set version stable" previously upgraded to 4.14.x which introduced a lockfile
+        # format bump (version 9) that failed --immutable.
+        run: yarn set version 4.12.0
+
+      - name: install
+        run: yarn install --immutable
+
+      - name: build
+        run: yarn build
+
+      - name: parity piece-level
+        run: yarn test:parity
+
   test:
     runs-on: ubuntu-latest
+    needs: parity
+    strategy:
+      fail-fast: false
+      matrix:
+        adapter: [typeorm, drizzle, mikro-orm]
+        db: [postgres, mysql]
     env:
       COMPOSE_FILE: ./compose.yml
 
@@ -35,8 +63,11 @@ jobs:
       - name: build
         run: yarn build
 
-      - name: check docker
-        run: docker compose up -d
+      - name: wait for DB
+        run: |
+          for i in {1..30}; do
+            docker compose exec -T ${{ matrix.db }} sh -c 'exit 0' && break || sleep 2
+          done
 
-      - name: tests
-        run: yarn test:coverage
+      - name: run ${{ matrix.adapter }} x ${{ matrix.db }} tests
+        run: yarn test:${{ matrix.adapter }}:${{ matrix.db }}
