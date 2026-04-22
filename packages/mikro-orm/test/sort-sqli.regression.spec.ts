@@ -1,18 +1,16 @@
 /**
- * @description Nyquist SQLi regression matrix for `MikroOrmQueryTranslator.mapSort`.
- * Ports the TypeORM matrix (`packages/typeorm/test/sort-sqli.regression.spec.ts`)
- * + Drizzle precedent (`packages/drizzle/test/sort-sqli.regression.spec.ts`)
- * verbatim to the MikroORM adapter. Every dotted-path injection vector is
- * routed through the translator's `onBadRequest` throwing sink — a silent
- * pass-through would let an attacker-controlled identifier reach the
- * underlying SQL builder.
+ * @description Nyquist SQLi regression matrix for `MikroOrmQueryComposer.applyToQuery`
+ * (sort branch). Ports the TypeORM matrix (`packages/typeorm/test/sort-sqli.regression.spec.ts`)
+ * + Drizzle precedent (`packages/drizzle/test/sort-sqli.regression.spec.ts`) verbatim
+ * to the MikroORM adapter. Every dotted-path injection vector is routed through the
+ * composer's `onBadRequest` throwing sink — a silent pass-through would let an
+ * attacker-controlled identifier reach the underlying SQL builder.
+ *
+ * Retargeted in 06.2-04 to `MikroOrmQueryComposer` (D-05b owner post-decomposition).
  *
  * Harness contract (PATTERNS.md §5 + input-sanitizer.spec.ts:11-22):
  * `onBadRequest` MUST throw. A `jest.fn()` stub would let a miss return
  * silently — masking the exact bug this regression gate exists to close.
- *
- * di-scope-awareness (T-06-02): translator ctor takes `() => em` thunk, not
- * a captured em. Keep the thunk form verbatim.
  *
  * Entities are defined via `EntitySchema` (@mikro-orm/core v7 dropped the
  * `@Entity` decorator in favour of schema / defineEntity).
@@ -25,7 +23,8 @@ import { EntitySchema } from '@mikro-orm/core';
 import { MikroORM } from '@mikro-orm/sqlite';
 
 import { MikroOrmJoinResolver } from '../src/mikro-orm-join-resolver';
-import { MikroOrmQueryTranslator } from '../src/mikro-orm-query-translator';
+import { MikroOrmQueryComposer } from '../src/query/mikro-orm-query-composer';
+import { MikroOrmWhereBuilder } from '../src/query/mikro-orm-where-builder';
 
 // CONTRACT: throwing stub — never `jest.fn()` on a security path.
 const throwingOnBadRequest = (msg: string): never => {
@@ -50,9 +49,9 @@ const SqliUserSchema = new EntitySchema<SqliUser>({
   },
 });
 
-describe('MikroOrmQueryTranslator mapSort dotted-path SQLi regression (Nyquist matrix)', () => {
+describe('MikroOrmQueryComposer mapSort dotted-path SQLi regression (Nyquist matrix)', () => {
   let orm: MikroORM;
-  let translator: MikroOrmQueryTranslator<SqliUser>;
+  let composer: MikroOrmQueryComposer<SqliUser>;
 
   // ≥4 injection vectors — mirrors TypeORM + Drizzle vector list verbatim.
   const injectionVectors: ReadonlyArray<string> = [
@@ -77,26 +76,27 @@ describe('MikroOrmQueryTranslator mapSort dotted-path SQLi regression (Nyquist m
   });
 
   beforeEach(() => {
-    // Fresh em thunk per spec run (di-scope-awareness parity).
-    const getEm = () => orm.em.fork();
     const metadata = orm.em.getMetadata().get(SqliUser);
-
     const joinResolver = new MikroOrmJoinResolver({
       metadata,
       onBadRequest: throwingOnBadRequest,
     });
-
     const propertiesMap = (metadata as any).properties as Record<string, any>;
+    const whereBuilder = new MikroOrmWhereBuilder<SqliUser>({
+      propertiesMap,
+      dbDialect: 'sqlite',
+      onBadRequest: throwingOnBadRequest,
+    });
 
-    translator = new MikroOrmQueryTranslator<SqliUser>(getEm, {
+    composer = new MikroOrmQueryComposer<SqliUser>({
       entityColumns: ['id', 'name', 'deletedAt'],
       entityPrimaryColumns: ['id'],
       propertiesMap,
       entityHasDeleteColumn: true,
       softDeleteColumn: 'deletedAt',
-      dbDialect: 'sqlite',
       onBadRequest: throwingOnBadRequest,
       joinResolver,
+      whereBuilder,
     });
   });
 
@@ -127,7 +127,7 @@ describe('MikroOrmQueryTranslator mapSort dotted-path SQLi regression (Nyquist m
       sort: [{ field, order: 'ASC' as const }],
     };
 
-    expect(() => translator.applyToQuery(qb(), parsed, emptyOptions)).toThrow(BadRequestException);
+    expect(() => composer.applyToQuery(qb(), parsed, emptyOptions)).toThrow(BadRequestException);
   });
 
   it('rejects single-segment injection-shaped field (not a dotted path)', () => {
@@ -136,7 +136,7 @@ describe('MikroOrmQueryTranslator mapSort dotted-path SQLi regression (Nyquist m
       sort: [{ field: 'name; DROP TABLE users--', order: 'ASC' as const }],
     };
 
-    expect(() => translator.applyToQuery(qb(), parsed, emptyOptions)).toThrow(BadRequestException);
+    expect(() => composer.applyToQuery(qb(), parsed, emptyOptions)).toThrow(BadRequestException);
   });
 
   it('allows a known own-field as a sort target (allowlist HIT)', () => {
@@ -145,6 +145,6 @@ describe('MikroOrmQueryTranslator mapSort dotted-path SQLi regression (Nyquist m
       sort: [{ field: 'name', order: 'ASC' as const }],
     };
 
-    expect(() => translator.applyToQuery(qb(), parsed, emptyOptions)).not.toThrow();
+    expect(() => composer.applyToQuery(qb(), parsed, emptyOptions)).not.toThrow();
   });
 });
