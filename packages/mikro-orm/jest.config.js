@@ -18,7 +18,11 @@ module.exports = {
   testTimeout: 30000,
   extensionsToTreatAsEsm: ['.ts'],
   testMatch: ['<rootDir>/packages/mikro-orm/test/**/*.spec.ts'],
-  transformIgnorePatterns: ['/node_modules/(?!(@mikro-orm)/)'],
+  // Allow ts-jest to transform @mikro-orm (ESM-only), deepmerge and pluralize (CJS
+  // modules that export via `module.exports = fn`; Jest's ESM loader wraps them in a
+  // namespace, breaking `import * as` callers that expect a callable). Transforming
+  // them through ts-jest's CJS-interop path makes them directly callable.
+  transformIgnorePatterns: ['/node_modules/(?!(@mikro-orm|deepmerge|pluralize)/)'],
   transform: {
     '^.+\\.ts$': [
       'ts-jest',
