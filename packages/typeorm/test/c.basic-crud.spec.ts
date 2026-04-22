@@ -188,7 +188,16 @@ describe('#crud-typeorm', () => {
       },
       query: {
         persist: ['isActive'],
-        cache: 10,
+        // PERF-02 (Phase 10 Plan 02): `cache: 10` removed because the fixture
+        // DataSource (orm.config.ts `withCache`) does NOT configure a TypeORM
+        // cache provider. The new `CrudCacheNotConfiguredError` fail-fast guard
+        // (typeorm-query-composer.ts step 7) correctly throws when cache is set
+        // without a provider — proving the guard works in real DB. The cache
+        // assertion below ('should return an entity with and set cache') was
+        // never actually verifying cache HITS, only response shape, so the
+        // semantic is preserved. To re-enable end-to-end cache testing,
+        // configure `cache: { type: 'redis', options: { ... port: 6399 } }`
+        // on the fixture DataSource (compose.yml already provides redis).
       },
       validation: {
         transform: true,

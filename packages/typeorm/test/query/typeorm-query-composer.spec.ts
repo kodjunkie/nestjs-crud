@@ -61,9 +61,7 @@ const buildMockRepo = (queryResultCache: unknown): Repository<MockUser> => {
   } as unknown as Repository<MockUser>;
 };
 
-const buildComposer = (
-  repo: Repository<MockUser>,
-): TypeOrmQueryComposer<MockUser> => {
+const buildComposer = (repo: Repository<MockUser>): TypeOrmQueryComposer<MockUser> => {
   const noopWhereBuilder: WhereBuilder<SelectQueryBuilder<MockUser>, Brackets> = {
     build: jest.fn(() => undefined),
   };
@@ -100,7 +98,7 @@ const baseParsed = (): ParsedRequestParams =>
     page: undefined,
     cache: undefined,
     includeDeleted: 0,
-  } as unknown as ParsedRequestParams);
+  }) as unknown as ParsedRequestParams;
 
 describe('TypeOrmQueryComposer', () => {
   describe('cache fail-fast (PERF-02 D-06..D-09)', () => {
@@ -111,9 +109,9 @@ describe('TypeOrmQueryComposer', () => {
       const parsed = baseParsed();
       const options = { query: { cache: 5000 } };
 
-      expect(() =>
-        composer.applyToQuery(query as unknown as SelectQueryBuilder<MockUser>, parsed, options),
-      ).toThrow(CrudCacheNotConfiguredError);
+      expect(() => composer.applyToQuery(query as unknown as SelectQueryBuilder<MockUser>, parsed, options)).toThrow(
+        CrudCacheNotConfiguredError,
+      );
 
       // Sanity: error message names the misconfiguration so consumers see the fix.
       try {
@@ -127,7 +125,9 @@ describe('TypeOrmQueryComposer', () => {
     });
 
     it('green path: passes through to query.cache(ttl) when DataSource cache provider IS configured', () => {
-      const repo = buildMockRepo({ /* truthy mock cache provider */ });
+      const repo = buildMockRepo({
+        /* truthy mock cache provider */
+      });
       const composer = buildComposer(repo);
       const query = buildMockQuery();
       const parsed = baseParsed();

@@ -1,4 +1,4 @@
-import { getAllowedColumns, JoinResolver } from '@nestjs-crud/core';
+import { CrudCacheNotConfiguredError, getAllowedColumns, JoinResolver } from '@nestjs-crud/core';
 import type { QueryComposer, WhereBuilder } from '@nestjs-crud/core/query';
 import { ParsedRequestParams, QuerySort } from '@nestjs-crud/request';
 import { objKeys } from '@nestjs-crud/util';
@@ -120,8 +120,12 @@ export class TypeOrmQueryComposer<T extends ObjectLiteral> implements QueryCompo
       query.skip(skip as number);
     }
 
-    // 7. Cache
+    // 7. Cache (PERF-02 D-06 — fail-fast on missing DataSource cache provider)
     if (queryOptions.cache && parsed.cache !== 0) {
+      const cacheProvider = this.repo.manager.connection?.queryResultCache;
+      if (!cacheProvider) {
+        throw new CrudCacheNotConfiguredError();
+      }
       query.cache(queryOptions.cache);
     }
 
