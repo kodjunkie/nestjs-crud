@@ -72,7 +72,9 @@ export class MikroOrmFetchHelper<T extends object> implements FetchHelper<QueryB
     const em = this.config.getEm();
     // @internal — EntityManager.createQueryBuilder is not in the @mikro-orm/core
     // type surface; it is provided by @mikro-orm/knex at runtime.
-    return (em as unknown as { createQueryBuilder: (cls: EntityClass<T>) => QueryBuilder<T> }).createQueryBuilder(entityClass);
+    return (em as unknown as { createQueryBuilder: (cls: EntityClass<T>) => QueryBuilder<T> }).createQueryBuilder(
+      entityClass,
+    );
   }
 
   public async executeMany<R = T>(

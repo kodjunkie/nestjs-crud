@@ -107,14 +107,18 @@ export class MikroOrmJoinResolver implements JoinResolver<QueryBuilder<object>> 
       ? (relations as unknown[]).map((r: unknown) => [(r as Record<string, unknown>)['name'] as string, r])
       : Object.entries(relations).length
         ? Object.entries(relations)
-        : Object.entries(propsSource).filter(([, p]) => p && typeof (p as Record<string, unknown>)['kind'] === 'string');
+        : Object.entries(propsSource).filter(
+            ([, p]) => p && typeof (p as Record<string, unknown>)['kind'] === 'string',
+          );
 
     for (const [name, prop] of relEntries) {
       // @internal — prop shape is MikroORM-internal (EntityProperty); accessed
       // via index because the declared type does not expose targetMeta/entity.
       const p = prop as Record<string, unknown>;
-      const targetMeta = (p && ((p['targetMeta'] as Record<string, unknown>) || (p['entity'] as Record<string, unknown>))) || null;
-      const targetProps: Record<string, unknown> = (targetMeta && (targetMeta['properties'] as Record<string, unknown>)) || {};
+      const targetMeta =
+        (p && ((p['targetMeta'] as Record<string, unknown>) || (p['entity'] as Record<string, unknown>))) || null;
+      const targetProps: Record<string, unknown> =
+        (targetMeta && (targetMeta['properties'] as Record<string, unknown>)) || {};
 
       const columns: string[] = [];
       const primaryColumns: string[] = [];

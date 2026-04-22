@@ -111,7 +111,12 @@ export class MikroOrmWhereBuilder<T extends object> implements WhereBuilder<Quer
       const orOps = objKeys(valueObj['$or'] as Record<string, unknown>);
       const orConditions = orOps
         .map((op) => {
-          const mapped = mapOperator(field, op as ComparisonOperator, (valueObj['$or'] as Record<string, unknown>)[op], this.dbDialect);
+          const mapped = mapOperator(
+            field,
+            op as ComparisonOperator,
+            (valueObj['$or'] as Record<string, unknown>)[op],
+            this.dbDialect,
+          );
           return { [field]: mapped };
         })
         .filter(Boolean);

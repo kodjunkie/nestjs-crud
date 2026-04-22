@@ -13,7 +13,12 @@ import { DbDialect } from './interfaces';
 // (scalar, array, range pair). Return type is a MikroORM FilterQuery fragment
 // whose exact shape also varies per operator. Both sides are genuinely unknowable
 // without a discriminated-union per operator — deferred to TYPES-06.
-export function mapOperator(field: string, operator: ComparisonOperator | string, value: unknown, dialect: DbDialect): unknown {
+export function mapOperator(
+  field: string,
+  operator: ComparisonOperator | string,
+  value: unknown,
+  dialect: DbDialect,
+): unknown {
   const op = operator.startsWith('$') ? operator : `$${operator}`;
 
   switch (op) {
