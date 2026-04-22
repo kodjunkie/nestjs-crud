@@ -19,7 +19,10 @@ type AnyDrizzleSelect = any;
  * @since 2.0.0
  */
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-export class DrizzleQueryTranslator<T extends Record<string, unknown>> implements QueryTranslator<AnyDrizzleSelect, SQL> {
+export class DrizzleQueryTranslator<T extends Record<string, unknown>> implements QueryTranslator<
+  AnyDrizzleSelect,
+  SQL
+> {
   private readonly whereBuilder: DrizzleWhereBuilder;
 
   private readonly queryComposer: DrizzleQueryComposer;
