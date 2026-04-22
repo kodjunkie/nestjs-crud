@@ -37,6 +37,9 @@
     "name": "Lawrence Onah",
     "email": "paplow01@gmail.com"
   },
+  "engines": {
+    "node": ">=22.0.0"
+  },
   "scripts": {
     "build": "npx tsc -b"
   },
