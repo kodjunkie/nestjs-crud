@@ -1,28 +1,29 @@
 /**
  * PARITY-03 — QueryComposer piece-level cross-adapter assertion suite.
  *
- * Proves that TypeORM, Drizzle, and MikroORM `QueryComposer` implementations
+ * Proves that TypeORM, Drizzle, MikroORM, and Prisma `QueryComposer` implementations
  * produce semantically equivalent row sets for the same `SCondition`/`ParsedRequest`
  * inputs, AND that the D-05b SQLi guard is uniformly enforced (T-07-08).
  *
  * Assertion counts:
- *   - 15 SCONDITION_CASES × 3 adapters = 45 parity assertions (T-07-09)
- *   - 3  SQLI_CASES       × 3 adapters = 9  security assertions (T-07-08)
- *   Total = 54 assertions — exceeds the ≥45 must-have
+ *   - 15 SCONDITION_CASES × 4 adapters = 60 parity assertions (T-07-09)
+ *   - 3  SQLI_CASES       × 4 adapters = 12 security assertions (T-07-08)
+ *   Total = 72 assertions — exceeds the ≥45 must-have
  *
  * Runs under root jest.config.js (CJS). Docker NOT required — in-memory only.
- * MikroORM harness uses a pure mock — no MikroORM.init(), no ESM runtime trap.
+ * MikroORM + Prisma harnesses use pure mocks — no ORM init, no ESM runtime trap.
  */
 import { SCONDITION_CASES, SQLI_CASES } from './scondition-matrix';
 import { buildTypeOrmComposer, teardownTypeOrmDataSource, type TypeOrmHarness } from './harness/typeorm-harness';
 import { buildDrizzleComposer, teardownDrizzleDb, type DrizzleHarness } from './harness/drizzle-harness';
 import { buildMikroOrmComposer, type MikroOrmHarness } from './harness/mikro-orm-harness';
+import { buildPrismaComposer, type PrismaHarness } from './harness/prisma-harness';
 
 // ---------------------------------------------------------------------------
 // Adapter registry — drives describe.each
 // ---------------------------------------------------------------------------
 
-type Harness = TypeOrmHarness | DrizzleHarness | MikroOrmHarness;
+type Harness = TypeOrmHarness | DrizzleHarness | MikroOrmHarness | PrismaHarness;
 
 interface AdapterEntry {
   name: string;
@@ -34,6 +35,7 @@ const ADAPTERS: AdapterEntry[] = [
   { name: 'typeorm', buildAsync: () => buildTypeOrmComposer() },
   { name: 'drizzle', buildSync: () => buildDrizzleComposer() },
   { name: 'mikro-orm', buildSync: () => buildMikroOrmComposer() },
+  { name: 'prisma', buildSync: () => buildPrismaComposer() },
 ];
 
 // ---------------------------------------------------------------------------
