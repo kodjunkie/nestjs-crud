@@ -10,7 +10,6 @@ import { UsersService, DRIZZLE_DB, DRIZZLE_TABLE } from './users.service';
 
 @Module({})
 export class AppModule {
-
   static forRoot(dialect: 'postgres' | 'mysql'): DynamicModule {
     const db = dialect === 'postgres' ? createPostgresClient() : createMysqlClient();
     const table = dialect === 'postgres' ? pgSchema.users : mysqlSchema.users;
@@ -18,11 +17,7 @@ export class AppModule {
     return {
       module: AppModule,
       controllers: [UsersController],
-      providers: [
-        { provide: DRIZZLE_DB, useValue: db },
-        { provide: DRIZZLE_TABLE, useValue: table },
-        UsersService,
-      ],
+      providers: [{ provide: DRIZZLE_DB, useValue: db }, { provide: DRIZZLE_TABLE, useValue: table }, UsersService],
       exports: [UsersService],
     };
   }

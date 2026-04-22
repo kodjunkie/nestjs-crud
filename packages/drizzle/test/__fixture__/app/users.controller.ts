@@ -5,7 +5,6 @@ import { Crud } from '@nestjs-crud/core';
 import { UsersService } from './users.service';
 
 class UserModel {
-
   id!: number;
 
   email!: string;
@@ -22,6 +21,5 @@ class UserModel {
 })
 @Controller('users')
 export class UsersController {
-
   constructor(public service: UsersService) {}
 }
