@@ -457,6 +457,59 @@ describe('#request-query', () => {
       });
     });
 
+    describe('#setAuthPersist SEC-02 — runtime persist-key validation', () => {
+      const entityColumnsHash = { user_id: true, email: true, isActive: true };
+
+      // Test 1: typo key not in entity → throws RequestQueryException naming the key
+      it('throws RequestQueryException when persist key is not an entity column', () => {
+        expect(() => qp.setAuthPersist({ userId: 123 }, entityColumnsHash)).toThrow(
+          RequestQueryException,
+        );
+        expect(() => qp.setAuthPersist({ userId: 123 }, entityColumnsHash)).toThrow(/userId/);
+      });
+
+      // Test 2: valid key present in entity → no throw
+      it('succeeds silently when all persist keys are valid entity columns', () => {
+        expect(() => qp.setAuthPersist({ user_id: 123 }, entityColumnsHash)).not.toThrow();
+      });
+
+      // Test 3: mixed valid + invalid → throws naming only the invalid key
+      it('throws naming only the invalid key when mixed valid + invalid keys', () => {
+        expect(() => qp.setAuthPersist({ user_id: 123, wrong: 'x' }, entityColumnsHash)).toThrow(/wrong/);
+        expect(() => qp.setAuthPersist({ user_id: 123, wrong: 'x' }, entityColumnsHash)).not.toThrow(
+          /user_id/,
+        );
+      });
+
+      // Test 4: empty / undefined → no-op, backwards compat
+      it('is a no-op for empty or undefined persist', () => {
+        expect(() => qp.setAuthPersist({}, entityColumnsHash)).not.toThrow();
+        expect(() => qp.setAuthPersist(undefined, entityColumnsHash)).not.toThrow();
+      });
+
+      // Test 5: logger.warn emits key name only — never request body values (PII guard)
+      it('emits logger.warn with invalid KEY NAME only, not persist body values', () => {
+        const mockLogger = { warn: jest.fn() };
+        const persistValue = 'secret-tenant-id-42';
+        const persistObj = { wrongKey: persistValue };
+
+        expect(() => qp.setAuthPersist(persistObj, entityColumnsHash, mockLogger)).toThrow(
+          RequestQueryException,
+        );
+
+        // logger.warn must have been called
+        expect(mockLogger.warn).toHaveBeenCalledTimes(1);
+        const warnArg: string = mockLogger.warn.mock.calls[0][0];
+
+        // Must contain the invalid key name
+        expect(warnArg).toMatch(/wrongKey/);
+
+        // Must NOT contain any value from the persist body
+        expect(warnArg).not.toContain(persistValue);
+        expect(warnArg).not.toContain('secret-tenant-id-42');
+      });
+    });
+
     describe('#setClassTransformOptions', () => {
       it('it should set classTransformOptions, 1', () => {
         qp.setClassTransformOptions();
