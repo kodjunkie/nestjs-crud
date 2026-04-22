@@ -14,6 +14,15 @@ export interface QueryOptions {
   cache?: number | false;
   alwaysPaginate?: boolean;
   softDelete?: boolean;
+  /**
+   * TypeORM split-query opt-in (per Phase 10 D-02).
+   * - 'join' (default): manual leftJoin/innerJoin via JoinResolver. Today's behavior.
+   * - 'query': use TypeORM's `setFindOptions({ relations, relationLoadStrategy: 'query' })`
+   *   so the ORM emits one query per relation (no Cartesian inflation on deep joins).
+   * Other adapters (Drizzle, MikroORM, Prisma) use split queries natively — this option
+   * only affects the TypeORM adapter (D-04). No-op for non-TypeORM adapters.
+   */
+  relationLoadStrategy?: 'join' | 'query';
 }
 
 export interface JoinOptions {
