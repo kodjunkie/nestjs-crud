@@ -62,10 +62,7 @@ function makeCrudRequest(
 // ---------------------------------------------------------------------------
 // Service factory
 // ---------------------------------------------------------------------------
-function buildService(
-  mockPrisma: any,
-  opts: { softDeleteColumn?: string | null } = {},
-): any {
+function buildService(mockPrisma: any, opts: { softDeleteColumn?: string | null } = {}): any {
   const joinResolver = new PrismaJoinResolver({
     relationFields: ['company'],
     allowedColumnsByRelation: { company: ['id', 'name', 'domain'] },
@@ -77,7 +74,9 @@ function buildService(
     entityPrimaryColumns: ['id'],
     entityHasDeleteColumn: hasSoftDel,
     softDeleteColumn: opts.softDeleteColumn ?? null,
-    onBadRequest: (msg: string) => { throw new Error(msg); },
+    onBadRequest: (msg: string) => {
+      throw new Error(msg);
+    },
     joinResolver,
     relationFields: ['company'],
   });

@@ -63,7 +63,9 @@ describe('T-09-02 SEC-03 concurrent update race — Prisma SEC-03 regression', (
       entityPrimaryColumns: ['id'],
       entityHasDeleteColumn: false,
       softDeleteColumn: null,
-      onBadRequest: (msg: string) => { throw new Error(msg); },
+      onBadRequest: (msg: string) => {
+        throw new Error(msg);
+      },
       joinResolver,
       relationFields: [],
     });
@@ -110,16 +112,17 @@ describe('T-09-02 SEC-03 concurrent update race — Prisma SEC-03 regression', (
   // -------------------------------------------------------------------------
   it('updateOne — calls prisma.$transaction with a callback (interactive form)', async () => {
     const req = makeCrudRequest(1);
-    await service.updateOne(req, { name: 'updated' }).catch(() => { /* expected on stub */ });
-    expect(transactionSpy).toHaveBeenCalledWith(
-      expect.any(Function),
-      expect.anything(),
-    );
+    await service.updateOne(req, { name: 'updated' }).catch(() => {
+      /* expected on stub */
+    });
+    expect(transactionSpy).toHaveBeenCalledWith(expect.any(Function), expect.anything());
   });
 
   it('updateOne — passes isolationLevel ReadCommitted', async () => {
     const req = makeCrudRequest(1);
-    await service.updateOne(req, { name: 'updated' }).catch(() => { /* ignore */ });
+    await service.updateOne(req, { name: 'updated' }).catch(() => {
+      /* ignore */
+    });
     expect(transactionSpy).toHaveBeenCalledWith(
       expect.any(Function),
       expect.objectContaining({ isolationLevel: 'ReadCommitted' }),
@@ -128,11 +131,19 @@ describe('T-09-02 SEC-03 concurrent update race — Prisma SEC-03 regression', (
 
   it('updateOne — tx callback reads before writing (findFirst before update)', async () => {
     const callOrder: string[] = [];
-    userFindFirstMock.mockImplementation(async () => { callOrder.push('findFirst'); return seedRow; });
-    userUpdateMock.mockImplementation(async () => { callOrder.push('update'); return { ...seedRow, name: 'u' }; });
+    userFindFirstMock.mockImplementation(async () => {
+      callOrder.push('findFirst');
+      return seedRow;
+    });
+    userUpdateMock.mockImplementation(async () => {
+      callOrder.push('update');
+      return { ...seedRow, name: 'u' };
+    });
 
     const req = makeCrudRequest(1);
-    await service.updateOne(req, { name: 'u' }).catch(() => { /* ignore */ });
+    await service.updateOne(req, { name: 'u' }).catch(() => {
+      /* ignore */
+    });
 
     const ffIdx = callOrder.indexOf('findFirst');
     const upIdx = callOrder.indexOf('update');
@@ -145,16 +156,17 @@ describe('T-09-02 SEC-03 concurrent update race — Prisma SEC-03 regression', (
   // -------------------------------------------------------------------------
   it('replaceOne — calls prisma.$transaction with a callback (interactive form)', async () => {
     const req = makeCrudRequest(1);
-    await service.replaceOne(req, { name: 'replaced' }).catch(() => { /* ignore */ });
-    expect(transactionSpy).toHaveBeenCalledWith(
-      expect.any(Function),
-      expect.anything(),
-    );
+    await service.replaceOne(req, { name: 'replaced' }).catch(() => {
+      /* ignore */
+    });
+    expect(transactionSpy).toHaveBeenCalledWith(expect.any(Function), expect.anything());
   });
 
   it('replaceOne — passes isolationLevel ReadCommitted', async () => {
     const req = makeCrudRequest(1);
-    await service.replaceOne(req, { name: 'replaced' }).catch(() => { /* ignore */ });
+    await service.replaceOne(req, { name: 'replaced' }).catch(() => {
+      /* ignore */
+    });
     expect(transactionSpy).toHaveBeenCalledWith(
       expect.any(Function),
       expect.objectContaining({ isolationLevel: 'ReadCommitted' }),
@@ -163,11 +175,19 @@ describe('T-09-02 SEC-03 concurrent update race — Prisma SEC-03 regression', (
 
   it('replaceOne — tx callback reads before writing (findFirst before update)', async () => {
     const callOrder: string[] = [];
-    userFindFirstMock.mockImplementation(async () => { callOrder.push('findFirst'); return seedRow; });
-    userUpdateMock.mockImplementation(async () => { callOrder.push('update'); return { ...seedRow, name: 'r' }; });
+    userFindFirstMock.mockImplementation(async () => {
+      callOrder.push('findFirst');
+      return seedRow;
+    });
+    userUpdateMock.mockImplementation(async () => {
+      callOrder.push('update');
+      return { ...seedRow, name: 'r' };
+    });
 
     const req = makeCrudRequest(1);
-    await service.replaceOne(req, { name: 'r' }).catch(() => { /* ignore */ });
+    await service.replaceOne(req, { name: 'r' }).catch(() => {
+      /* ignore */
+    });
 
     const ffIdx = callOrder.indexOf('findFirst');
     const upIdx = callOrder.indexOf('update');
@@ -180,16 +200,17 @@ describe('T-09-02 SEC-03 concurrent update race — Prisma SEC-03 regression', (
   // -------------------------------------------------------------------------
   it('deleteOne — calls prisma.$transaction with a callback (interactive form)', async () => {
     const req = makeCrudRequest(1);
-    await service.deleteOne(req).catch(() => { /* ignore */ });
-    expect(transactionSpy).toHaveBeenCalledWith(
-      expect.any(Function),
-      expect.anything(),
-    );
+    await service.deleteOne(req).catch(() => {
+      /* ignore */
+    });
+    expect(transactionSpy).toHaveBeenCalledWith(expect.any(Function), expect.anything());
   });
 
   it('deleteOne — passes isolationLevel ReadCommitted', async () => {
     const req = makeCrudRequest(1);
-    await service.deleteOne(req).catch(() => { /* ignore */ });
+    await service.deleteOne(req).catch(() => {
+      /* ignore */
+    });
     expect(transactionSpy).toHaveBeenCalledWith(
       expect.any(Function),
       expect.objectContaining({ isolationLevel: 'ReadCommitted' }),
@@ -198,11 +219,19 @@ describe('T-09-02 SEC-03 concurrent update race — Prisma SEC-03 regression', (
 
   it('deleteOne — tx callback reads before deleting (findFirst before delete)', async () => {
     const callOrder: string[] = [];
-    userFindFirstMock.mockImplementation(async () => { callOrder.push('findFirst'); return seedRow; });
-    userDeleteMock.mockImplementation(async () => { callOrder.push('delete'); return seedRow; });
+    userFindFirstMock.mockImplementation(async () => {
+      callOrder.push('findFirst');
+      return seedRow;
+    });
+    userDeleteMock.mockImplementation(async () => {
+      callOrder.push('delete');
+      return seedRow;
+    });
 
     const req = makeCrudRequest(1);
-    await service.deleteOne(req).catch(() => { /* ignore */ });
+    await service.deleteOne(req).catch(() => {
+      /* ignore */
+    });
 
     const ffIdx = callOrder.indexOf('findFirst');
     const delIdx = callOrder.indexOf('delete');
@@ -233,13 +262,17 @@ describe('T-09-02 SEC-03 concurrent update race — Prisma SEC-03 regression', (
       entityPrimaryColumns: ['id'],
       entityHasDeleteColumn: true,
       softDeleteColumn: 'deletedAt',
-      onBadRequest: (msg: string) => { throw new Error(msg); },
+      onBadRequest: (msg: string) => {
+        throw new Error(msg);
+      },
       joinResolver,
       relationFields: [],
     });
 
     const req = makeCrudRequest(1);
-    await softDelService.recoverOne(req).catch(() => { /* ignore */ });
+    await softDelService.recoverOne(req).catch(() => {
+      /* ignore */
+    });
 
     expect(localTxSpy).not.toHaveBeenCalled();
   });
@@ -262,13 +295,17 @@ describe('T-09-02 SEC-03 concurrent update race — Prisma SEC-03 regression', (
       entityPrimaryColumns: ['id'],
       entityHasDeleteColumn: true,
       softDeleteColumn: 'deletedAt',
-      onBadRequest: (msg: string) => { throw new Error(msg); },
+      onBadRequest: (msg: string) => {
+        throw new Error(msg);
+      },
       joinResolver,
       relationFields: [],
     });
 
     const req = makeCrudRequest(1);
-    await softDelService.recoverOne(req).catch(() => { /* ignore */ });
+    await softDelService.recoverOne(req).catch(() => {
+      /* ignore */
+    });
 
     expect(userUpdateDirectMock).toHaveBeenCalledWith(
       expect.objectContaining({

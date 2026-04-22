@@ -29,10 +29,7 @@ const throwingOnBadRequest = (msg: string): never => {
 // Covers: AND/OR/NOT composition + 11 field-filter operators + mode: 'insensitive'
 // ---------------------------------------------------------------------------
 
-function evalPrismaWhere<T extends Record<string, unknown>>(
-  row: T,
-  where: Record<string, unknown>,
-): boolean {
+function evalPrismaWhere<T extends Record<string, unknown>>(row: T, where: Record<string, unknown>): boolean {
   if (where == null) return true;
   // Logical operators (top-level)
   if ('AND' in where) return (where.AND as any[]).every((w) => evalPrismaWhere(row, w));

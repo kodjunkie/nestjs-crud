@@ -19,7 +19,7 @@ const allowedColumnsByRelation: Record<string, string[]> = {
   projects: ['id', 'name', 'companyId'],
 };
 
-describe("T-09-01 PrismaQueryComposer sort SQLi regression (D-05b invariant)", () => {
+describe('T-09-01 PrismaQueryComposer sort SQLi regression (D-05b invariant)', () => {
   let composer: PrismaQueryComposer;
 
   const emptyParsed = {

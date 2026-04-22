@@ -172,7 +172,9 @@ describe('SEC-03 MikroORM — mutations must run inside em.transactional at READ
     });
 
     const req = makeCrudRequest(1);
-    await service.updateOne(req, { name: 'updated' }).catch(() => {/* may throw */});
+    await service.updateOne(req, { name: 'updated' }).catch(() => {
+      /* may throw */
+    });
 
     jest.restoreAllMocks();
 

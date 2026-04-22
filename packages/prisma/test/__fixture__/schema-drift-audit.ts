@@ -39,8 +39,16 @@ function parseSchemaFields(schemaContent: string, modelName: string): Set<string
     const typePart = parts[1];
     // Prisma scalar types we want to keep
     const SCALAR_TYPES = new Set([
-      'Int', 'String', 'Boolean', 'Float', 'Decimal', 'BigInt',
-      'DateTime', 'Json', 'Bytes', 'Unsupported',
+      'Int',
+      'String',
+      'Boolean',
+      'Float',
+      'Decimal',
+      'BigInt',
+      'DateTime',
+      'Json',
+      'Bytes',
+      'Unsupported',
     ]);
     // Skip relation fields (they reference model names: Company, User, Project[], etc.)
     const baseType = typePart.replace(/[\[\]?]/g, '');
@@ -103,9 +111,7 @@ function audit(): void {
         );
       }
       if (extra.length > 0) {
-        console.error(
-          `[DRIFT] ${model}: fields in schema.prisma but NOT in canonical-entities: ${extra.join(', ')}`,
-        );
+        console.error(`[DRIFT] ${model}: fields in schema.prisma but NOT in canonical-entities: ${extra.join(', ')}`);
       }
     } else {
       console.log(`[OK] ${model}: field parity verified (${schemaFields.size} scalar fields)`);

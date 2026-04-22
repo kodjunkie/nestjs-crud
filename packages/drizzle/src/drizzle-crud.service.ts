@@ -370,11 +370,7 @@ export class DrizzleCrudService<T extends Record<string, unknown>> extends CrudS
 
   // === PRIVATE HELPERS ===
 
-  private async doUpdateOneInternal(
-    req: CrudRequest,
-    dto: T | Partial<T>,
-    t: DrizzleQueryTranslator<T>,
-  ): Promise<T> {
+  private async doUpdateOneInternal(req: CrudRequest, dto: T | Partial<T>, t: DrizzleQueryTranslator<T>): Promise<T> {
     const { parsed, options } = req;
     const { allowParamsOverride, returnShallow } = options.routes.updateOneBase;
     const paramsFilters = this.getParamFilters(parsed);
@@ -407,11 +403,7 @@ export class DrizzleCrudService<T extends Record<string, unknown>> extends CrudS
     }
   }
 
-  private async doReplaceOneInternal(
-    req: CrudRequest,
-    dto: T | Partial<T>,
-    t: DrizzleQueryTranslator<T>,
-  ): Promise<T> {
+  private async doReplaceOneInternal(req: CrudRequest, dto: T | Partial<T>, t: DrizzleQueryTranslator<T>): Promise<T> {
     const { parsed, options } = req;
     const { allowParamsOverride, returnShallow } = options.routes.replaceOneBase;
     const paramsFilters = this.getParamFilters(parsed);

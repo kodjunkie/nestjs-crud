@@ -143,8 +143,7 @@ describe('PrismaQueryComposer', () => {
       // May be wrapped in AND if combined with other conditions
       const where = result.where;
       const hasDeletedAtNull =
-        where?.deletedAt === null ||
-        (Array.isArray(where?.AND) && where.AND.some((c: any) => c.deletedAt === null));
+        where?.deletedAt === null || (Array.isArray(where?.AND) && where.AND.some((c: any) => c.deletedAt === null));
       expect(hasDeletedAtNull).toBe(true);
     });
 
@@ -154,8 +153,7 @@ describe('PrismaQueryComposer', () => {
       const result = composer.applyToQuery({}, parsed, options);
       const where = result.where;
       const hasDeletedAtNull =
-        where?.deletedAt === null ||
-        (Array.isArray(where?.AND) && where.AND.some((c: any) => c.deletedAt === null));
+        where?.deletedAt === null || (Array.isArray(where?.AND) && where.AND.some((c: any) => c.deletedAt === null));
       expect(hasDeletedAtNull).toBe(false);
     });
 
@@ -165,8 +163,7 @@ describe('PrismaQueryComposer', () => {
       const result = composer.applyToQuery({}, parsed, options);
       const where = result.where;
       const hasDeletedAtNull =
-        where?.deletedAt === null ||
-        (Array.isArray(where?.AND) && where.AND.some((c: any) => c.deletedAt === null));
+        where?.deletedAt === null || (Array.isArray(where?.AND) && where.AND.some((c: any) => c.deletedAt === null));
       expect(hasDeletedAtNull).toBe(false);
     });
   });

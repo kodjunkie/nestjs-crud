@@ -462,9 +462,7 @@ describe('#request-query', () => {
 
       // Test 1: typo key not in entity → throws RequestQueryException naming the key
       it('throws RequestQueryException when persist key is not an entity column', () => {
-        expect(() => qp.setAuthPersist({ userId: 123 }, entityColumnsHash)).toThrow(
-          RequestQueryException,
-        );
+        expect(() => qp.setAuthPersist({ userId: 123 }, entityColumnsHash)).toThrow(RequestQueryException);
         expect(() => qp.setAuthPersist({ userId: 123 }, entityColumnsHash)).toThrow(/userId/);
       });
 
@@ -476,9 +474,7 @@ describe('#request-query', () => {
       // Test 3: mixed valid + invalid → throws naming only the invalid key
       it('throws naming only the invalid key when mixed valid + invalid keys', () => {
         expect(() => qp.setAuthPersist({ user_id: 123, wrong: 'x' }, entityColumnsHash)).toThrow(/wrong/);
-        expect(() => qp.setAuthPersist({ user_id: 123, wrong: 'x' }, entityColumnsHash)).not.toThrow(
-          /user_id/,
-        );
+        expect(() => qp.setAuthPersist({ user_id: 123, wrong: 'x' }, entityColumnsHash)).not.toThrow(/user_id/);
       });
 
       // Test 4: empty / undefined → no-op, backwards compat
@@ -493,9 +489,7 @@ describe('#request-query', () => {
         const persistValue = 'secret-tenant-id-42';
         const persistObj = { wrongKey: persistValue };
 
-        expect(() => qp.setAuthPersist(persistObj, entityColumnsHash, mockLogger)).toThrow(
-          RequestQueryException,
-        );
+        expect(() => qp.setAuthPersist(persistObj, entityColumnsHash, mockLogger)).toThrow(RequestQueryException);
 
         // logger.warn must have been called
         expect(mockLogger.warn).toHaveBeenCalledTimes(1);
