@@ -8,8 +8,12 @@
 
 const rootConfig = require('../../jest.config.js');
 
+// Drop root `testRegex` — we scope via `testMatch` here; Jest forbids both.
+const { testRegex: _testRegex, ...rootConfigWithoutTestRegex } = rootConfig;
+
 module.exports = {
-  ...rootConfig,
+  ...rootConfigWithoutTestRegex,
+  rootDir: '../..',
   preset: 'ts-jest/presets/default-esm',
   extensionsToTreatAsEsm: ['.ts'],
   testMatch: ['<rootDir>/packages/mikro-orm/test/**/*.spec.ts'],
@@ -18,8 +22,25 @@ module.exports = {
     '^.+\\.ts$': [
       'ts-jest',
       {
-        tsconfig: 'tsconfig.jest.json',
+        // Inline tsconfig override: root tsconfig sets module: commonjs which would
+        // emit `exports.x = ...` and break under the ESM loader. ts-jest's tsconfig
+        // option takes flat compilerOptions (not an extends/compilerOptions wrapper).
+        tsconfig: {
+          module: 'esnext',
+          target: 'es2020',
+          esModuleInterop: true,
+          experimentalDecorators: true,
+          emitDecoratorMetadata: true,
+          allowSyntheticDefaultImports: true,
+          skipLibCheck: true,
+          removeComments: false,
+        },
         useESM: true,
+        // Runtime module resolution is handled by Jest's moduleNameMapper
+        // (inherited from root). Disabling ts-jest type-level diagnostics
+        // avoids spurious TS2307s from ts-jest not seeing the root tsconfig
+        // baseUrl+paths under inline-tsconfig override.
+        diagnostics: false,
       },
     ],
     '^.+\\.js$': [

@@ -53,9 +53,14 @@ npx jest packages/core/test/crud.decorator.base.spec.ts
 # Run tests matching a name pattern
 npx jest --testNamePattern="getManyBase"
 
+# Run MikroORM adapter tests (ESM — needs NODE_OPTIONS)
+yarn test:mikro-orm
+
 # Coverage
 yarn test:coverage
 ```
+
+`yarn test:mikro-orm` is the ONLY supported way to run `packages/mikro-orm/test/*.spec.ts`. `@mikro-orm/core` v7 is pure ESM (`import.meta.url`); the script sets `NODE_OPTIONS=--experimental-vm-modules` and points Jest at `packages/mikro-orm/jest.config.js` (ts-jest ESM preset). Invoking `npx jest packages/mikro-orm/test/...` directly will fail with `SyntaxError: Cannot use 'import.meta' outside a module`.
 
 ### Test categories
 
