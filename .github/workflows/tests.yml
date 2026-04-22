@@ -11,7 +11,7 @@ jobs:
   parity:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Enable Corepack
         run: corepack enable
@@ -43,7 +43,7 @@ jobs:
       COMPOSE_FILE: ./compose.yml
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: build docker db
         run: docker compose up -d
