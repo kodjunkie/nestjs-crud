@@ -68,29 +68,16 @@ export class TypeOrmCrudService<T> extends CrudService<T> {
     return this.repo.metadata.targetName;
   }
 
-  /**
-   * Get many
-   * @param req
-   */
   public async getMany(req: CrudRequest): Promise<GetManyDefaultResponse<T> | T[]> {
     const { parsed, options } = req;
     const builder = await this.createBuilder(parsed, options);
     return this.doGetMany(builder, parsed, options);
   }
 
-  /**
-   * Get one
-   * @param req
-   */
   public async getOne(req: CrudRequest): Promise<T> {
     return this.getOneOrFail(req);
   }
 
-  /**
-   * Create one
-   * @param req
-   * @param dto
-   */
   public async createOne(req: CrudRequest, dto: T | Partial<T>): Promise<T> {
     const { returnShallow } = req.options.routes.createOneBase;
     const entity = this.prepareEntityBeforeSave(dto, req.parsed);
@@ -117,11 +104,6 @@ export class TypeOrmCrudService<T> extends CrudService<T> {
     }
   }
 
-  /**
-   * Create many
-   * @param req
-   * @param dto
-   */
   public async createMany(req: CrudRequest, dto: CreateManyDto<T | Partial<T>>): Promise<T[]> {
     /* istanbul ignore if */
     if (!isObject(dto) || !isArrayFull(dto.bulk)) {
@@ -138,11 +120,6 @@ export class TypeOrmCrudService<T> extends CrudService<T> {
     return this.repo.save(bulk as DeepPartial<T>[], { chunk: 50 });
   }
 
-  /**
-   * Update one
-   * @param req
-   * @param dto
-   */
   // TODO(SEC-03): wrap read-modify-write in QueryRunner — Phase 8 SEC-03
   public async updateOne(req: CrudRequest, dto: T | Partial<T>): Promise<T> {
     const { allowParamsOverride, returnShallow } = req.options.routes.updateOneBase;
@@ -166,21 +143,11 @@ export class TypeOrmCrudService<T> extends CrudService<T> {
     }
   }
 
-  /**
-   * Recover one
-   * @param req
-   * @param dto
-   */
   public async recoverOne(req: CrudRequest): Promise<T> {
     const found = await this.getOneOrFail(req, false, true);
     return this.repo.recover(found as DeepPartial<T>);
   }
 
-  /**
-   * Replace one
-   * @param req
-   * @param dto
-   */
   // TODO(SEC-03): wrap read-modify-write in QueryRunner — Phase 8 SEC-03
   public async replaceOne(req: CrudRequest, dto: T | Partial<T>): Promise<T> {
     const { allowParamsOverride, returnShallow } = req.options.routes.replaceOneBase;
@@ -213,10 +180,6 @@ export class TypeOrmCrudService<T> extends CrudService<T> {
     }
   }
 
-  /**
-   * Delete one
-   * @param req
-   */
   // TODO(SEC-03): wrap read-modify-write in QueryRunner — Phase 8 SEC-03
   public async deleteOne(req: CrudRequest): Promise<void | T> {
     const { returnDeleted } = req.options.routes.deleteOneBase;
@@ -245,12 +208,6 @@ export class TypeOrmCrudService<T> extends CrudService<T> {
     return filters;
   }
 
-  /**
-   * Create TypeOrm QueryBuilder
-   * @param parsed
-   * @param options
-   * @param many
-   */
   public async createBuilder(
     parsed: ParsedRequestParams,
     options: CrudRequestOptions,
@@ -262,16 +219,6 @@ export class TypeOrmCrudService<T> extends CrudService<T> {
     return builder;
   }
 
-  /**
-   * depends on paging call `SelectQueryBuilder#getMany` or `SelectQueryBuilder#getManyAndCount`
-   * helpful for overriding `TypeOrmCrudService#getMany`
-   * @see getMany
-   * @see SelectQueryBuilder#getMany
-   * @see SelectQueryBuilder#getManyAndCount
-   * @param builder
-   * @param query
-   * @param options
-   */
   protected async doGetMany(
     builder: SelectQueryBuilder<T>,
     query: ParsedRequestParams,
@@ -290,7 +237,6 @@ export class TypeOrmCrudService<T> extends CrudService<T> {
 
   protected onInitMapEntityColumns() {
     this.entityColumns = this.repo.metadata.columns.map((prop) => {
-      // In case column is an embedded, use the propertyPath to get complete path
       if (prop.embeddedMetadata) {
         this.entityColumnsHash[prop.propertyPath] = prop.databasePath;
         return prop.propertyPath;
@@ -305,23 +251,11 @@ export class TypeOrmCrudService<T> extends CrudService<T> {
   }
 
   protected async getOneOrFail(req: CrudRequest, shallow = false, withDeleted = false): Promise<T> {
-    const { parsed, options } = req;
-    const builder = shallow
-      ? this.repo.createQueryBuilder(this.alias)
-      : await this.createBuilder(parsed, options, true, withDeleted);
-
-    if (shallow) {
-      const where = this.translator.buildWhere(parsed.search);
-      if (where) builder.andWhere(where);
-    }
-
-    const found = withDeleted ? await builder.withDeleted().getOne() : await builder.getOne();
-
-    if (!found) {
-      this.throwNotFoundException(this.alias);
-    }
-
-    return found;
+    return this.translator.findOneOrFail(req.parsed, req.options, {
+      shallow,
+      withDeleted,
+      onNotFound: () => this.throwNotFoundException(this.alias),
+    });
   }
 
   protected prepareEntityBeforeSave(dto: T | Partial<T>, parsed: CrudRequest['parsed']): T | undefined {
