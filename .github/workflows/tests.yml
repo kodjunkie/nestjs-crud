@@ -71,3 +71,35 @@ jobs:
 
       - name: run ${{ matrix.adapter }} x ${{ matrix.db }} tests
         run: yarn test:${{ matrix.adapter }}:${{ matrix.db }}
+
+  test-no-swagger:
+    name: test (no-swagger)
+    runs-on: ubuntu-latest
+    needs: parity
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Pin Yarn version
+        # Pins Yarn to the version that matches yarn.lock — keeps --immutable working.
+        # CI-03 sentinel mechanism is moduleNameMapper-based (no yarn remove) so
+        # the lockfile is never touched.
+        run: yarn set version 4.12.0
+
+      - name: install
+        run: yarn install --immutable
+
+      - name: build
+        run: yarn build
+
+      - name: run no-swagger sentinel
+        run: npx jest --config jest.config.no-swagger.js --coverage
+
+      - name: upload coverage artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-no-swagger
+          path: coverage-no-swagger/
