@@ -1,0 +1,51 @@
+{
+  "name": "@nestjs-crud/prisma",
+  "description": "NestJs CRUD for RESTful APIs - Prisma ORM",
+  "version": "1.0.2",
+  "license": "MIT",
+  "main": "lib/index.js",
+  "typings": "lib/index.d.ts",
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "lib",
+    "CHANGELOG.md"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/kodjunkie/nestjs-crud.git"
+  },
+  "bugs": {
+    "url": "https://github.com/kodjunkie/nestjs-crud/issues"
+  },
+  "keywords": [
+    "typescript",
+    "prisma",
+    "@prisma/client",
+    "nest",
+    "nestjs",
+    "rest",
+    "restful",
+    "api",
+    "crud",
+    "crud-generator",
+    "backend",
+    "frameworks"
+  ],
+  "author": {
+    "name": "Lawrence Onah",
+    "email": "paplow01@gmail.com"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "scripts": {
+    "build": "npx tsc -b"
+  },
+  "peerDependencies": {
+    "@nestjs-crud/core": "^2.0.0",
+    "@nestjs/common": "^11.0.0",
+    "@prisma/client": ">=5.0.0"
+  }
+}
