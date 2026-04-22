@@ -90,8 +90,7 @@ export class DrizzleCrudService<T extends Record<string, unknown>> extends CrudS
       this.throwBadRequestException('Empty data. Nothing to save.');
     }
 
-    const result = await this.db.insert(this.table).values(entity).returning();
-    const saved = (result[0] || entity) as T;
+    const saved = await this.insertReturning(entity);
 
     if (options.routes.createOneBase.returnShallow) {
       return saved;
@@ -123,8 +122,14 @@ export class DrizzleCrudService<T extends Record<string, unknown>> extends CrudS
       const inserted: T[] = [];
       for (let i = 0; i < bulk.length; i += 50) {
         const chunk = bulk.slice(i, i + 50);
-        const result = await tx.insert(this.table).values(chunk).returning();
-        inserted.push(...(result as T[]));
+        if (this.dbDialect === 'mysql') {
+          // MySQL does not support RETURNING — insert chunk and collect as plain objects
+          await tx.insert(this.table).values(chunk);
+          inserted.push(...(chunk as T[]));
+        } else {
+          const result = await tx.insert(this.table).values(chunk).returning();
+          inserted.push(...(result as T[]));
+        }
       }
       return inserted;
     });
@@ -143,8 +148,7 @@ export class DrizzleCrudService<T extends Record<string, unknown>> extends CrudS
       : { ...found, ...dto, ...parsed.authPersist };
 
     const pkCondition = this.buildPrimaryKeyCondition(found);
-    const result = await this.db.update(this.table).set(toSave).where(pkCondition).returning();
-    const updated = (result[0] || toSave) as T;
+    const updated = await this.updateReturning(toSave, pkCondition);
 
     if (returnShallow) {
       return updated;
@@ -170,8 +174,7 @@ export class DrizzleCrudService<T extends Record<string, unknown>> extends CrudS
         : { ...found, ...dto, ...parsed.authPersist };
 
       const pkCondition = this.buildPrimaryKeyCondition(found);
-      const result = await this.db.update(this.table).set(toSave).where(pkCondition).returning();
-      toReturn = (result[0] || toSave) as T;
+      toReturn = await this.updateReturning(toSave, pkCondition);
     } catch (error) {
       if (!(error instanceof NotFoundException)) {
         throw error;
@@ -180,8 +183,7 @@ export class DrizzleCrudService<T extends Record<string, unknown>> extends CrudS
         ? { ...dto, ...paramsFilters, ...parsed.authPersist }
         : { ...dto, ...parsed.authPersist };
 
-      const result = await this.db.insert(this.table).values(entity).returning();
-      toReturn = (result[0] || entity) as T;
+      toReturn = await this.insertReturning(entity);
     }
 
     if (returnShallow) {
@@ -360,6 +362,41 @@ export class DrizzleCrudService<T extends Record<string, unknown>> extends CrudS
       }
     }
     return 'deletedAt';
+  }
+
+  /**
+   * Insert a row and return the saved entity.
+   * MySQL does not support RETURNING — we use the OkPacket insertId to inject
+   * the auto-generated PK back into the entity so callers can do a re-fetch.
+   * Postgres and SQLite use RETURNING for an exact round-trip.
+   */
+  protected async insertReturning(entity: Record<string, any>): Promise<T> {
+    if (this.dbDialect === 'mysql') {
+      const [result] = await this.db.insert(this.table).values(entity);
+      const pkField = this.entityPrimaryColumns[0];
+      const insertedId = (result as any)?.insertId;
+      const saved = { ...entity } as Record<string, any>;
+      if (pkField && insertedId != null) {
+        saved[pkField] = insertedId;
+      }
+      return saved as T;
+    }
+    const result = await this.db.insert(this.table).values(entity).returning();
+    return (result[0] || entity) as T;
+  }
+
+  /**
+   * Update rows matching `condition` and return the updated entity.
+   * MySQL does not support RETURNING — fall back to the `toSave` object.
+   * Callers that need a fresh round-trip should call getOneOrFail afterward.
+   */
+  protected async updateReturning(toSave: Record<string, any>, condition: SQL): Promise<T> {
+    if (this.dbDialect === 'mysql') {
+      await this.db.update(this.table).set(toSave).where(condition);
+      return toSave as T;
+    }
+    const result = await this.db.update(this.table).set(toSave).where(condition).returning();
+    return (result[0] || toSave) as T;
   }
 
   // === PRIVATE HELPERS ===

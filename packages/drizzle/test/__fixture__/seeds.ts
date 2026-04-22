@@ -1,4 +1,8 @@
-import { CANONICAL_SEED_COMPANIES, CANONICAL_SEED_USERS, CANONICAL_SEED_PROJECTS } from '../../../core/test/__shared-fixture__/canonical-entities';
+import {
+  CANONICAL_SEED_COMPANIES,
+  CANONICAL_SEED_USERS,
+  CANONICAL_SEED_PROJECTS,
+} from '../../../core/test/__shared-fixture__/canonical-entities';
 
 import * as pgSchema from './schema.postgres';
 import * as mysqlSchema from './schema.mysql';
@@ -9,21 +13,27 @@ export async function seedAll(db: any, dialect: 'postgres' | 'mysql'): Promise<v
 
   if (dialect === 'mysql') {
     await db.execute('SET FOREIGN_KEY_CHECKS = 0');
+    await db.execute('TRUNCATE TABLE user_licenses');
+    await db.execute('TRUNCATE TABLE user_projects');
     await db.execute('TRUNCATE TABLE projects');
     await db.execute('TRUNCATE TABLE users');
     await db.execute('TRUNCATE TABLE companies');
     await db.execute('SET FOREIGN_KEY_CHECKS = 1');
   } else {
-    await db.delete(projects);
-    await db.delete(users);
-    await db.delete(companies);
+    // TRUNCATE with CASCADE + RESTART IDENTITY ensures FK-dependent TypeORM tables are
+    // cleared and serial sequences are reset so canonical IDs (1-10) are reproducible.
+    await db.execute(
+      'TRUNCATE TABLE user_licenses, user_projects, projects, users, companies RESTART IDENTITY CASCADE',
+    );
   }
 
   await db.insert(companies).values(CANONICAL_SEED_COMPANIES.map((c) => ({ ...c })));
   await db.insert(users).values(CANONICAL_SEED_USERS.map((u) => ({ ...u })));
   await db.insert(projects).values(CANONICAL_SEED_PROJECTS.map((p) => ({ ...p })));
 
-  console.log(`[seeds] seeded ${CANONICAL_SEED_COMPANIES.length} companies, ${CANONICAL_SEED_USERS.length} users, ${CANONICAL_SEED_PROJECTS.length} projects (${dialect})`);
+  console.log(
+    `[seeds] seeded ${CANONICAL_SEED_COMPANIES.length} companies, ${CANONICAL_SEED_USERS.length} users, ${CANONICAL_SEED_PROJECTS.length} projects (${dialect})`,
+  );
 }
 
 if (require.main === module) {

@@ -16,4 +16,5 @@ module.exports = {
   rootDir: '../..',
   testMatch: ['<rootDir>/packages/drizzle/test/**/*.spec.ts'],
   testTimeout: 30000,
+  forceExit: true,
 };
