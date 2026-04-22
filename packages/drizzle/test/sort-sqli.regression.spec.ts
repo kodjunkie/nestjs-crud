@@ -1,18 +1,16 @@
 /**
- * @description Nyquist SQLi regression matrix for `DrizzleQueryTranslator.mapSort`.
- * Ports the TypeORM matrix (`packages/typeorm/test/sort-sqli.regression.spec.ts`)
- * verbatim to the Drizzle adapter. Every dotted-path injection vector is
- * routed through the translator's `onBadRequest` throwing sink — a silent
- * pass-through would let an attacker-controlled identifier reach
- * `sql.identifier` / raw `addOrderBy`. Drizzle's SQL builder does NOT
+ * @description Nyquist SQLi regression matrix for `DrizzleQueryComposer`
+ * (post-6.2-03 SUT). Ports the TypeORM matrix verbatim — every dotted-path
+ * injection vector must be routed through `onBadRequest` (throwing) before
+ * any identifier reaches `sql.identifier`. Drizzle's SQL builder does NOT
  * parameterize column identifiers, so the allowlist is the only defense.
  *
- * Harness contract (PATTERNS.md §5 + input-sanitizer.spec.ts:11-22):
- * `onBadRequest` MUST throw. A `jest.fn()` stub would let a miss return
- * silently — masking the exact bug this regression gate exists to close.
+ * Harness contract (PATTERNS.md §5): `onBadRequest` MUST throw. A `jest.fn()`
+ * stub would let a miss return silently — masking the exact bug this
+ * regression gate exists to close.
  *
  * @see packages/typeorm/test/sort-sqli.regression.spec.ts (source matrix)
- * @see .planning/phases/05-arch-04-slim-typeormcrudservice/05-CONTEXT.md D-05a/D-05b
+ * @see .planning/phases/05-arch-04-slim-typeormcrudservice... 05-CONTEXT.md D-05a/D-05b
  */
 import { BadRequestException } from '@nestjs/common';
 // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -22,7 +20,8 @@ import { drizzle } from 'drizzle-orm/better-sqlite3';
 import { integer, sqliteTable, text } from 'drizzle-orm/sqlite-core';
 
 import { DrizzleJoinResolver } from '../src/drizzle-join-resolver';
-import { DrizzleQueryTranslator } from '../src/drizzle-query-translator';
+import { DrizzleQueryComposer } from '../src/query/drizzle-query-composer';
+import { DrizzleWhereBuilder } from '../src/query/drizzle-where-builder';
 
 // CONTRACT: throwing stub — never `jest.fn()` on a security path.
 const throwingOnBadRequest = (msg: string): never => {
@@ -41,12 +40,10 @@ const relation = sqliteTable('relation', {
   userId: integer('user_id'),
 });
 
-type UserRow = { id: number; name: string | null; deletedAt: number | null };
-
-describe('DrizzleQueryTranslator mapSort dotted-path SQLi regression (Nyquist matrix)', () => {
+describe('DrizzleQueryComposer mapSort dotted-path SQLi regression (Nyquist matrix)', () => {
   let sqlite: any;
   let db: ReturnType<typeof drizzle>;
-  let translator: DrizzleQueryTranslator<UserRow>;
+  let composer: DrizzleQueryComposer;
 
   // ≥4 injection vectors — mirrors the TypeORM vector list verbatim.
   const injectionVectors: ReadonlyArray<string> = [
@@ -79,15 +76,22 @@ describe('DrizzleQueryTranslator mapSort dotted-path SQLi regression (Nyquist ma
     });
 
     const columnsMap = getTableColumns(users) as any;
-    translator = new DrizzleQueryTranslator<UserRow>(db, users, {
+    const whereBuilder = new DrizzleWhereBuilder({
+      columnsMap,
+      dbDialect: 'sqlite',
+      onBadRequest: throwingOnBadRequest,
+    });
+    composer = new DrizzleQueryComposer({
+      db,
+      table: users,
       entityColumns: Object.keys(columnsMap),
       entityPrimaryColumns: ['id'],
       columnsMap,
       entityHasDeleteColumn: true,
       softDeleteColumn: (users as any).deletedAt,
-      dbDialect: 'sqlite',
       onBadRequest: throwingOnBadRequest,
       joinResolver,
+      whereBuilder,
     });
     // Silence unused-table lint — `getTableName` also asserts schema is wired.
     expect(getTableName(relation)).toBe('relation');
@@ -117,9 +121,9 @@ describe('DrizzleQueryTranslator mapSort dotted-path SQLi regression (Nyquist ma
       ...emptyParsed,
       sort: [{ field, order: 'ASC' as const }],
     };
-    const query = translator.newQuery();
+    const query = composer.newQuery();
 
-    expect(() => translator.applyToQuery(query, parsed, emptyOptions)).toThrow(BadRequestException);
+    expect(() => composer.applyToQuery(query, parsed, emptyOptions)).toThrow(BadRequestException);
   });
 
   it('rejects single-segment injection-shaped field (not a dotted path)', () => {
@@ -127,8 +131,8 @@ describe('DrizzleQueryTranslator mapSort dotted-path SQLi regression (Nyquist ma
       ...emptyParsed,
       sort: [{ field: 'name; DROP TABLE users--', order: 'ASC' as const }],
     };
-    const query = translator.newQuery();
+    const query = composer.newQuery();
 
-    expect(() => translator.applyToQuery(query, parsed, emptyOptions)).toThrow(BadRequestException);
+    expect(() => composer.applyToQuery(query, parsed, emptyOptions)).toThrow(BadRequestException);
   });
 });
