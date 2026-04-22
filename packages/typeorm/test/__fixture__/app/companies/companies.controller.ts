@@ -8,7 +8,7 @@ import { serialize } from './responses';
 
 @Crud({
   model: {
-    type: Company
+    type: Company,
   },
   serialize,
   routes: {

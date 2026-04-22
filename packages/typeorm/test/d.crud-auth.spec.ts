@@ -5,11 +5,11 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { Crud, CrudAuth } from '@nestjs-crud/core';
 import * as request from 'supertest';
-import { withCache } from '../../../integration/typeorm/orm.config';
-import { User } from '../../../integration/typeorm/users';
-import { UserProfile } from '../../../integration/typeorm/users-profiles';
-import { Project } from '../../../integration/typeorm/projects';
-import { HttpExceptionFilter } from '../../../integration/shared/https-exception.filter';
+import { withCache } from './__fixture__/app/orm.config';
+import { User } from './__fixture__/app/users';
+import { UserProfile } from './__fixture__/app/users-profiles';
+import { Project } from './__fixture__/app/projects';
+import { HttpExceptionFilter } from './__fixture__/shared/https-exception.filter';
 import { UsersService } from './__fixture__/users.service';
 import { ProjectsService } from './__fixture__/projects.service';
 

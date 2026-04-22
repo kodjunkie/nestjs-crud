@@ -1,22 +1,5 @@
-import {
-  Entity,
-  Column,
-  JoinColumn,
-  OneToOne,
-  OneToMany,
-  ManyToOne,
-  ManyToMany,
-  DeleteDateColumn,
-} from 'typeorm';
-import {
-  IsOptional,
-  IsString,
-  MaxLength,
-  IsNotEmpty,
-  IsEmail,
-  IsBoolean,
-  ValidateNested,
-} from 'class-validator';
+import { Entity, Column, JoinColumn, OneToOne, OneToMany, ManyToOne, ManyToMany, DeleteDateColumn } from 'typeorm';
+import { IsOptional, IsString, MaxLength, IsNotEmpty, IsEmail, IsBoolean, ValidateNested } from 'class-validator';
 import { Type } from 'class-transformer';
 import { CrudValidationGroups } from '@nestjs-crud/core';
 

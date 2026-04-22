@@ -1,12 +1,6 @@
 import { Controller } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
-import {
-  Crud,
-  CrudController,
-  CrudRequest,
-  ParsedRequest,
-  Override,
-} from '@nestjs-crud/core';
+import { Crud, CrudController, CrudRequest, ParsedRequest, Override } from '@nestjs-crud/core';
 
 import { User } from './user.entity';
 import { UsersService } from './users.service';

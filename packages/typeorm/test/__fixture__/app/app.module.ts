@@ -11,14 +11,7 @@ import { DevicesModule } from './devices/devices.module';
 import { NotesModule } from './notes/notes.module';
 
 @Module({
-  imports: [
-    TypeOrmModule.forRoot(withCache),
-    CompaniesModule,
-    ProjectsModule,
-    UsersModule,
-    DevicesModule,
-    NotesModule,
-  ],
+  imports: [TypeOrmModule.forRoot(withCache), CompaniesModule, ProjectsModule, UsersModule, DevicesModule, NotesModule],
   providers: [
     {
       provide: APP_GUARD,
