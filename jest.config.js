@@ -14,11 +14,25 @@ module.exports = {
   moduleFileExtensions: ['ts', 'js'],
   testRegex: '\\.spec.ts$',
   rootDir: '.',
+  transformIgnorePatterns: ['/node_modules/(?!(@mikro-orm)/)'],
   transform: {
     '^.+\\.ts$': [
       'ts-jest',
       {
         tsconfig: 'tsconfig.jest.json',
+      },
+    ],
+    '^.+\\.js$': [
+      'ts-jest',
+      {
+        tsconfig: {
+          allowJs: true,
+          module: 'commonjs',
+          target: 'es2020',
+          esModuleInterop: true,
+          removeComments: false,
+        },
+        diagnostics: false,
       },
     ],
   },
