@@ -56,7 +56,7 @@ export class MikroOrmCrudService<T extends object> extends CrudService<T> {
     protected entityClass: EntityClass<T>,
   ) {
     super();
-    this.metadata = this.em.getMetadata().get(this.entityClass.name);
+    this.metadata = this.em.getMetadata().get(this.entityClass);
     this.onInitMapEntityColumns();
     this.detectDialect();
 
