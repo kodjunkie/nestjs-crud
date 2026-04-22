@@ -71,30 +71,50 @@ export class MikroOrmCrudService<T extends object> extends CrudService<T> {
     const where = this.buildWhereCondition(parsed, options);
     const fields = this.getSelect(parsed, options.query);
     const orderBy = this.getSort(parsed, options.query);
+    const take = this.getTake(parsed, options.query);
+    const skip = this.getSkip(parsed, take);
+    const limit = take && isFinite(take) ? take : undefined;
+    const offset = skip && isFinite(skip) ? skip : undefined;
 
     if (this.decidePagination(parsed, options)) {
-      const take = this.getTake(parsed, options.query);
-      const skip = this.getSkip(parsed, take);
-
-      const [data, total] = await this.em.findAndCount(this.entityClass, where as any, {
-        fields: fields as any,
-        orderBy: orderBy as any,
-        limit: take && isFinite(take) ? take : undefined,
-        offset: skip && isFinite(skip) ? skip : undefined,
-      });
+      const qb = (this.em as any).createQueryBuilder(this.entityClass);
+      if (fields && fields.length) {
+        qb.select(fields as any);
+      }
+      if (where && objKeys(where).length) {
+        qb.where(where as any);
+      }
+      if (orderBy && objKeys(orderBy).length) {
+        qb.orderBy(orderBy as any);
+      }
+      if (typeof limit === 'number') {
+        qb.limit(limit);
+      }
+      if (typeof offset === 'number') {
+        qb.offset(offset);
+      }
+      const [data, total] = await qb.getResultAndCount();
 
       return this.createPageInfo(data as unknown as T[], total, take || total, skip || 0);
     }
 
-    const take = this.getTake(parsed, options.query);
-    const skip = this.getSkip(parsed, take);
-
-    const data = await this.em.find(this.entityClass, where as any, {
-      fields: fields as any,
-      orderBy: orderBy as any,
-      limit: take && isFinite(take) ? take : undefined,
-      offset: skip && isFinite(skip) ? skip : undefined,
-    });
+    const qb = (this.em as any).createQueryBuilder(this.entityClass);
+    if (fields && fields.length) {
+      qb.select(fields as any);
+    }
+    if (where && objKeys(where).length) {
+      qb.where(where as any);
+    }
+    if (orderBy && objKeys(orderBy).length) {
+      qb.orderBy(orderBy as any);
+    }
+    if (typeof limit === 'number') {
+      qb.limit(limit);
+    }
+    if (typeof offset === 'number') {
+      qb.offset(offset);
+    }
+    const data = await qb.getResult();
 
     return data as unknown as T[];
   }
