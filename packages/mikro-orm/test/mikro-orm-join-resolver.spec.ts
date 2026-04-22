@@ -125,9 +125,7 @@ describe('MikroOrmJoinResolver', () => {
       const populate = jest.fn();
       const query: any = { populate };
 
-      expect(() =>
-        resolver.applyJoins(query, [{ field: 'ghost' }], { ghost: { eager: true } }),
-      ).not.toThrow();
+      expect(() => resolver.applyJoins(query, [{ field: 'ghost' }], { ghost: { eager: true } })).not.toThrow();
       expect(populate).not.toHaveBeenCalled();
     });
   });
