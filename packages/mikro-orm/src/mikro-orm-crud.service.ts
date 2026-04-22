@@ -8,35 +8,16 @@ import {
 } from '@nestjs-crud/core';
 import { NotFoundException } from '@nestjs/common';
 import { ClassType, hasLength, isArrayFull, isNil, isObject } from '@nestjs-crud/util';
-import { EntityManager, EntityClass, EntityProperty } from '@mikro-orm/core';
+import { EntityManager, EntityClass, EntityMetadata, EntityProperty } from '@mikro-orm/core';
 
 import { DbDialect } from './interfaces';
 import { MikroOrmJoinResolver } from './mikro-orm-join-resolver';
 import { MikroOrmQueryTranslator } from './mikro-orm-query-translator';
 
-/**
- * @deprecated Since v1.0.2. Public method signatures and internal
- * `any` surfaces on `MikroOrmCrudService` will tighten in v2.0
- * (see v2 TYPES-02). Consumer subclasses that rely on `any`
- * permissiveness — especially those that access or override
- * `protected metadata` / `protected propertiesMap` — will need
- * to migrate to the typed equivalents shipped with v2.
- *
- * No runtime change in v1.0.2; this notice exists to give
- * consumers months of lead time before v2.
- *
- * Migration guide:
- * {@link https://github.com/kodjunkie/nestjs-crud/wiki/v2-migration}
- */
 export class MikroOrmCrudService<T extends object> extends CrudService<T> {
   protected dbDialect: DbDialect;
 
-  /**
-   * @deprecated Since v1.0.2. `metadata` is typed `any` and will
-   * become a typed EntityMetadata reference in v2.0 (v2 TYPES-02).
-   * {@link https://github.com/kodjunkie/nestjs-crud/wiki/v2-migration}
-   */
-  protected metadata: any;
+  protected metadata: EntityMetadata<T>;
 
   protected entityColumns: string[];
 

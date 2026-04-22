@@ -9,7 +9,11 @@ import { DbDialect } from './interfaces';
  * For case-insensitive operators, uses MikroORM's `raw()` to produce
  * properly escaped SQL expressions with LOWER().
  */
-export function mapOperator(field: string, operator: ComparisonOperator | string, value: any, dialect: DbDialect): any {
+// @internal — value is user-supplied filter data whose shape varies per operator
+// (scalar, array, range pair). Return type is a MikroORM FilterQuery fragment
+// whose exact shape also varies per operator. Both sides are genuinely unknowable
+// without a discriminated-union per operator — deferred to TYPES-06.
+export function mapOperator(field: string, operator: ComparisonOperator | string, value: unknown, dialect: DbDialect): unknown {
   const op = operator.startsWith('$') ? operator : `$${operator}`;
 
   switch (op) {
@@ -64,14 +68,14 @@ export function mapOperator(field: string, operator: ComparisonOperator | string
     case '$neL':
       return raw(`LOWER(??) != ?`, [field, String(value).toLowerCase()]);
     case '$inL':
-      return raw(`LOWER(??) IN (${(value as any[]).map(() => '?').join(', ')})`, [
+      return raw(`LOWER(??) IN (${(value as unknown[]).map(() => '?').join(', ')})`, [
         field,
-        ...(value as any[]).map((v: any) => String(v).toLowerCase()),
+        ...(value as unknown[]).map((v) => String(v).toLowerCase()),
       ]);
     case '$notinL':
-      return raw(`LOWER(??) NOT IN (${(value as any[]).map(() => '?').join(', ')})`, [
+      return raw(`LOWER(??) NOT IN (${(value as unknown[]).map(() => '?').join(', ')})`, [
         field,
-        ...(value as any[]).map((v: any) => String(v).toLowerCase()),
+        ...(value as unknown[]).map((v) => String(v).toLowerCase()),
       ]);
     default:
       throw new Error(`Unknown operator: ${op}`);

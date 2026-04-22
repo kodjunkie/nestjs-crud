@@ -1,6 +1,6 @@
 import { CrudRequestOptions, QueryTranslator } from '@nestjs-crud/core';
 import { ParsedRequestParams, SCondition } from '@nestjs-crud/request';
-import { EntityManager, FilterQuery } from '@mikro-orm/core';
+import { EntityClass, EntityManager, FilterQuery } from '@mikro-orm/core';
 import type { QueryBuilder } from '@mikro-orm/knex';
 
 import { MikroOrmQueryTranslatorConfig } from './interfaces';
@@ -69,7 +69,7 @@ export class MikroOrmQueryTranslator<T extends object> implements QueryTranslato
   public async findOneOrFail(
     parsed: ParsedRequestParams,
     options: CrudRequestOptions,
-    opts: { entityClass: any; onNotFound: () => Error },
+    opts: { entityClass: EntityClass<T>; onNotFound: () => Error },
   ): Promise<T> {
     const qb = this.fetchHelper.createQueryBuilder(opts.entityClass);
     this.composer.applyToQuery(qb, parsed, options);

@@ -1,4 +1,5 @@
-import { EntityProperty } from '@mikro-orm/core';
+import { EntityMetadata, EntityProperty } from '@mikro-orm/core';
+import type { QueryBuilder } from '@mikro-orm/knex';
 import type { JoinResolver } from '@nestjs-crud/core';
 
 export type DbDialect = 'postgresql' | 'mysql' | 'sqlite' | 'mongo' | 'mssql';
@@ -32,18 +33,15 @@ export interface MikroOrmQueryTranslatorConfig<_T extends object> {
   softDeleteColumn: string | null;
   dbDialect: DbDialect;
   onBadRequest: (msg: string) => void;
-  joinResolver: JoinResolver<any>;
+  joinResolver: JoinResolver<QueryBuilder<object>>;
 }
 
 /**
  * Config object for `MikroOrmJoinResolver`.
  *
- * `metadata` is the per-entity EntityMetadata surface from MikroORM; kept
- * `unknown` here until TYPES-02 (Phase 8) lifts the typing.
- *
  * @since 2.0.0
  */
-export interface MikroOrmJoinResolverConfig {
-  metadata: unknown;
+export interface MikroOrmJoinResolverConfig<T extends object = object> {
+  metadata: EntityMetadata<T>;
   onBadRequest: (msg: string) => void;
 }

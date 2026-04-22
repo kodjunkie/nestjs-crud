@@ -12,7 +12,7 @@ export interface MikroOrmQueryComposerConfig<T extends object> {
   entityHasDeleteColumn: boolean;
   softDeleteColumn: string | null;
   onBadRequest: (msg: string) => void;
-  joinResolver: JoinResolver<any>;
+  joinResolver: JoinResolver<QueryBuilder<object>>;
   whereBuilder: WhereBuilder<QueryBuilder<T>, FilterQuery<T>>;
 }
 
@@ -49,7 +49,7 @@ export class MikroOrmQueryComposer<T extends object> implements QueryComposer<Qu
 
   private readonly onBadRequest: (msg: string) => void;
 
-  private readonly joinResolver: JoinResolver<any>;
+  private readonly joinResolver: JoinResolver<QueryBuilder<object>>;
 
   private readonly whereBuilder: WhereBuilder<QueryBuilder<T>, FilterQuery<T>>;
 
@@ -84,9 +84,12 @@ export class MikroOrmQueryComposer<T extends object> implements QueryComposer<Qu
         ? this.getSoftDeleteCondition()
         : undefined;
 
-    let where: any;
+    // @internal — where is a MikroORM FilterQuery fragment whose exact shape varies per
+    // predicate combination; cast required because FilterQuery<T>'s conditional-type
+    // derivation does not accept the compound { $and: [...] } form without widening.
+    let where: FilterQuery<T> | Record<string, unknown> | undefined;
     if (searchWhere && softDeleteWhere) {
-      where = { $and: [searchWhere, softDeleteWhere] };
+      where = { $and: [searchWhere, softDeleteWhere] } as FilterQuery<T>;
     } else {
       where = searchWhere || softDeleteWhere;
     }
@@ -97,7 +100,7 @@ export class MikroOrmQueryComposer<T extends object> implements QueryComposer<Qu
     // 3. Joins
     const joinOptions = queryOptions.join || {};
     if (objKeys(joinOptions).length) {
-      this.joinResolver.applyJoins(query, parsed.join || [], joinOptions);
+      this.joinResolver.applyJoins(query as unknown as QueryBuilder<object>, parsed.join || [], joinOptions);
     }
 
     // 4. Sort

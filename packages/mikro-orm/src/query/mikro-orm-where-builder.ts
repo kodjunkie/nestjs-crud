@@ -63,22 +63,23 @@ export class MikroOrmWhereBuilder<T extends object> implements WhereBuilder<Quer
         return (orConditions.length === 1 ? orConditions[0] : { $or: orConditions }) as FilterQuery<T>;
       }
 
-      const fieldObj = this.buildFieldsCondition(otherKeys, search);
-      const orPart = orConditions.length === 1 ? orConditions[0] : ({ $or: orConditions } as any);
+      const fieldObj = this.buildFieldsCondition(otherKeys, search as unknown as Record<string, unknown>);
+      const orPart = orConditions.length === 1 ? orConditions[0] : ({ $or: orConditions } as FilterQuery<T>);
       if (!fieldObj) return orPart as FilterQuery<T>;
       return { $and: [fieldObj, orPart] } as FilterQuery<T>;
     }
 
-    const combined = this.buildFieldsCondition(keys, search);
+    const combined = this.buildFieldsCondition(keys, search as unknown as Record<string, unknown>);
     return combined as FilterQuery<T> | undefined;
   }
 
-  private buildFieldsCondition(keys: string[], search: any): Record<string, any> | undefined {
+  // @internal — search is a raw SCondition node keyed by field; shape varies per node, unknowable without per-key discrimination
+  private buildFieldsCondition(keys: string[], search: Record<string, unknown>): Record<string, unknown> | undefined {
     if (keys.length === 1) {
       return this.buildFieldCondition(keys[0], search[keys[0]]);
     }
 
-    const result: Record<string, any> = {};
+    const result: Record<string, unknown> = {};
     let hasAny = false;
     for (const field of keys) {
       const cond = this.buildFieldCondition(field, search[field]);
@@ -90,7 +91,8 @@ export class MikroOrmWhereBuilder<T extends object> implements WhereBuilder<Quer
     return hasAny ? result : undefined;
   }
 
-  private buildFieldCondition(field: string, value: any): Record<string, any> | undefined {
+  // @internal — value is a raw filter value whose shape varies per operator (scalar, array, range); unknowable without per-operator discrimination
+  private buildFieldCondition(field: string, value: unknown): Record<string, unknown> | undefined {
     if (!this.propertiesMap[field]) {
       // D-05b: reject unknown fields on the filter/search path.
       this.onBadRequest(`Invalid field: '${field}'`);
@@ -101,25 +103,27 @@ export class MikroOrmWhereBuilder<T extends object> implements WhereBuilder<Quer
       return { [field]: isNull(value) ? null : value };
     }
 
-    const operators = objKeys(value);
+    // @internal — value is narrowed by isObject() above; cast needed because isObject() is not a type predicate
+    const valueObj = value as Record<string, unknown>;
+    const operators = objKeys(valueObj);
 
-    if (operators.length === 1 && operators[0] === '$or' && isObject(value.$or)) {
-      const orOps = objKeys(value.$or);
+    if (operators.length === 1 && operators[0] === '$or' && isObject(valueObj['$or'])) {
+      const orOps = objKeys(valueObj['$or'] as Record<string, unknown>);
       const orConditions = orOps
         .map((op) => {
-          const mapped = mapOperator(field, op as ComparisonOperator, value.$or[op], this.dbDialect);
+          const mapped = mapOperator(field, op as ComparisonOperator, (valueObj['$or'] as Record<string, unknown>)[op], this.dbDialect);
           return { [field]: mapped };
         })
         .filter(Boolean);
       return orConditions.length === 1 ? orConditions[0] : { $or: orConditions };
     }
 
-    const mapped: Record<string, any> = {};
+    const mapped: Record<string, unknown> = {};
     for (const op of operators) {
-      if (op === '$or' && isObject(value.$or)) {
+      if (op === '$or' && isObject(valueObj['$or'])) {
         continue;
       }
-      const result = mapOperator(field, op as ComparisonOperator, value[op], this.dbDialect);
+      const result = mapOperator(field, op as ComparisonOperator, valueObj[op], this.dbDialect);
       if (result === null) {
         return { [field]: null };
       }

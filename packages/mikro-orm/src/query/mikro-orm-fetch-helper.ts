@@ -1,7 +1,7 @@
 import { CrudRequestOptions } from '@nestjs-crud/core';
 import type { FetchHelper, FetchHelperFindOneOpts } from '@nestjs-crud/core/query';
 import { ParsedRequestParams } from '@nestjs-crud/request';
-import { EntityManager } from '@mikro-orm/core';
+import { EntityClass, EntityManager } from '@mikro-orm/core';
 import type { QueryBuilder } from '@mikro-orm/knex';
 
 export interface MikroOrmFetchHelperConfig {
@@ -68,9 +68,11 @@ export class MikroOrmFetchHelper<T extends object> implements FetchHelper<QueryB
    *
    * Every call resolves em via the `getEm()` thunk — T-06-02.
    */
-  public createQueryBuilder(entityClass: any): QueryBuilder<T> {
+  public createQueryBuilder(entityClass: EntityClass<T>): QueryBuilder<T> {
     const em = this.config.getEm();
-    return (em as any).createQueryBuilder(entityClass);
+    // @internal — EntityManager.createQueryBuilder is not in the @mikro-orm/core
+    // type surface; it is provided by @mikro-orm/knex at runtime.
+    return (em as unknown as { createQueryBuilder: (cls: EntityClass<T>) => QueryBuilder<T> }).createQueryBuilder(entityClass);
   }
 
   public async executeMany<R = T>(
