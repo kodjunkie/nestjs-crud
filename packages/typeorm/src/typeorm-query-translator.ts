@@ -6,6 +6,15 @@ import { TypeOrmFetchHelper } from './query/typeorm-fetch-helper';
 import { TypeOrmQueryComposer } from './query/typeorm-query-composer';
 import { TypeOrmWhereBuilder } from './query/typeorm-where-builder';
 
+/**
+ * Default no-op `onNotFound` thunk wired into `TypeOrmFetchHelper` when the
+ * caller does not override via `findOneOrFail` hooks. Hoisted to module-scope
+ * so it can be unit-tested directly (closes COVERAGE-01 D-17 sweep target).
+ *
+ * @internal
+ */
+export const defaultOnNotFound = (): undefined => undefined;
+
 export interface TypeOrmQueryTranslatorConfig<T extends ObjectLiteral> {
   entityColumnsHash: ObjectLiteral;
   entityHasDeleteColumn: boolean;
@@ -49,7 +58,7 @@ export class TypeOrmQueryTranslator<T extends ObjectLiteral> implements QueryTra
       whereBuilder: this.whereBuilder,
     });
     this.fetchHelper = new TypeOrmFetchHelper<T>({
-      onNotFound: /* istanbul ignore next */ () => undefined,
+      onNotFound: defaultOnNotFound,
     });
   }
 

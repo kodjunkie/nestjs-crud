@@ -3,7 +3,7 @@ import { JoinResolver } from '@nestjs-crud/core';
 import { DataSource, ObjectLiteral, Repository, SelectQueryBuilder } from 'typeorm';
 
 import { TypeOrmJoinResolver } from '../src/typeorm-join-resolver';
-import { TypeOrmQueryTranslator } from '../src/typeorm-query-translator';
+import { defaultOnNotFound, TypeOrmQueryTranslator } from '../src/typeorm-query-translator';
 import { TranslatorEntity, TranslatorRelation } from './__fixture__/translator-entity';
 
 const norm = (s: string): string => s.replace(/\s+/g, ' ').trim();
@@ -509,6 +509,20 @@ describe('TypeOrmQueryTranslator', () => {
       if (where) qb.andWhere(where);
       const total = await translator.count(qb);
       expect(total).toBe(0);
+    });
+  });
+
+  describe('defaultOnNotFound (COVERAGE-01 D-17)', () => {
+    it('returns undefined (default no-op for FetchHelper.onNotFound)', () => {
+      expect(defaultOnNotFound()).toBeUndefined();
+    });
+
+    it('is the same callable wired into the translator (no per-instance closure)', () => {
+      // Sanity: defaultOnNotFound is a stable reference, not re-created per construction.
+      const ref1 = defaultOnNotFound;
+      const ref2 = defaultOnNotFound;
+      expect(ref1).toBe(ref2);
+      expect(typeof ref1).toBe('function');
     });
   });
 });

@@ -167,4 +167,56 @@ describe('TypeOrmQueryComposer', () => {
       expect(query.cache).not.toHaveBeenCalled();
     });
   });
+
+  describe('getTake (opts.limit fallback) — COVERAGE-01 D-17 sweep', () => {
+    it('uses opts.limit when parsed.limit is undefined', () => {
+      const repo = buildMockRepo(undefined);
+      const composer = buildComposer(repo);
+      const query = buildMockQuery();
+      const parsed = baseParsed(); // parsed.limit undefined
+      const options = { query: { limit: 25 } };
+
+      composer.applyToQuery(query as unknown as SelectQueryBuilder<MockUser>, parsed, options);
+
+      expect(query.take).toHaveBeenCalledTimes(1);
+      expect(query.take).toHaveBeenCalledWith(25);
+    });
+
+    it('clamps opts.limit by maxLimit when opts.limit > maxLimit', () => {
+      const repo = buildMockRepo(undefined);
+      const composer = buildComposer(repo);
+      const query = buildMockQuery();
+      const parsed = baseParsed();
+      const options = { query: { limit: 100, maxLimit: 50 } };
+
+      composer.applyToQuery(query as unknown as SelectQueryBuilder<MockUser>, parsed, options);
+
+      expect(query.take).toHaveBeenCalledWith(50);
+    });
+
+    it('returns opts.limit unchanged when opts.limit <= maxLimit', () => {
+      const repo = buildMockRepo(undefined);
+      const composer = buildComposer(repo);
+      const query = buildMockQuery();
+      const parsed = baseParsed();
+      const options = { query: { limit: 30, maxLimit: 50 } };
+
+      composer.applyToQuery(query as unknown as SelectQueryBuilder<MockUser>, parsed, options);
+
+      expect(query.take).toHaveBeenCalledWith(30);
+    });
+
+    it('parsed.limit takes precedence over opts.limit when both set', () => {
+      const repo = buildMockRepo(undefined);
+      const composer = buildComposer(repo);
+      const query = buildMockQuery();
+      const parsed = baseParsed();
+      (parsed as any).limit = 7; // parsed wins
+      const options = { query: { limit: 99 } };
+
+      composer.applyToQuery(query as unknown as SelectQueryBuilder<MockUser>, parsed, options);
+
+      expect(query.take).toHaveBeenCalledWith(7);
+    });
+  });
 });
