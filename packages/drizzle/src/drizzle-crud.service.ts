@@ -3,28 +3,23 @@ import {
   CrudRequest,
   CreateManyDto,
   GetManyDefaultResponse,
-  InputSanitizer,
-  QueryOptions,
-  JoinOptions,
-  JoinOption,
 } from '@nestjs-crud/core';
 import { NotFoundException } from '@nestjs/common';
-import { ParsedRequestParams, QueryJoin, SCondition, ComparisonOperator } from '@nestjs-crud/request';
-import { hasLength, isArrayFull, isNil, isObject, objKeys, isNull } from '@nestjs-crud/util';
+import { hasLength, isArrayFull, isNil, isObject, objKeys } from '@nestjs-crud/util';
 import {
   Table,
   Column,
   SQL,
   and,
-  or,
   eq,
-  isNull as drizzleIsNull,
   sql,
   getTableColumns,
   getTableName,
 } from 'drizzle-orm';
-import { DrizzleRelationsConfig, DrizzleAllowedRelation } from './interfaces';
-import { mapOperator } from './operators';
+
+import { DrizzleJoinResolver } from './drizzle-join-resolver';
+import { DrizzleQueryTranslator } from './drizzle-query-translator';
+import { DrizzleRelationsConfig } from './interfaces';
 
 export class DrizzleCrudService<T extends Record<string, unknown>> extends CrudService<T> {
   protected dbDialect: string;
@@ -39,9 +34,9 @@ export class DrizzleCrudService<T extends Record<string, unknown>> extends CrudS
 
   protected columnsMap: Record<string, Column>;
 
-  protected relationsHash: Map<string, DrizzleAllowedRelation> = new Map();
+  protected readonly translator: DrizzleQueryTranslator<T>;
 
-  protected readonly sanitizer: InputSanitizer;
+  protected readonly joinResolver: DrizzleJoinResolver;
 
   /**
    * @deprecated Since v1.0.2. The `db` constructor parameter is typed `any`
@@ -61,69 +56,37 @@ export class DrizzleCrudService<T extends Record<string, unknown>> extends CrudS
     this.onInitMapEntityColumns();
     this.detectDialect();
 
-    this.sanitizer = new InputSanitizer({
-      allowedColumns: () => new Set(this.entityColumns),
+    this.joinResolver = new DrizzleJoinResolver({
+      relationsConfig: this.relationsConfig,
       onBadRequest: (msg: string) => this.throwBadRequestException(msg),
+    });
+    this.translator = new DrizzleQueryTranslator<T>(this.db, this.table, {
+      entityColumns: this.entityColumns,
+      entityPrimaryColumns: this.entityPrimaryColumns,
+      columnsMap: this.columnsMap,
+      entityHasDeleteColumn: this.entityHasDeleteColumn,
+      softDeleteColumn: this.softDeleteColumn,
+      dbDialect: this.dbDialect,
+      onBadRequest: (msg: string) => this.throwBadRequestException(msg),
+      joinResolver: this.joinResolver,
     });
   }
 
-  // === PUBLIC METHODS (stubs for CRUD - will be implemented in Tasks 7-10) ===
+  // === PUBLIC CRUD VERBS ===
 
   public async getMany(req: CrudRequest): Promise<GetManyDefaultResponse<T> | T[]> {
     const { parsed, options } = req;
-    const selectMap = this.getSelect(parsed, options.query);
+    const selectMap = this.translator.getSelect(parsed, options.query);
     const query = this.db.select(selectMap).from(this.table).$dynamic();
 
-    const searchWhere = this.buildSearchCondition(parsed.search);
-    const softDeleteWhere =
-      options.query.softDelete && this.entityHasDeleteColumn && parsed.includeDeleted !== 1
-        ? this.getSoftDeleteCondition()
-        : undefined;
-
-    const allConditions = [searchWhere, softDeleteWhere].filter(Boolean) as SQL[];
-    if (allConditions.length) {
-      query.where(allConditions.length === 1 ? allConditions[0] : and(...allConditions));
-    }
-
-    this.applyJoins(query, parsed.join, options.query.join || {});
-
-    const sortClauses = this.getSort(parsed, options.query);
-    if (sortClauses.length) {
-      query.orderBy(...sortClauses);
-    }
+    this.translator.applyToQuery(query, parsed, options);
 
     if (this.decidePagination(parsed, options)) {
       const take = this.getTake(parsed, options.query);
-      const skip = this.getSkip(parsed, take);
-
-      const countQuery = this.db
-        .select({ count: sql<number>`count(*)` })
-        .from(this.table)
-        .$dynamic();
-      if (allConditions.length) {
-        countQuery.where(allConditions.length === 1 ? allConditions[0] : and(...allConditions));
-      }
-      const countResult = await countQuery;
-      const total = Number(countResult[0]?.count ?? 0);
-
-      if (take && isFinite(take)) {
-        query.limit(take);
-      }
-      if (skip && isFinite(skip)) {
-        query.offset(skip);
-      }
-
+      const skip = this.getSkip(parsed, take as number);
+      const total = await this.translator.count(query);
       const data = (await query) as T[];
       return this.createPageInfo(data, total, take || total, skip || 0);
-    }
-
-    const take = this.getTake(parsed, options.query);
-    if (take && isFinite(take)) {
-      query.limit(take);
-    }
-    const skip = this.getSkip(parsed, take);
-    if (skip && isFinite(skip)) {
-      query.offset(skip);
     }
 
     return (await query) as T[];
@@ -283,7 +246,7 @@ export class DrizzleCrudService<T extends Record<string, unknown>> extends CrudS
     return this.getOneOrFail(req);
   }
 
-  // === PROTECTED METHODS ===
+  // === PROTECTED HELPERS ===
 
   protected get tableName(): string {
     return getTableName(this.table);
@@ -295,7 +258,6 @@ export class DrizzleCrudService<T extends Record<string, unknown>> extends CrudS
     this.entityColumns = Object.keys(columns);
     this.entityPrimaryColumns = [];
 
-    // Check individual column's primary flag (handles both .primary and .primaryKey)
     for (const [name, col] of Object.entries(columns)) {
       if ((col as any).primary || (col as any).primaryKey) {
         if (!this.entityPrimaryColumns.includes(name)) {
@@ -304,7 +266,6 @@ export class DrizzleCrudService<T extends Record<string, unknown>> extends CrudS
       }
     }
 
-    // Detect soft delete column (convention: deletedAt or deleted_at)
     for (const [name] of Object.entries(columns)) {
       const colName = name.toLowerCase();
       if (colName === 'deletedat' || colName === 'deleted_at') {
@@ -313,46 +274,6 @@ export class DrizzleCrudService<T extends Record<string, unknown>> extends CrudS
         break;
       }
     }
-  }
-
-  protected getColumn(field: string): Column | undefined {
-    return this.columnsMap[field];
-  }
-
-  protected getSelect(query: ParsedRequestParams, options: QueryOptions): Record<string, Column> {
-    const allowed = this.getAllowedColumns(this.entityColumns, options);
-    const columns =
-      query.fields && query.fields.length
-        ? query.fields.filter((field) => allowed.some((col) => field === col))
-        : allowed;
-
-    const allCols = new Set([
-      ...(options.persist && options.persist.length ? options.persist : []),
-      ...columns,
-      ...this.entityPrimaryColumns,
-    ]);
-
-    const selectMap: Record<string, Column> = {};
-    for (const col of allCols) {
-      if (this.columnsMap[col]) {
-        selectMap[col] = this.columnsMap[col];
-      }
-    }
-    return selectMap;
-  }
-
-  protected getSort(query: ParsedRequestParams, options: QueryOptions): SQL[] {
-    const sorts =
-      query.sort && query.sort.length ? query.sort : options.sort && options.sort.length ? options.sort : [];
-
-    return sorts
-      .map((s) => {
-        const col = this.getColumn(s.field);
-        if (!col) return null;
-        this.sanitizer.assert(s.field);
-        return s.order === 'DESC' ? sql`${col} DESC` : sql`${col} ASC`;
-      })
-      .filter(Boolean) as SQL[];
   }
 
   protected getParamFilters(parsed: CrudRequest['parsed']): Record<string, any> {
@@ -369,14 +290,14 @@ export class DrizzleCrudService<T extends Record<string, unknown>> extends CrudS
     const { parsed, options } = req;
     const selectMap = shallow
       ? (Object.fromEntries(this.entityColumns.map((c) => [c, this.columnsMap[c]])) as Record<string, Column>)
-      : this.getSelect(parsed, options.query);
+      : this.translator.getSelect(parsed, options.query);
 
     const query = this.db.select(selectMap).from(this.table).$dynamic();
 
-    const searchWhere = this.buildSearchCondition(parsed.search);
+    const searchWhere = this.translator.buildWhere(parsed.search);
     const softDeleteWhere =
       !withDeleted && options.query.softDelete && this.entityHasDeleteColumn && parsed.includeDeleted !== 1
-        ? this.getSoftDeleteCondition()
+        ? this.translator.getSoftDeleteCondition()
         : undefined;
 
     const allConditions = [searchWhere, softDeleteWhere].filter(Boolean) as SQL[];
@@ -385,7 +306,7 @@ export class DrizzleCrudService<T extends Record<string, unknown>> extends CrudS
     }
 
     if (!shallow) {
-      this.applyJoins(query, parsed.join, options.query.join || {});
+      this.joinResolver.applyJoins(query, parsed.join || [], options.query.join || {});
     }
 
     query.limit(1);
@@ -400,96 +321,9 @@ export class DrizzleCrudService<T extends Record<string, unknown>> extends CrudS
     return found;
   }
 
-  /**
-   * Build a Drizzle WHERE condition from an SCondition search tree.
-   */
-  protected buildSearchCondition(search: SCondition): SQL | undefined {
-    if (!isObject(search)) return undefined;
-    const keys = objKeys(search);
-    if (!keys.length) return undefined;
-
-    // Handle $and
-    if (isArrayFull((search as any).$and)) {
-      const conditions = (search as any).$and
-        .map((item: SCondition) => this.buildSearchCondition(item))
-        .filter(Boolean) as SQL[];
-      return conditions.length === 1 ? conditions[0] : conditions.length > 1 ? and(...conditions) : undefined;
-    }
-
-    // Handle $or
-    if (isArrayFull((search as any).$or)) {
-      const orConditions = (search as any).$or
-        .map((item: SCondition) => this.buildSearchCondition(item))
-        .filter(Boolean) as SQL[];
-
-      const otherKeys = keys.filter((k) => k !== '$or');
-      if (otherKeys.length === 0) {
-        return orConditions.length === 1 ? orConditions[0] : orConditions.length > 1 ? or(...orConditions) : undefined;
-      }
-
-      // Mixed: $or with other fields
-      const fieldConditions = otherKeys
-        .map((field) => this.buildFieldCondition(field, (search as any)[field]))
-        .filter(Boolean) as SQL[];
-
-      const orPart = orConditions.length === 1 ? orConditions[0] : or(...orConditions);
-      return and(...fieldConditions, orPart);
-    }
-
-    // Handle plain fields
-    if (keys.length === 1) {
-      return this.buildFieldCondition(keys[0], (search as any)[keys[0]]);
-    }
-
-    const conditions = keys
-      .map((field) => this.buildFieldCondition(field, (search as any)[field]))
-      .filter(Boolean) as SQL[];
-    return conditions.length === 1 ? conditions[0] : conditions.length > 1 ? and(...conditions) : undefined;
-  }
-
-  /**
-   * Build a condition for a single field.
-   */
-  protected buildFieldCondition(field: string, value: any): SQL | undefined {
-    const col = this.getColumn(field);
-    if (!col) return undefined;
-    this.sanitizer.assert(field);
-
-    if (!isObject(value)) {
-      return isNull(value) ? drizzleIsNull(col) : eq(col, value);
-    }
-
-    const operators = objKeys(value);
-    if (operators.length === 1) {
-      const op = operators[0];
-      if (op === '$or' && isObject(value.$or)) {
-        return this.buildFieldOperatorOr(col, value.$or);
-      }
-      return mapOperator(col, op as ComparisonOperator, value[op], this.dbDialect);
-    }
-
-    const conditions = operators
-      .map((op) => {
-        if (op === '$or' && isObject(value.$or)) {
-          return this.buildFieldOperatorOr(col, value.$or);
-        }
-        return mapOperator(col, op as ComparisonOperator, value[op], this.dbDialect);
-      })
-      .filter(Boolean) as SQL[];
-
-    return conditions.length === 1 ? conditions[0] : and(...conditions);
-  }
-
-  protected getSoftDeleteCondition(): SQL | undefined {
-    if (this.entityHasDeleteColumn && this.softDeleteColumn) {
-      return drizzleIsNull(this.softDeleteColumn);
-    }
-    return undefined;
-  }
-
   protected buildPrimaryKeyCondition(entity: T): SQL {
     const conditions = this.entityPrimaryColumns.map((pkField) => {
-      const col = this.getColumn(pkField);
+      const col = this.columnsMap[pkField];
       if (!col) {
         this.throwBadRequestException(`Primary key column ${pkField} not found`);
       }
@@ -498,6 +332,16 @@ export class DrizzleCrudService<T extends Record<string, unknown>> extends CrudS
     return conditions.length === 1 ? conditions[0] : and(...conditions)!;
   }
 
+  /**
+   * Normalise a DTO ahead of insert/update. Drizzle adapter keeps a local
+   * implementation rather than delegating to `@nestjs-crud/core`'s
+   * `prepareEntityBeforeSave` util: the core util is class-aware and applies
+   * `plainToClass(entityType, ...)`, but Drizzle has no entity class — it
+   * operates on plain row objects. The local version preserves
+   * `paramsFilter` + `authPersist` semantics without class-transformer.
+   * Forward-flag (TYPES-01): a typed Drizzle client in v2.1 may enable a
+   * class-less core util variant that this adapter can delegate to.
+   */
   protected prepareEntityBeforeSave(
     dto: T | Partial<T>,
     parsed: CrudRequest['parsed'],
@@ -523,32 +367,6 @@ export class DrizzleCrudService<T extends Record<string, unknown>> extends CrudS
     return entity;
   }
 
-  protected applyJoins(query: any, parsedJoins: QueryJoin[], joinOptions: JoinOptions) {
-    if (!joinOptions) return;
-    const allowedJoins = objKeys(joinOptions);
-    if (!hasLength(allowedJoins)) return;
-
-    const appliedJoins = new Set<string>();
-
-    // Apply eager joins first
-    for (const joinField of allowedJoins) {
-      const options = joinOptions[joinField];
-      if (options.eager) {
-        this.applyJoin(query, joinField, options);
-        appliedJoins.add(joinField);
-      }
-    }
-
-    // Apply requested joins
-    if (isArrayFull(parsedJoins)) {
-      for (const join of parsedJoins) {
-        if (!appliedJoins.has(join.field) && allowedJoins.includes(join.field)) {
-          this.applyJoin(query, join.field, joinOptions[join.field]);
-        }
-      }
-    }
-  }
-
   protected getSoftDeleteColumnName(): string {
     for (const [name, col] of Object.entries(this.columnsMap)) {
       if (col === this.softDeleteColumn) {
@@ -558,7 +376,7 @@ export class DrizzleCrudService<T extends Record<string, unknown>> extends CrudS
     return 'deletedAt';
   }
 
-  // === PRIVATE METHODS ===
+  // === PRIVATE HELPERS ===
 
   private detectDialect() {
     const dialect = (this.db as any).dialect;
@@ -576,23 +394,5 @@ export class DrizzleCrudService<T extends Record<string, unknown>> extends CrudS
     } else {
       this.dbDialect = 'pg';
     }
-  }
-
-  private applyJoin(query: any, field: string, options: JoinOption) {
-    const relationConfig = this.relationsConfig[field];
-    if (!relationConfig) return;
-    const joinFn = options.required ? 'innerJoin' : 'leftJoin';
-    query[joinFn](relationConfig.table, eq(relationConfig.referenceKey, relationConfig.foreignKey));
-  }
-
-  private buildFieldOperatorOr(col: Column, orObj: any): SQL | undefined {
-    const orKeys = objKeys(orObj);
-    if (orKeys.length === 1) {
-      return mapOperator(col, orKeys[0] as ComparisonOperator, orObj[orKeys[0]], this.dbDialect);
-    }
-    const conditions = orKeys
-      .map((op) => mapOperator(col, op as ComparisonOperator, orObj[op], this.dbDialect))
-      .filter(Boolean) as SQL[];
-    return conditions.length > 1 ? or(...conditions) : conditions[0];
   }
 }
