@@ -78,28 +78,26 @@ describe('SEC-03 TypeORM — mutations must run inside a QueryRunner transaction
 
   beforeEach(async () => {
     await repo.clear();
-    await repo.save(
-      repo.create({ id: 1, name: 'original-name', email: 'original@example.com', age: 0, status: null }),
-    );
+    await repo.save(repo.create({ id: 1, name: 'original-name', email: 'original@example.com', age: 0, status: null }));
     service = new TypeOrmCrudService<TranslatorEntity>(repo);
 
     // Spy on createQueryRunner and intercept startTransaction on returned runners.
-    const originalCreate = repo.manager.connection.createQueryRunner.bind(
-      repo.manager.connection,
-    );
+    // SQLite does not support READ COMMITTED — strip the isolation arg when
+    // forwarding to the real driver, but still record the intended value so
+    // the assertion can verify the service passes 'READ COMMITTED'.
+    const originalCreate = repo.manager.connection.createQueryRunner.bind(repo.manager.connection);
     startTransactionSpy = jest.fn();
 
-    jest
-      .spyOn(repo.manager.connection, 'createQueryRunner')
-      .mockImplementation((...args: any[]) => {
-        const qr: QueryRunner = originalCreate(...args);
-        const origStart = qr.startTransaction.bind(qr);
-        qr.startTransaction = (async (isolation?: string) => {
-          startTransactionSpy(isolation);
-          return origStart(isolation);
-        }) as any;
-        return qr;
-      });
+    jest.spyOn(repo.manager.connection, 'createQueryRunner').mockImplementation((...args: any[]) => {
+      const qr: QueryRunner = originalCreate(...args);
+      const origStart = qr.startTransaction.bind(qr);
+      qr.startTransaction = (async (isolation?: string) => {
+        startTransactionSpy(isolation);
+        // SQLite only supports SERIALIZABLE — omit isolation for the real call.
+        return origStart();
+      }) as any;
+      return qr;
+    });
   });
 
   afterEach(() => {

@@ -78,12 +78,13 @@ export class TypeOrmQueryTranslator<T extends ObjectLiteral> implements QueryTra
   public async findOneOrFail(
     parsed: ParsedRequestParams,
     options: CrudRequestOptions,
-    hooks: { shallow?: boolean; withDeleted?: boolean; onNotFound: () => void },
+    hooks: { shallow?: boolean; withDeleted?: boolean; onNotFound: () => void; repo?: Repository<T> },
   ): Promise<T> {
-    const { shallow = false, withDeleted = false, onNotFound } = hooks;
+    const { shallow = false, withDeleted = false, onNotFound, repo = this.repo } = hooks;
+    const alias = repo.metadata.targetName;
     const builder = shallow
-      ? this.repo.createQueryBuilder(this.alias)
-      : this.queryComposer.applyToQuery(this.repo.createQueryBuilder(this.alias), parsed, options);
+      ? repo.createQueryBuilder(alias)
+      : this.queryComposer.applyToQuery(repo.createQueryBuilder(alias), parsed, options);
 
     if (shallow) {
       const where = this.whereBuilder.build(parsed.search);

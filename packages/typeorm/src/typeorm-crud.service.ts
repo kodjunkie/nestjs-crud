@@ -12,7 +12,7 @@ import { ParsedRequestParams } from '@nestjs-crud/request';
 import { ClassType, hasLength, isArrayFull, isObject, isUndefined } from '@nestjs-crud/util';
 import { plainToClass } from 'class-transformer';
 import { Logger, LoggerService } from '@nestjs/common';
-import { DeepPartial, ObjectLiteral, Repository, SelectQueryBuilder, DataSourceOptions } from 'typeorm';
+import { DeepPartial, ObjectLiteral, Repository, SelectQueryBuilder, DataSourceOptions, QueryRunner } from 'typeorm';
 
 import { TypeOrmJoinResolver } from './typeorm-join-resolver';
 import { TypeOrmQueryTranslator } from './typeorm-query-translator';
@@ -34,7 +34,10 @@ export class TypeOrmCrudService<T> extends CrudService<T> {
 
   protected readonly joinResolver: TypeOrmJoinResolver<T>;
 
-  constructor(protected repo: Repository<T>, logger?: LoggerService) {
+  constructor(
+    protected repo: Repository<T>,
+    logger?: LoggerService,
+  ) {
     super();
 
     this.logger = logger ?? new Logger(TypeOrmCrudService.name);
@@ -123,17 +126,16 @@ export class TypeOrmCrudService<T> extends CrudService<T> {
     return this.repo.save(bulk as DeepPartial<T>[], { chunk: 50 });
   }
 
-  // TODO(SEC-03): wrap read-modify-write in QueryRunner — Phase 8 SEC-03
   public async updateOne(req: CrudRequest, dto: T | Partial<T>): Promise<T> {
-    const { allowParamsOverride, returnShallow } = req.options.routes.updateOneBase;
-    const paramsFilters = this.getParamFilters(req.parsed);
-    const found = await this.getOneOrFail(req, returnShallow);
-    const toSave = !allowParamsOverride
-      ? { ...found, ...dto, ...paramsFilters, ...req.parsed.authPersist }
-      : { ...found, ...dto, ...req.parsed.authPersist };
+    return this.withTransaction('updateOne', async (scopedRepo) => {
+      const { allowParamsOverride, returnShallow } = req.options.routes.updateOneBase;
+      const paramsFilters = this.getParamFilters(req.parsed);
+      const found = await this.getOneOrFail(req, returnShallow, false, scopedRepo);
+      const toSave = !allowParamsOverride
+        ? { ...found, ...dto, ...paramsFilters, ...req.parsed.authPersist }
+        : { ...found, ...dto, ...req.parsed.authPersist };
 
-    try {
-      const updated = await this.repo.save(
+      const updated = await scopedRepo.save(
         plainToClass(this.entityType, toSave, req.parsed.classTransformOptions) as DeepPartial<T>,
       );
 
@@ -144,16 +146,8 @@ export class TypeOrmCrudService<T> extends CrudService<T> {
       req.parsed.paramsFilter.forEach((filter) => {
         filter.value = updated[filter.field];
       });
-      return this.getOneOrFail(req);
-    } catch (err) {
-      // PII GUARD (T-08-08): DB drivers surface SQL + bound params in err.message.
-      // Use err.name in the message and pass err.stack as the LoggerService stack arg.
-      this.logger.error(
-        `CrudService [updateOne] failed: ${err instanceof Error ? err.name : 'UnknownError'}`,
-        err instanceof Error ? err.stack : String(err),
-      );
-      throw err;
-    }
+      return this.getOneOrFail(req, false, false, scopedRepo);
+    });
   }
 
   public async recoverOne(req: CrudRequest): Promise<T> {
@@ -161,22 +155,21 @@ export class TypeOrmCrudService<T> extends CrudService<T> {
     return this.repo.recover(found as DeepPartial<T>);
   }
 
-  // TODO(SEC-03): wrap read-modify-write in QueryRunner — Phase 8 SEC-03
   public async replaceOne(req: CrudRequest, dto: T | Partial<T>): Promise<T> {
-    const { allowParamsOverride, returnShallow } = req.options.routes.replaceOneBase;
-    const paramsFilters = this.getParamFilters(req.parsed);
-    const found = await this.getOneOrFail(req, returnShallow).catch(() => undefined);
-    const toSave = !allowParamsOverride
-      ? { ...(found || {}), ...dto, ...paramsFilters, ...req.parsed.authPersist }
-      : {
-          ...(found || {}),
-          ...paramsFilters,
-          ...dto,
-          ...req.parsed.authPersist,
-        };
+    return this.withTransaction('replaceOne', async (scopedRepo) => {
+      const { allowParamsOverride, returnShallow } = req.options.routes.replaceOneBase;
+      const paramsFilters = this.getParamFilters(req.parsed);
+      const found = await this.getOneOrFail(req, returnShallow, false, scopedRepo).catch(() => undefined);
+      const toSave = !allowParamsOverride
+        ? { ...(found || {}), ...dto, ...paramsFilters, ...req.parsed.authPersist }
+        : {
+            ...(found || {}),
+            ...paramsFilters,
+            ...dto,
+            ...req.parsed.authPersist,
+          };
 
-    try {
-      const replaced = await this.repo.save(
+      const replaced = await scopedRepo.save(
         plainToClass(this.entityType, toSave, req.parsed.classTransformOptions) as DeepPartial<T>,
       );
 
@@ -190,43 +183,26 @@ export class TypeOrmCrudService<T> extends CrudService<T> {
         return replaced;
       }
       req.parsed.search = primaryParams.reduce((acc, p) => ({ ...acc, [p]: replaced[p] }), {});
-      return this.getOneOrFail(req);
-    } catch (err) {
-      // PII GUARD (T-08-08): DB drivers surface SQL + bound params in err.message.
-      // Use err.name in the message and pass err.stack as the LoggerService stack arg.
-      this.logger.error(
-        `CrudService [replaceOne] failed: ${err instanceof Error ? err.name : 'UnknownError'}`,
-        err instanceof Error ? err.stack : String(err),
-      );
-      throw err;
-    }
+      return this.getOneOrFail(req, false, false, scopedRepo);
+    });
   }
 
-  // TODO(SEC-03): wrap read-modify-write in QueryRunner — Phase 8 SEC-03
   public async deleteOne(req: CrudRequest): Promise<void | T> {
-    const { returnDeleted } = req.options.routes.deleteOneBase;
-    const found = await this.getOneOrFail(req, returnDeleted);
-    const toReturn = returnDeleted
-      ? plainToClass(this.entityType, { ...found }, req.parsed.classTransformOptions)
-      : undefined;
+    return this.withTransaction('deleteOne', async (scopedRepo) => {
+      const { returnDeleted } = req.options.routes.deleteOneBase;
+      const found = await this.getOneOrFail(req, returnDeleted, false, scopedRepo);
+      const toReturn = returnDeleted
+        ? plainToClass(this.entityType, { ...found }, req.parsed.classTransformOptions)
+        : undefined;
 
-    try {
       if (req.options.query.softDelete === true) {
-        await this.repo.softRemove(found as DeepPartial<T>);
+        await scopedRepo.softRemove(found as DeepPartial<T>);
       } else {
-        await this.repo.remove(found);
+        await scopedRepo.remove(found);
       }
-    } catch (err) {
-      // PII GUARD (T-08-08): DB drivers surface SQL + bound params in err.message.
-      // Use err.name in the message and pass err.stack as the LoggerService stack arg.
-      this.logger.error(
-        `CrudService [deleteOne] failed: ${err instanceof Error ? err.name : 'UnknownError'}`,
-        err instanceof Error ? err.stack : String(err),
-      );
-      throw err;
-    }
 
-    return toReturn;
+      return toReturn;
+    });
   }
 
   public getParamFilters(parsed: CrudRequest['parsed']): ObjectLiteral {
@@ -274,12 +250,51 @@ export class TypeOrmCrudService<T> extends CrudService<T> {
     this.entityHasDeleteColumn = cols.some((p) => p.isDeleteDate);
   }
 
-  protected async getOneOrFail(req: CrudRequest, shallow = false, withDeleted = false): Promise<T> {
+  protected async getOneOrFail(
+    req: CrudRequest,
+    shallow = false,
+    withDeleted = false,
+    scopedRepo?: Repository<T>,
+  ): Promise<T> {
+    // When a scoped (QueryRunner-bound) repo is provided, reads participate
+    // in the open transaction via the translator's repo-override hook.
     return this.translator.findOneOrFail(req.parsed, req.options, {
       shallow,
       withDeleted,
       onNotFound: () => this.throwNotFoundException(this.alias),
+      ...(scopedRepo ? { repo: scopedRepo } : {}),
     });
+  }
+
+  /**
+   * SEC-03: wraps `fn` in a QueryRunner transaction at READ COMMITTED.
+   * Commits on success, rolls back + re-throws on error, always releases.
+   *
+   * @param op  Operation name used in PII-safe error log (name only, no values).
+   * @param fn  Callback receiving a QueryRunner-scoped repository.
+   */
+  protected async withTransaction<R>(op: string, fn: (repo: Repository<T>) => Promise<R>): Promise<R> {
+    const queryRunner: QueryRunner = this.repo.manager.connection.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction('READ COMMITTED');
+    try {
+      const scopedRepo = queryRunner.manager.getRepository<T>(this.repo.target);
+      const result = await fn(scopedRepo);
+      await queryRunner.commitTransaction();
+      this.logger.debug?.(`Transaction [${op}] committed`);
+      return result;
+    } catch (err) {
+      await queryRunner.rollbackTransaction();
+      // PII GUARD (T-08-08): DB drivers surface SQL + bound params in err.message.
+      // Use err.name in the message and pass err.stack as the LoggerService stack arg.
+      this.logger.error(
+        `CrudService [${op}] failed: ${err instanceof Error ? err.name : 'UnknownError'}`,
+        err instanceof Error ? err.stack : String(err),
+      );
+      throw err;
+    } finally {
+      await queryRunner.release();
+    }
   }
 
   protected prepareEntityBeforeSave(dto: T | Partial<T>, parsed: CrudRequest['parsed']): T | undefined {
