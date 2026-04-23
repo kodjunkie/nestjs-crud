@@ -1648,7 +1648,7 @@ __metadata:
   peerDependencies:
     "@nestjs-crud/core": ^2.0.0
     "@nestjs/common": ^10.0.0 || ^11.0.0
-    drizzle-orm: ">=0.40.0"
+    drizzle-orm: ">=0.45.2"
   languageName: unknown
   linkType: soft
 
