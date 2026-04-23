@@ -189,7 +189,7 @@ _Status codes:_ 200 | 404
 
 ## Swagger
 
-[Swagger](https://docs.nestjs.com/recipes/swagger) support is present out of the box.
+See [Swagger](Swagger) for setup and the full `@Crud({ swagger: {...} })` customization reference.
 
 ## Options
 
