@@ -197,7 +197,6 @@ export class DrizzleQueryComposer implements QueryComposer<AnyDrizzleSelect> {
     if (query.limit) {
       return opts.maxLimit ? (query.limit <= opts.maxLimit ? query.limit : opts.maxLimit) : query.limit;
     }
-    /* istanbul ignore if */
     if (opts.limit) {
       return opts.maxLimit ? (opts.limit <= opts.maxLimit ? opts.limit : opts.maxLimit) : opts.limit;
     }
