@@ -48,10 +48,16 @@ jobs:
         run: corepack enable
 
       - name: Setup Node.js
+        # `registry-url` is intentionally omitted. When set, setup-node writes
+        # `~/.npmrc` with `//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}`.
+        # Under Trusted Publisher (no `NPM_TOKEN` secret), the substitution
+        # yields an empty `_authToken=` which npm treats as an unauthorized
+        # request and returns 404 — bypassing OIDC exchange. Leaving the
+        # registry URL as the built-in default lets npm CLI handle OIDC
+        # trusted-publisher auth natively.
         uses: actions/setup-node@v5
         with:
           node-version: '24'
-          registry-url: https://registry.npmjs.org
 
       - name: Enable Corepack (post-setup-node)
         run: corepack enable
@@ -147,25 +153,28 @@ jobs:
       - name: Publish Packages to NPM Registry
         if: steps.check_tag.outputs.exists == 'false'
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
           NPM_CONFIG_PROVENANCE: true
         run: |
           set -euo pipefail
-          # @nestjs-crud/prisma temporarily excluded via explicit --scope inclusion
-          # list. First-publish of a new scoped package cannot use Trusted
-          # Publisher (npm requires the package to exist before TP can be
-          # attached). First prisma release is a one-time local publish; once
-          # TP is wired, restore the scope to `@nestjs-crud/*`.
+          # Per-package `npm publish` loop — bypasses lerna filtering because
+          # lerna v9 removed both `--ignore` (renamed to `--ignore-changes`
+          # with different semantics) and `--scope` for the publish command.
+          # npm CLI v9.5+ handles OIDC trusted-publisher exchange transparently
+          # when `id-token: write` permission + `environment: Release` are set
+          # at the job level (both are already configured above).
           #
-          # lerna v9 note: `--ignore` was renamed to `--ignore-changes` with a
-          # different meaning (bump filter, not publish filter). Use `--scope`
-          # with an explicit glob to filter published packages.
-          npx lerna publish from-package \
-            --no-git-reset \
-            --no-verify-access \
-            --scope '@nestjs-crud/{core,util,request,typeorm,drizzle,mikro-orm}' \
-            --yes \
-            --dist-tag "${{ steps.version.outputs.dist_tag }}"
+          # @nestjs-crud/prisma intentionally excluded: first-publish of a new
+          # scoped package cannot use TP (npm requires the package to exist
+          # before TP config can be attached). First prisma release is a
+          # one-time local publish; once the package is on the registry with
+          # TP wired, add it back to the PACKAGES array below.
+          DIST_TAG="${{ steps.version.outputs.dist_tag }}"
+          PACKAGES=(core util request typeorm drizzle mikro-orm)
+          for pkg in "${PACKAGES[@]}"; do
+            echo "::group::Publishing @nestjs-crud/$pkg@${{ steps.version.outputs.version }}"
+            (cd "packages/$pkg" && npm publish --access public --tag "$DIST_TAG")
+            echo "::endgroup::"
+          done
 
       - name: Comment on Pull Request
         if: steps.check_tag.outputs.exists == 'false' && steps.notes.outputs.pr_number != ''
