@@ -48,7 +48,6 @@ export class PrismaJoinResolver implements JoinResolver<any> {
    *
    * @internal
    */
-  /* istanbul ignore next */
   public applyJoins(_query: any, _joins: QueryJoin[], _joinOptions: JoinOptions): any {
     throw new Error('not needed for Prisma — relation navigation happens via include in PrismaQueryComposer');
   }
