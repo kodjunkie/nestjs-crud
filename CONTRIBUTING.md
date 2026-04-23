@@ -99,6 +99,30 @@ yarn format    # Prettier via pretty-quick
 yarn lint      # ESLint --fix across packages/**/*.ts
 ```
 
+## Adapter shape
+
+Every adapter service (TypeORM / Drizzle / MikroORM / Prisma) delegates query composition to a `QueryTranslator<Q, W>` facade. The public contract lives in `@nestjs-crud/core`. Each facade composes 3 internal pieces:
+
+- **`WhereBuilder<Q, W>`** — compiles `SCondition` to the ORM's predicate type (`Brackets` for TypeORM, `SQL` for Drizzle, `FilterQuery<T>` for MikroORM, Prisma `where` object for Prisma).
+- **`QueryComposer<Q>`** — applies WHERE + sort + pagination + field selection + soft-delete + eager joins to `Q`. The D-05b SQLi guard (`joinResolver.getAllowedColumnsFor` + throwing `onBadRequest`) concentrates here in the sort branch.
+- **`FetchHelper<Q>`** — executes prepared queries: `count`, `findOneOrFail`, `executeMany`.
+
+All three pieces are `@internal` — they're exported only via the `@nestjs-crud/core/query` subpath. Consumer-facing code MUST NOT import from this subpath.
+
+**Config-object constructors at every boundary.** Translator + each piece take a single `config` object (`{ entityColumnsHash, entityHasDeleteColumn, onBadRequest, joinResolver, ... }`). No service-locator casts. No backrefs from pieces to services.
+
+**MikroORM em is a thunk, never a captured field.** `MikroOrmFetchHelper` receives `getEm: () => EntityManager` and calls `this.getEm()` fresh per method — never caches. Caching `em` across calls reintroduces cross-request identity-map pollution that MikroORM's request-scope lifecycle is designed to prevent.
+
+When adding a new adapter, follow this exact shape. Cross-reference the existing 4 implementations in `packages/{typeorm,drizzle,mikro-orm,prisma}/src/`.
+
+## Tooling acknowledgement
+
+This monorepo uses [`@zmotivat0r/mrepo`](https://www.npmjs.com/package/@zmotivat0r/mrepo) for build orchestration over Yarn workspaces + Lerna. mrepo respects the package dependency chain (`util → request → core → typeorm/drizzle/mikro-orm/prisma`) and caches build outputs under `.mrepo/`.
+
+A future evaluation of mrepo's stickiness vs. alternatives (Nx, Turborepo, plain tsc -b) is tracked in the project's internal todo list. v2.x ships with mrepo as-is; no migration is planned for the v2.x line.
+
+If `yarn build` fails with TS5055, run `yarn rebuild` (`yarn clean && yarn build`) — see the build section above.
+
 ## Commit conventions
 
 This repo uses [Conventional Commits](https://www.conventionalcommits.org/). Scopes match package names or area keywords:
