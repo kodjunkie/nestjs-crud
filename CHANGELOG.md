@@ -13,6 +13,27 @@ _(No unreleased changes.)_
 
 ---
 
+## [2.0.1] — 2026-04-23
+
+**Milestone:** v2.0.0 post-release hotfix.
+**Branch:** `master` · **Previous:** `v2.0.0`
+
+Single-issue hotfix addressing an install-time failure in `@nestjs-crud/mikro-orm@2.0.0`. No behavior changes in the other six packages — they are republished at `2.0.1` only to keep the fixed-version monorepo in lockstep.
+
+### Fixed
+
+- **`@nestjs-crud/mikro-orm` — `npm install` ETARGET.** `@mikro-orm/knex` was declared as a `^7.0.0` peer dependency, but `@mikro-orm/knex` currently has no stable `7.x` on npm (only `7.0.0-dev.*` prereleases), so every install of `@nestjs-crud/mikro-orm@2.0.0` failed with `notarget No matching version found for @mikro-orm/knex@^7.0.0`. `@mikro-orm/knex` is removed from `peerDependencies`; the adapter only uses it for `import type { QueryBuilder }` (type-only), and consumers already receive `@mikro-orm/knex` as a transitive dependency of their driver package (`@mikro-orm/postgresql`, `@mikro-orm/mysql`, …).
+
+### Changed
+
+- Root `knip` dev-dep bumped from `^5` to `^6` (CI knip job still warn-only).
+
+### Deprecated
+
+- `@nestjs-crud/mikro-orm@2.0.0` is deprecated on the registry with a pointer to `^2.0.1`. `npm update` pulls the fix automatically for consumers on `^2.0.0`.
+
+---
+
 ## [2.0.0] — 2026-04-23
 
 **Milestone:** Architectural Cleanup & Breaking Fixes — coordinated breaking release across 7 packages (6 existing + new `@nestjs-crud/prisma`).
@@ -166,7 +187,8 @@ See the [v1.0.1 release](https://github.com/kodjunkie/nestjs-crud/releases/tag/v
 
 ---
 
-[Unreleased]: https://github.com/kodjunkie/nestjs-crud/compare/v2.0.0...HEAD
+[Unreleased]: https://github.com/kodjunkie/nestjs-crud/compare/v2.0.1...HEAD
+[2.0.1]: https://github.com/kodjunkie/nestjs-crud/compare/v2.0.0...v2.0.1
 [2.0.0]: https://github.com/kodjunkie/nestjs-crud/compare/v1.0.2...v2.0.0
 [1.0.2]: https://github.com/kodjunkie/nestjs-crud/compare/v1.0.1...v1.0.2
 [1.0.1]: https://github.com/kodjunkie/nestjs-crud/releases/tag/v1.0.1

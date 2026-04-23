@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [2.0.1](https://github.com/kodjunkie/nestjs-crud/compare/v2.0.0...v2.0.1) (2026-04-23)
+
+
+### Bug Fixes
+
+* **deps:** drop `@mikro-orm/knex` from `peerDependencies`. v2.0.0 declared `@mikro-orm/knex: ^7.0.0`, but no stable `7.x` exists on npm (only `7.0.0-dev.*` prereleases), so `npm install @nestjs-crud/mikro-orm@2.0.0` failed with `ETARGET`. The adapter only uses `@mikro-orm/knex` for `import type { QueryBuilder }` (type-only); consumers receive the package as a transitive dep of their driver (`@mikro-orm/postgresql`, `@mikro-orm/mysql`, …).
+
+
 ## [2.0.0](https://github.com/kodjunkie/nestjs-crud/compare/v1.0.2...v2.0.0) (2026-04-23)
 
 Coordinated v2.0.0 milestone release. See the [root CHANGELOG.md](../../CHANGELOG.md#200--2026-04-23) and the [v2 Migration guide](https://github.com/kodjunkie/nestjs-crud/wiki/v2-Migration) for full breaking-change details.

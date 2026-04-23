@@ -1,6 +1,6 @@
 {
   "name": "@nestjs-crud/mikro-orm",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "NestJS CRUD MikroORM adapter",
   "main": "lib/index.js",
   "typings": "lib/index.d.ts",
@@ -45,7 +45,6 @@
   },
   "peerDependencies": {
     "@mikro-orm/core": "^7.0.0",
-    "@mikro-orm/knex": "^7.0.0",
     "@nestjs-crud/core": "^2.0.0",
     "@nestjs-crud/request": "^2.0.0",
     "@nestjs-crud/util": "^2.0.0",
