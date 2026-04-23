@@ -53,6 +53,28 @@ yarn up @nestjs-crud/util@2.0.0 @nestjs-crud/request@2.0.0 @nestjs-crud/core@2.0
 - **Shared `QueryTranslator.count()`** across all 3 v1 adapters.
 - **Coverage gates** — per-package coverage thresholds enforced: 65% (drizzle) / 75% (mikro-orm, prisma) / 80% (typeorm).
 
+### Swagger / OpenAPI
+
+- **User-facing operation metadata.** `@Crud()`-generated routes now ship with imperative operation summaries (`List users`, `Get user by id`, `Create users in bulk`, ...), per-route markdown descriptions that reference supported query parameters and validation groups, outcome-focused response text (`Paginated list of matching resources`, `Resource created`, `Resource removed`), and realistic query-parameter examples (`?s=`, `?filter=`, `?sort=`, ...).
+- **Consumer customization surface.** New `@Crud({ swagger: { tag, description, examples, operations, errorResponses, synthExample, tagWithVersion } })` option object lets consumers override generated text, opt in to error-response documentation, or swap the body-example synthesizer.
+- **Auto `@ApiTags`.** The factory assigns `@ApiTags` using the pluralized entity name when the controller is not already tagged. Setting `swagger.tag` (string or string array) overrides the default. Setting `swagger.tagWithVersion: true` on a versioned controller (`@Controller({ version })`) prepends a `v{version}/` prefix so auto-tags do not collide across API versions.
+- **Error responses documented.** `400 Bad Request` is now emitted on every generated route. `404 Not Found` is emitted on single-resource routes (`get`/`update`/`replace`/`delete`/`recover`). `401 Unauthorized` is emitted when the controller is decorated with `@CrudAuth()`; consumers who enforce authentication via a globally-registered guard (`APP_GUARD`) can force-emit it via `@Crud({ swagger: { errorResponses: { unauthorized: true } } })`.
+- **Request-body examples.** Create, update, and replace routes now ship an example payload synthesized from the entity's `@ApiProperty` metadata. Set `swagger.examples: false` to opt out, or supply `swagger.synthExample: (entity, route) => payload` to take over example construction (consumer return value ships verbatim; do not include secrets).
+- **Query-parameter documentation links.** Every built-in query parameter description now carries a `Docs` backlink that points at the `Query-Syntax` wiki page.
+- **`Swagger.operationsMap(modelName)` return shape.** The internal helper now returns `{ summary, description }` tuples per route rather than plain summary strings. **Internal API break.** Consumers who imported this class directly (the `CrudRoutesFactory` subclass pattern documented in older wiki pages) must destructure the new shape:
+
+  ```ts
+  // before (v1.x):
+  const summary = Swagger.operationsMap(this.modelName)[name];
+  Swagger.setOperation({ summary, ... }, this.targetProto[name]);
+
+  // after (v2.0.0):
+  const { summary, description } = Swagger.operationsMap(this.modelName)[name];
+  Swagger.setOperation({ summary, description, ... }, this.targetProto[name]);
+  ```
+
+- **`operationId` is computed, not overridable.** `@Crud({ swagger: { operations: { *: { operationId } } } })` is rejected at compile time (type-level `Omit`) and at runtime (the factory re-applies the canonical `{routeName}{ControllerName}{ModelName}` id after consumer-operations merge). OpenAPI requires `operationId` uniqueness across the full document.
+
 ### Internal
 
 - **Adapter decomposition.** TypeORM service slimmed from 1023 → 249 lines. Drizzle service −214 lines (−35.8%). MikroORM service −196 lines (−36.6%). Each adapter now composes `WhereBuilder` + `QueryComposer` + `FetchHelper` under a shared `QueryTranslator<Q, W>` facade. See [CONTRIBUTING.md — Adapter shape](https://github.com/kodjunkie/nestjs-crud/blob/master/CONTRIBUTING.md#adapter-shape).

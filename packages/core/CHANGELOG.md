@@ -14,11 +14,14 @@ Coordinated v2.0.0 milestone release. See the [root CHANGELOG.md](../../CHANGELO
 * **types:** `ParamOption.enum` `SwaggerEnumType` inlined.
 * **cache:** New `CrudCacheNotConfiguredError` thrown when `@Crud({ query: { cache } })` is set but `DataSource({ cache: ... })` is not configured.
 * **sanitization:** Removed `strictSanitization` opt-out flag.
+* **swagger:** `Swagger.operationsMap(modelName)` now returns `{ summary, description }` tuples instead of plain summary strings. Consumers who subclass `CrudRoutesFactory` and call `operationsMap` directly must destructure the new shape. `operationId` in `@Crud({ swagger: { operations: { *: { operationId } } } })` is rejected at compile time — it is computed per-route to preserve OpenAPI uniqueness.
 
 
 ### Features
 
 * **query:** Shared `QueryTranslator<Q, W>` facade contract published from `@nestjs-crud/core/query` subpath (internal API for adapter authors).
+* **swagger:** Imperative operation summaries and per-route markdown descriptions on every `@Crud()`-generated route. Response text is outcome-focused and references the named response DTO. Error responses are now documented: `400` on every route, `404` on single-resource routes, `401` when `@CrudAuth()` is present or `errorResponses.unauthorized: true` is set. Query parameters carry realistic examples and `Query-Syntax` wiki backlinks.
+* **swagger:** New `@Crud({ swagger: { tag, description, examples, operations, errorResponses, synthExample, tagWithVersion } })` consumer customization surface. Auto `@ApiTags` with pluralized entity name; `tagWithVersion: true` prepends `v{version}/` on versioned controllers. Consumer `synthExample` function takes precedence over `@ApiProperty` introspection for request-body examples.
 
 
 ### Security

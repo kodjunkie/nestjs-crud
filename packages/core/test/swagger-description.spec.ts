@@ -72,7 +72,7 @@ describe('Swagger description surface', () => {
       }
     });
 
-    it('each description mentions its resource name (DTO-reference prose check, D-06)', () => {
+    it('each description mentions its resource name (DTO-reference prose check)', () => {
       const map = Swagger.operationsMap('User');
       // Assert >= 4 descriptions mention the named resource in prose.
       const matches = ALL_ROUTES.filter((route) => /user/i.test(map[route].description));
@@ -154,7 +154,9 @@ describe('Swagger description surface', () => {
 
     it('getOneBase has [200, 400, 404]', () => {
       const resp = Swagger.getResponseOk((NoAuthCtrl.prototype as any).getOneBase);
-      const keys = Object.keys(resp).map((k) => Number(k)).sort();
+      const keys = Object.keys(resp)
+        .map((k) => Number(k))
+        .sort();
       expect(keys).toEqual([200, 400, 404]);
     });
 
