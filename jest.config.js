@@ -38,7 +38,7 @@ module.exports = {
   },
   coverageReporters: ['json', 'lcov', 'text-summary'],
   coverageDirectory: 'coverage',
-  // D-12: scope root coverage to core + request + util (the packages whose tests
+  // Scope root coverage to core + request + util (the packages whose tests
   // run under the root config). Adapter packages (typeorm/drizzle/mikro-orm/prisma)
   // have their own jest configs + test:coverage paths; collecting their src here
   // would inflate "uncovered" counts since the root testRegex matches their specs
@@ -55,9 +55,9 @@ module.exports = {
     '!**/__fixture__/**',
     '!integration/*',
   ],
-  // D-12: coverage floor for core+request+util. Per-package configs in
+  // Coverage floor for core+request+util. Per-package configs in
   // packages/{typeorm,drizzle,mikro-orm,prisma}/jest.config.js enforce their own
-  // adapter-specific floors (some <80% with documented Phase 11+ uplift target).
+  // adapter-specific floors (some <80% with a documented uplift target).
   coverageThreshold: {
     global: {
       lines: 80,

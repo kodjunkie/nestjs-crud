@@ -1,12 +1,10 @@
 /**
- * @description D-05b regression: proves dotted-path SQLi vector is REAL on dev
+ * @description Dotted-path SQLi regression: proves the vector is REAL on dev
  * HEAD post-commits 7cb3534 (denylist removal) + 31d2edf (mapSort raw-field
- * assert). System-Under-Test retargeted in Phase 6.2 Plan 02 onto
- * `TypeOrmQueryComposer` — D-05b SQLi invariant now concentrates there (D-06).
+ * assert). System-Under-Test retargeted onto
+ * `TypeOrmQueryComposer` — the dotted-path SQLi invariant now concentrates there.
  *
  * Closes v1→v2 regression from denylist removal + mapSort raw-field decision.
- * See: .planning/phases/05-arch-04-slim-typeormcrudservice/05-CONTEXT.md D-05..D-05b
- *      .planning/phases/06.2-... 06.2-CONTEXT.md D-05..D-06
  */
 import { BadRequestException } from '@nestjs/common';
 import { JoinResolver } from '@nestjs-crud/core';

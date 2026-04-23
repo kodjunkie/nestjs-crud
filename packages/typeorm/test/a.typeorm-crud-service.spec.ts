@@ -1,5 +1,5 @@
 describe('TypeOrmCrudService', () => {
-  // Legacy `#checkSqlInjection` describe deleted in Plan 04-05:
+  // Legacy `#checkSqlInjection` describe deleted during the v2.0 input-sanitizer migration:
   // coverage now lives in packages/core/test/input-sanitizer.spec.ts.
   //
   // The former `strictSanitization` opt-out describe was removed in the

@@ -188,7 +188,7 @@ describe('#crud-typeorm', () => {
       },
       query: {
         persist: ['isActive'],
-        // PERF-02 (Phase 10 Plan 02): `cache: 10` removed because the fixture
+        // `cache: 10` removed because the fixture
         // DataSource (orm.config.ts `withCache`) does NOT configure a TypeORM
         // cache provider. The new `CrudCacheNotConfiguredError` fail-fast guard
         // (typeorm-query-composer.ts step 7) correctly throws when cache is set

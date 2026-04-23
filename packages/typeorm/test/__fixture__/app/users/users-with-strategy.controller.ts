@@ -6,7 +6,7 @@ import { User } from './user.entity';
 import { UsersService } from './users.service';
 
 /**
- * Fixture controller for PERF-01 (Phase 10 Plan 01).
+ * Fixture controller for the relation-load-strategy integration spec.
  *
  * Mirrors `users.controller.ts` but opts in to TypeORM v0.3 native split-query
  * relation loading via `@Crud({ query: { relationLoadStrategy: 'query' } })`.

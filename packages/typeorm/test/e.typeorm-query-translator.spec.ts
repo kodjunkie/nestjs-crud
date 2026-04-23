@@ -512,7 +512,7 @@ describe('TypeOrmQueryTranslator', () => {
     });
   });
 
-  describe('defaultOnNotFound (COVERAGE-01 D-17)', () => {
+  describe('defaultOnNotFound (pragma-sweep branch)', () => {
     it('returns undefined (default no-op for FetchHelper.onNotFound)', () => {
       expect(defaultOnNotFound()).toBeUndefined();
     });

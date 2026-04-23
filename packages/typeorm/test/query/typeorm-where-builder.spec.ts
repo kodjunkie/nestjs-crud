@@ -14,7 +14,7 @@
  * collector that captures the `(qb) => ...` callback so we can serialize
  * what the builder pushed into the SQL fragment.
  *
- * @see COVERAGE-01 D-17, Phase 10 Plan 05 Task 2.
+ * @see the istanbul-ignore pragma sweep for dialect-branch coverage rationale.
  */
 import type { ObjectLiteral, Repository, SelectQueryBuilder } from 'typeorm';
 
@@ -88,7 +88,7 @@ const runBuild = (
   return captured;
 };
 
-describe('TypeOrmWhereBuilder — dialect branches (COVERAGE-01 D-17)', () => {
+describe('TypeOrmWhereBuilder — dialect branches', () => {
   describe('LIKE operator dialect detection (L263 pragma sweep)', () => {
     it('emits ILIKE on postgres for $contL', () => {
       const captured = runBuild('postgres', { name: { $contL: 'foo' } });

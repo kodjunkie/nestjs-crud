@@ -13,7 +13,7 @@ import { User } from './users/user.entity';
  * deleted that signature — the v0.3 replacement is `findOneBy({ id })`
  * (`Repository<T>.findOneBy(where: FindOptionsWhere<T>): Promise<T | null>`).
  * Fixing that here is one of the reasons this demo was extracted from the
- * old `integration/typeorm/` directory — see D-03 in 06-CONTEXT.md.
+ * old `integration/typeorm/` directory that this demo replaces.
  */
 @Injectable()
 export class AuthGuard implements CanActivate {

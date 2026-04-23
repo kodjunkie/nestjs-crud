@@ -240,7 +240,7 @@ describe('TypeOrmJoinResolver', () => {
     it('throws a low-level TypeORM error when nested join requested without parent seeded (current behavior)', () => {
       // Requesting 'profile.licenses' without seeding 'profile' leaves allowedRelation.path
       // undefined (parent not in entityRelationsHash). This is a known brittleness of the
-      // pre-refactor setJoin that the VERBATIM port preserves (see COVERAGE-01 / Phase 5).
+      // pre-refactor setJoin that the VERBATIM port preserves.
       const builder = qb();
       expect(() => resolver.applyJoins(builder, [{ field: 'profile.licenses' }], { 'profile.licenses': {} })).toThrow();
       expect(onBadRequest).not.toHaveBeenCalled();
@@ -351,9 +351,9 @@ describe('TypeOrmJoinResolver', () => {
   });
 
   // ---------------------------------------------------------------------------
-  // COVERAGE-01 D-17 pragma sweep — explicit branch coverage for sites where
-  // pragmas were removed in Plan 05 Task 3. (Existing tests above also exercise
-  // these branches; the cases below pin the contract.)
+  // Pragma-sweep branch coverage — explicit tests for sites where
+  // istanbul-ignore pragmas were previously suppressing coverage. (Existing
+  // tests above also exercise these branches; the cases below pin the contract.)
   // ---------------------------------------------------------------------------
   describe('applyJoins — eager-flag branch coverage (L42 sweep)', () => {
     it('skips the eager auto-add path for non-eager joinOptions', () => {

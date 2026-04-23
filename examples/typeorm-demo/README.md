@@ -4,9 +4,9 @@ Minimal standalone demo of [`@nestjs-crud/typeorm`](../../packages/typeorm) agai
 
 This app is **not** a monorepo workspace member — it is intentionally decoupled
 from the integration-test fixture that lives at
-`packages/typeorm/test/__fixture__/app/`. See
-`.planning/phases/06-arch-05-refactor-01-align-adapters-decouple-fixture/06-CONTEXT.md`
-§D-03 for the rationale.
+`packages/typeorm/test/__fixture__/app/`. Keeping the demo standalone ensures it
+works as a reference a consumer can point at without the test harness becoming
+load-bearing on a user-facing app.
 
 ## Prerequisites
 

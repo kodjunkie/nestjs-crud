@@ -1,8 +1,8 @@
 /**
  * Composer-level unit spec for `TypeOrmQueryComposer`.
  *
- * Currently scoped to the **PERF-02 cache fail-fast** branch (Phase 10 Plan 02,
- * D-06..D-09). When other internal branches grow dedicated unit-level tests,
+ * Currently scoped to the **cache fail-fast** branch (
+ * see CrudCacheNotConfiguredError). When other internal branches grow dedicated unit-level tests,
  * extend the mock-repo factory here rather than rolling a parallel one.
  *
  * Mock strategy (no DataSource — pure unit):
@@ -101,7 +101,7 @@ const baseParsed = (): ParsedRequestParams =>
   }) as unknown as ParsedRequestParams;
 
 describe('TypeOrmQueryComposer', () => {
-  describe('cache fail-fast (PERF-02 D-06..D-09)', () => {
+  describe('cache fail-fast (CrudCacheNotConfiguredError)', () => {
     it('throws CrudCacheNotConfiguredError when cache option set but DataSource cache provider missing', () => {
       const repo = buildMockRepo(undefined); // queryResultCache undefined
       const composer = buildComposer(repo);
@@ -168,7 +168,7 @@ describe('TypeOrmQueryComposer', () => {
     });
   });
 
-  describe('getTake (opts.limit fallback) — COVERAGE-01 D-17 sweep', () => {
+  describe('getTake (opts.limit fallback) — pragma-sweep branch', () => {
     it('uses opts.limit when parsed.limit is undefined', () => {
       const repo = buildMockRepo(undefined);
       const composer = buildComposer(repo);

@@ -1,5 +1,5 @@
 /**
- * SEC-03 TypeORM regression: updateOne/replaceOne/deleteOne must run inside
+ * TypeORM race-condition regression: updateOne/replaceOne/deleteOne must run inside
  * a QueryRunner transaction at READ COMMITTED isolation.
  *
  * Without the wrap the read-modify-write pattern is non-atomic: two
@@ -54,7 +54,7 @@ function makeCrudRequest(id: number): any {
 // ---------------------------------------------------------------------------
 // Spec
 // ---------------------------------------------------------------------------
-describe('SEC-03 TypeORM — mutations must run inside a QueryRunner transaction', () => {
+describe('TypeORM mutations must run inside a QueryRunner transaction', () => {
   let dataSource: DataSource;
   let repo: Repository<TranslatorEntity>;
   let service: TypeOrmCrudService<TranslatorEntity>;

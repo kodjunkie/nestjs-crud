@@ -1,12 +1,10 @@
 /* eslint-disable @typescript-eslint/no-var-requires */
 
-// CI-03 sentinel config: redirects all @nestjs/swagger imports to a throwing
-// stub so safeRequire('@nestjs/swagger') returns null at runtime — exercises
-// the swagger-absent branches in packages/core/src/crud/swagger.helper.ts
-// (~32 pragma sites that Plan 09 removes after this cell verifies coverage).
+// Swagger-absent sentinel config: redirects all @nestjs/swagger imports to a
+// throwing stub so safeRequire('@nestjs/swagger') returns null at runtime —
+// exercises the swagger-absent branches in packages/core/src/crud/swagger.helper.ts.
 //
-// Mechanism (per RESEARCH §Pattern 3): zero yarn.lock mutation, zero install
-// work, reproducible locally via:
+// Mechanism: zero yarn.lock mutation, zero install work, reproducible locally via:
 //   npx jest --config jest.config.no-swagger.js --coverage
 //
 // Runs against the root testRegex (core / request / util specs). Adapter
@@ -52,10 +50,11 @@ module.exports = {
     // cells run via per-adapter scripts that don't touch this file either.
     '/packages/core/test/crud-request\\.interceptor\\.spec\\.ts$',
   ],
-  // D-12 / Plan 10-09 Task 5: this sentinel config DISABLES the inherited 80%
-  // coverageThreshold. Rationale: the no-swagger config skips 3 specs and runs
-  // only the swagger-absent subset of core; coverage will always be lower than
-  // the default config — by design. The coverage signal here is consumed by
-  // Plan 09's pragma-deletion arithmetic, not as a PR gate.
+  // This sentinel config DISABLES the inherited 80% coverageThreshold.
+  // Rationale: the no-swagger config skips 3 specs and runs only the
+  // swagger-absent subset of core; coverage will always be lower than the
+  // default config — by design. The coverage signal here is consumed by the
+  // pragma-deletion arithmetic documented alongside swagger.helper.ts, not as
+  // a PR gate.
   coverageThreshold: undefined,
 };

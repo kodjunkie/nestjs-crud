@@ -1,5 +1,5 @@
 /**
- * PERF-01 (Phase 10 Plan 01) — relation-load-strategy integration spec.
+ * Relation-load-strategy integration spec.
  *
  * RED gate: this spec MUST fail before Task 3 lands (composer doesn't yet honor
  * `relationLoadStrategy: 'query'`, so under the 'query' branch joins are
@@ -11,7 +11,7 @@
  *    multi-relation getMany — proves no Cartesian inflation.
  *  - Test 2: nested split-query loading actually populates `company` and
  *    `company.projects`.
- *  - Test 3 (D-05b regression): `?sort=company.invalid_col,ASC` returns 400
+ *  - Test 3 (dotted-path sort SQLi regression): `?sort=company.invalid_col,ASC` returns 400
  *    under the 'query' branch — proves SQLi sort-allowlist still fires.
  *  - Test 4 (open-question #5 smoke): `setFindOptions` + `query.cache(...)`
  *    coexist (skipped if cache provider not configured in fixture).
@@ -19,7 +19,7 @@
  *    `?fields=` honored under 'query'; relation-level `JoinOption.allow` is a
  *    KNOWN divergence — relation columns under 'query' are loaded by TypeORM's
  *    `setFindOptions` regardless of `allow`. The test records what columns
- *    each strategy returns for downstream Phase 11 DOCS-04 documentation.
+ *    each strategy returns for downstream migration-guide documentation.
  */
 import { Controller, INestApplication } from '@nestjs/common';
 import { APP_FILTER } from '@nestjs/core';
@@ -89,7 +89,7 @@ class UsersJoinStrategyController implements CrudController<User> {
   }
 }
 
-describe('PERF-01: TypeORM relationLoadStrategy opt-in (D-02/D-03 amended)', () => {
+describe('TypeORM relationLoadStrategy opt-in', () => {
   let app: INestApplication;
   let server: any;
 
@@ -120,7 +120,7 @@ describe('PERF-01: TypeORM relationLoadStrategy opt-in (D-02/D-03 amended)', () 
       expect(joinRes.status).toBe(200);
       expect(Array.isArray(queryRes.body.data)).toBe(true);
       expect(Array.isArray(joinRes.body.data)).toBe(true);
-      // The CORE PERF-01 assertion: same row count, both strategies.
+      // Core assertion: same row count, both strategies.
       expect(queryRes.body.data.length).toBe(joinRes.body.data.length);
       // Sanity — there should actually be some users seeded.
       expect(queryRes.body.data.length).toBeGreaterThan(0);
@@ -146,7 +146,7 @@ describe('PERF-01: TypeORM relationLoadStrategy opt-in (D-02/D-03 amended)', () 
     });
   });
 
-  describe('Test 3 (D-05b T-10-01 SQLi regression): sort-allowlist fires under "query"', () => {
+  describe('Test 3 (dotted-path sort SQLi regression): sort-allowlist fires under "query"', () => {
     it('returns HTTP 400 with "Invalid column" message for unallowlisted dotted-path sort', async () => {
       const res = await request(server)
         .get('/perf01-users-query')
@@ -166,7 +166,7 @@ describe('PERF-01: TypeORM relationLoadStrategy opt-in (D-02/D-03 amended)', () 
       // To enable: add `cache: { type: "database" }` (or redis) to withCache
       // and remove .skip. This test was deferred per RESEARCH open question #5
       // because enabling DB cache requires schema changes (new query_cache
-      // table) that are out of scope for PERF-01.
+      // table) that are out of scope for this spec.
     });
   });
 
@@ -188,7 +188,7 @@ describe('PERF-01: TypeORM relationLoadStrategy opt-in (D-02/D-03 amended)', () 
       expect(jFirst).toBeDefined();
 
       // (a) Audit top-level `?fields=` shape under each strategy. KNOWN
-      // divergence (surfaced for Phase 11 DOCS-04):
+      // divergence (surfaced for the migration guide):
       //   - 'join' branch honors `?fields=` via composer's getSelect — only id
       //     + email survive on the user object.
       //   - 'query' branch calls setFindOptions which REPLACES the SELECT clause
