@@ -1,6 +1,6 @@
 {
   "name": "nestjs-crud",
-  "version": "1.0.1",
+  "version": "2.0.0",
   "description": "Nest CRUD for RESTful APIs",
   "license": "MIT",
   "packageManager": "yarn@4.12.0",
