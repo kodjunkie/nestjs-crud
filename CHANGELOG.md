@@ -9,6 +9,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Changed
+
+- **`@nestjs-crud/core` peer ranges for `class-transformer` and `class-validator` narrowed from `"*"` to `"^0.5.0"` and `"^0.14.0"` respectively.** Consumers on `class-transformer@0.5.x` or `class-validator@0.14.x` are unaffected. Consumers on older or newer 0.x lines (e.g. `class-validator@0.13.x`) now get a `npm WARN` peer warning at install time — the library has only been tested against the currently-pinned majors.
+
 ---
 
 ## [2.0.0] — 2026-04-23
