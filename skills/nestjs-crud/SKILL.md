@@ -1,6 +1,7 @@
 ---
 name: nestjs-crud
-description: Use when integrating `@nestjs-crud/*` (v2.x) into a NestJS project — setting up CRUD controllers, wiring one of the 4 adapters (TypeORM, Drizzle, MikroORM, Prisma), configuring query filters and pagination, scoping requests with `@CrudAuth`, overriding generated endpoints with `@Override()` + `@ParsedRequest()`/`@ParsedBody()`, writing DTOs with `CrudValidationGroups`, customizing Swagger/OpenAPI output via `@Crud({ swagger: {...} })`, opting into TypeORM split-query relation loading (`relationLoadStrategy: 'query'`), or debugging symptoms like `RequestQueryException: Invalid field 'X'` (strict allowlist), `RequestQueryException: Invalid persist key`, `CrudCacheNotConfiguredError`, `EBADENGINE: Unsupported engine` (Node <22), Prisma `Unknown argument 'where'` inside include, `getManyBase returned a flat array`, `validation always fails on update`, `maxLimit exceeded`, MikroORM stale-em identity-map issues, or unexpected savepoint semantics on `@Override()`-wrapped updateOne/replaceOne/deleteOne. For v1.0.x (legacy) behavior see the `nestjs-crud-v1` skill. For upgrading v1 → v2 see the `nestjs-crud-migration` skill.
+description: >-
+  Use when integrating `@nestjs-crud/*` (v2.x) into a NestJS project — setting up CRUD controllers, wiring one of the 4 adapters (TypeORM, Drizzle, MikroORM, Prisma — v2.1.0+ requires a Prisma 7 driver adapter), configuring query filters and pagination, scoping requests with `@CrudAuth`, overriding generated endpoints with `@Override()` + `@ParsedRequest()`/`@ParsedBody()`, writing DTOs with `CrudValidationGroups`, customizing Swagger/OpenAPI output via `@Crud({ swagger: {...} })`, opting into TypeORM split-query relation loading (`relationLoadStrategy: 'query'`), or debugging symptoms like `RequestQueryException: Invalid field 'X'` (strict allowlist), `RequestQueryException: Invalid persist key`, `CrudCacheNotConfiguredError`, `EBADENGINE: Unsupported engine` (Node <22), Prisma `Unknown argument 'where'` inside include, `getManyBase returned a flat array`, `validation always fails on update`, `maxLimit exceeded`, MikroORM stale-em identity-map issues, or unexpected savepoint semantics on `@Override()`-wrapped updateOne/replaceOne/deleteOne. For v1.0.x (legacy) behavior see the `nestjs-crud-v1` skill. For upgrading v1 → v2 (or v2.0 → v2.1 Prisma-7 migration) see the `nestjs-crud-migration` skill.
 ---
 
 # @nestjs-crud
@@ -9,20 +10,24 @@ Auto-generates RESTful CRUD endpoints for NestJS controllers from a single `@Cru
 
 ## What's new in v2
 
-| Area | Change |
-|---|---|
-| New adapter | `@nestjs-crud/prisma` (Prisma 5+) |
-| Node floor | `engines.node: ">=22.0.0"` on all 7 packages |
-| peerDependencies | Declared on every package; `@nestjs/common ^10 \|\| ^11` |
-| Strict field allowlist | Unknown `?sort=`/`?search=`/`?filter=` fields throw `RequestQueryException` (was: silent skip) |
-| TypeORM split-query | `@Crud({ query: { relationLoadStrategy: 'query' \| 'join' } })` |
-| Cache fail-fast | `CrudCacheNotConfiguredError` when `@Crud cache` set without provider |
-| Swagger customization | `@Crud({ swagger: {...} })` — tag/description/examples/operations/errorResponses/synthExample/tagWithVersion |
-| Optional logger | All 4 adapters default to `new Logger(<ServiceName>)` when omitted |
-| `@CrudAuth` persist | Runtime validation — typos throw `RequestQueryException` |
-| Write-path transactions | `updateOne`/`replaceOne`/`deleteOne` wrap at READ COMMITTED |
-| Drizzle `db` field | `protected db: DrizzleClient` (was `any`) |
-| MikroORM signatures | `any` → typed generics on public surface |
+Changes span v2.0.0 → v2.1.0. Release where each landed noted in the right column.
+
+| Area | Change | Since |
+|---|---|---|
+| New adapter | `@nestjs-crud/prisma` | v2.0.0 |
+| Node floor | `engines.node: ">=22.0.0"` on all 7 packages | v2.0.0 |
+| peerDependencies | Declared on every package; `@nestjs/common ^10 \|\| ^11` | v2.0.0 |
+| Strict field allowlist | Unknown `?sort=`/`?search=`/`?filter=` fields throw `RequestQueryException` (was: silent skip) | v2.0.0 |
+| TypeORM split-query | `@Crud({ query: { relationLoadStrategy: 'query' \| 'join' } })` | v2.0.0 |
+| Cache fail-fast | `CrudCacheNotConfiguredError` when `@Crud cache` set without provider | v2.0.0 |
+| Swagger customization | `@Crud({ swagger: {...} })` — tag/description/examples/operations/errorResponses/synthExample/tagWithVersion | v2.0.0 |
+| Optional logger | All 4 adapters default to `new Logger(<ServiceName>)` when omitted | v2.0.0 |
+| `@CrudAuth` persist | Runtime validation — typos throw `RequestQueryException` | v2.0.0 |
+| Write-path transactions | `updateOne`/`replaceOne`/`deleteOne` wrap at READ COMMITTED | v2.0.0 |
+| Drizzle `db` field | `protected db: DrizzleClient` (was `any`) | v2.0.0 |
+| MikroORM signatures | `any` → typed generics on public surface | v2.0.0 |
+| MikroORM peer cleanup | `@mikro-orm/knex` peer dropped (was install-broken — no stable 7.x on npm; adapter uses `import type` only). Transitive via your driver package. | v2.0.1 |
+| Prisma peer narrowed | `@prisma/client` peer: `>=5.0.0` → `^7.0.0`. Driver adapter required; see §Prisma (v7) setup. | v2.1.0 |
 
 ## Install
 
@@ -31,7 +36,10 @@ Auto-generates RESTful CRUD endpoints for NestJS controllers from a single `@Cru
 npm install @nestjs-crud/core @nestjs-crud/typeorm
 npm install @nestjs-crud/core @nestjs-crud/drizzle
 npm install @nestjs-crud/core @nestjs-crud/mikro-orm
-npm install @nestjs-crud/core @nestjs-crud/prisma
+
+# Prisma adapter (v2.1.0+ requires Prisma 7 driver adapter — pick one per dialect):
+npm install @nestjs-crud/core @nestjs-crud/prisma @prisma/adapter-pg pg           # Postgres
+npm install @nestjs-crud/core @nestjs-crud/prisma @prisma/adapter-mariadb mariadb  # MySQL/MariaDB
 
 # Prisma adapter ALSO needs the Prisma CLI as a devDep:
 npm install -D prisma
@@ -45,8 +53,8 @@ npm install @nestjs-crud/request
 - `@nestjs-crud/core`: `class-validator ^0.14.0`, `class-transformer ^0.5.0`, `@nestjs/common ^10.0.0 || ^11.0.0`
 - `@nestjs-crud/typeorm`: `typeorm ^0.3`, `@nestjs/typeorm`, `@nestjs-crud/core ^2.0`, `@nestjs/common ^10.0.0 || ^11.0.0`
 - `@nestjs-crud/drizzle`: `drizzle-orm >=0.45.2`, `@nestjs-crud/core ^2.0`, `@nestjs/common ^10.0.0 || ^11.0.0`
-- `@nestjs-crud/mikro-orm`: `@mikro-orm/core ^7.0.0`, `@mikro-orm/knex ^7.0.0`, `@nestjs-crud/{core,request,util} ^2.0`, `@nestjs/common ^10.0.0 || ^11.0.0`
-- `@nestjs-crud/prisma`: `@prisma/client >=5.0`, `@nestjs-crud/core ^2.0`, `@nestjs/common ^10.0.0 || ^11.0.0`
+- `@nestjs-crud/mikro-orm`: `@mikro-orm/core ^7.0.0`, `@nestjs-crud/{core,request,util} ^2.0`, `@nestjs/common ^10.0.0 || ^11.0.0` (note: `@mikro-orm/knex` is NOT a declared peer as of v2.0.1 — consumers receive it transitively via their driver package `@mikro-orm/postgresql`/`@mikro-orm/mysql`/etc.)
+- `@nestjs-crud/prisma`: `@prisma/client ^7.0.0` (v2.1.0+), `@nestjs-crud/core ^2.0`, `@nestjs/common ^10.0.0 || ^11.0.0`. Driver adapter (`@prisma/adapter-pg` / `@prisma/adapter-mariadb` / etc.) is NOT a declared peer but is effectively required at runtime — Prisma 7 removed the env-URL path from `PrismaClient` ctor. Pin to `@nestjs-crud/prisma@^2.0.1` + `@prisma/client@^5 || ^6` if you need to stay on pre-v7 Prisma.
 
 **Runtime:** Node 22+ required. `npm install` refuses on older Node (`EBADENGINE`). Swagger is optional — install `@nestjs/swagger` to enable metadata emission; when absent the library null-guards every Swagger path.
 
@@ -121,23 +129,29 @@ export class UsersService extends MikroOrmCrudService<User> {
 ### Prisma service
 
 ```typescript
-import { PrismaCrudService } from '@nestjs-crud/prisma';
+// On v2.1.0+ with Prisma 7: build PrismaClient with a driver adapter (env-URL path is gone).
+// On v2.0.x with Prisma 5/6: use `new PrismaClient()` — env-URL path still works.
 import { PrismaClient } from '@prisma/client';
+import { PrismaPg } from '@prisma/adapter-pg';
+import { Pool } from 'pg';
+
+const prisma = new PrismaClient({
+  adapter: new PrismaPg(new Pool({ connectionString: process.env.DATABASE_URL })),
+});
 
 @Injectable()
 export class UsersService extends PrismaCrudService<User> {
-  constructor(prisma: PrismaClient) {
+  constructor(@Inject('PRISMA') prisma: PrismaClient) {
     super(prisma, 'user', {
       entityColumns: ['id', 'email', 'isActive', 'companyId', 'deletedAt'],
       primaryColumns: ['id'],
       softDeleteColumn: 'deletedAt',
-      // Omit logger to get default `new Logger(PrismaCrudService.name)`.
     });
   }
 }
 ```
 
-Prisma's 3rd argument is a `PrismaCrudServiceConfig` object. Unlike the other 3 adapters (which accept logger as a separate positional ctor arg), Prisma reads the logger from `serviceConfig.logger`. Default-instantiation behavior is unified — see §Optional Logger.
+Prisma's 3rd arg is a `PrismaCrudServiceConfig` object (logger lives inside it, not as a separate ctor arg). On v2.1.0+, Prisma 7 also requires stripping `datasource.url` from `schema.prisma` and creating a `prisma.config.ts` for Migrate — see [v2.1 Migration wiki](https://github.com/kodjunkie/nestjs-crud/wiki/v2.1-Migration) for the complete walkthrough (schema rewrite, config file, search_path landmine, MariaDB session-scope landmine). Swap `@prisma/adapter-pg` + `pg` for `@prisma/adapter-mariadb` + `mariadb` on MySQL.
 
 ## Generated Endpoints
 
@@ -662,6 +676,7 @@ RequestQueryBuilder.create().search({
 **Deep includes feel slow / emit N+1-looking query logs.** Prisma default is query decomposition, not SQL JOIN (1 + N_depth queries). Opt into Prisma's `relationJoins` preview feature on your own `PrismaClient` (adapter inherits transparently). Not forced.
 
 **`createMany` returns fewer fields than TypeORM equivalent / missing DB-assigned ids.** Prisma native `createMany` returns `{ count }` only; adapter uses `$transaction([create, ...])` array form for full-record parity. If you see v1 behavior, verify you're on v2.
+
 
 ### MikroORM-specific
 

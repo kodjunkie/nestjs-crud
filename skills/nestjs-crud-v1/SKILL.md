@@ -1,6 +1,7 @@
 ---
 name: nestjs-crud-v1
-description: Use when integrating @nestjs-crud v1.0.x (legacy) into a NestJS project — setting up CRUD controllers, configuring query filters and pagination, scoping requests with @CrudAuth, overriding generated endpoints, troubleshooting relations, validation, Swagger, debugging symptoms like `getManyBase returned a flat array`, `@CrudAuth filter not applying` (or filter applies wrong rows due to silently-ignored persist-key typos), `validation always fails on update`, `maxLimit exceeded`, `repo.createQueryBuilder is not a function` after installing the adapter package, MikroORM stale entity returned across requests, `@Crud({ query: { cache } })` silently doing nothing on Drizzle/MikroORM. For current v2.x behavior use the `nestjs-crud` skill; to upgrade v1 → v2 use the `nestjs-crud-migration` skill.
+description: >-
+  Use when integrating @nestjs-crud v1.0.x (legacy) into a NestJS project — setting up CRUD controllers, configuring query filters and pagination, scoping requests with @CrudAuth, overriding generated endpoints, troubleshooting relations, validation, Swagger, debugging symptoms like `getManyBase returned a flat array`, `@CrudAuth filter not applying` (or filter applies wrong rows due to silently-ignored persist-key typos), `validation always fails on update`, `maxLimit exceeded`, `repo.createQueryBuilder is not a function` after installing the adapter package, MikroORM stale entity returned across requests, `@Crud({ query: { cache } })` silently doing nothing on Drizzle/MikroORM. For current v2.x behavior use the `nestjs-crud` skill; to upgrade v1 → v2 use the `nestjs-crud-migration` skill.
 ---
 
 # @nestjs-crud
