@@ -11,6 +11,77 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [2.0.0] — 2026-04-23
+
+**Milestone:** Architectural Cleanup & Breaking Fixes — coordinated breaking release across 7 packages (6 existing + new `@nestjs-crud/prisma`).
+**Branch:** `master` · **Previous:** `v1.0.2`
+
+Upgrading from v1.0.2 requires consumer code changes — see the [v2 Migration guide](https://github.com/kodjunkie/nestjs-crud/wiki/v2-Migration). Want to stay on v1? Pin `"@nestjs-crud/<pkg>": "^1.0.2"` in your `package.json` — `npm update` will continue tracking the v1.0.x line.
+
+```
+yarn up @nestjs-crud/util@2.0.0 @nestjs-crud/request@2.0.0 @nestjs-crud/core@2.0.0 \
+        @nestjs-crud/typeorm@2.0.0 @nestjs-crud/drizzle@2.0.0 @nestjs-crud/mikro-orm@2.0.0 \
+        @nestjs-crud/prisma@2.0.0
+```
+
+### Breaking
+
+- **ARCH-03 — Strict field allowlist on `?sort=`, `?filter=`, `?search=`.** Unknown fields now throw `RequestQueryException` (v1: silently skipped). Audit your consumers' query strings — `@VirtualColumn`, `@Formula`, dotted paths without explicit `join=` all break. No opt-out flag in v2.
+- **TYPES-01 — `DrizzleCrudService` typed constructor.** `db: any` → `db: DrizzleClient`. Subclasses must update.
+- **TYPES-02 — `MikroOrmCrudService` typed public method signatures.** Subclasses overriding `getMany`/`getOne`/etc. must conform to typed return values.
+- **TYPES-05 — `ParamOption.enum` `SwaggerEnumType` inlined.** Affects only consumers who imported the internal type directly.
+- **PERF-02 — `CrudCacheNotConfiguredError` fail-fast.** `@Crud({ query: { cache } })` now throws if `DataSource({ cache: ... })` is not configured. Configure your DataSource cache OR remove the `@Crud` cache option.
+- **BUILD-01 — Node `>=22.0.0` enforced** via `engines.node` in every package.json.
+- **MikroORM v7 required** (peer-deps bumped from `>=6.0.0` to `^7.0.0`).
+- **`strictSanitization` opt-out flag removed** (security kill-switch was inappropriate; Phase 4 D-04).
+
+### New Features
+
+- **`@nestjs-crud/prisma` adapter** — new Prisma adapter ships at v2.0.0. Same conceptual surface as the other 3 services. See [ServicePrisma](https://github.com/kodjunkie/nestjs-crud/wiki/ServicePrisma).
+- **OBS-01 — Optional `LoggerService` ctor parameter** on TypeORM, Drizzle, MikroORM, Prisma services. See [Logging](https://github.com/kodjunkie/nestjs-crud/wiki/Logging).
+- **PERF-01 — `relationLoadStrategy: 'join' | 'query'` per-controller and per-request switch** (TypeORM only). Avoids Cartesian explosion on multi-OneToMany reads. See [RelationLoadStrategy](https://github.com/kodjunkie/nestjs-crud/wiki/RelationLoadStrategy) for the alias-select divergence caveat.
+
+### Security
+
+- **SEC-02 — `setAuthPersist` validates persist keys** against `entityColumnsHash`; throws `RequestQueryException` on invalid keys; logs key NAMES only (PII guard).
+- **SEC-03 — Mutation methods run inside `READ COMMITTED` transactions** across all 3 v1 adapters + Prisma. Closes the v1 read-modify-write race in `updateOne`/`replaceOne`/`deleteOne`.
+- **Pre-ship audit completed** — peer-deps fixed across all 7 packages; 30 Dependabot alerts triaged. Audit log: `pre-ship-audit.md` (internal).
+
+### Performance
+
+- **PERF-01 (above) — `relationLoadStrategy` switch** avoids Cartesian explosion under multi-relation reads.
+- **`QueryTranslator.count()` shared across all 3 v1 adapters** (Phase 6 ARCH-05).
+- **COVERAGE-01 final state** — 40 `/* istanbul ignore */` pragmas remain across the codebase, all D-20 annotated. Per-package coverage thresholds enforced: 65% (drizzle) / 75% (mikro-orm, prisma) / 80% (typeorm).
+
+### Internal
+
+- **ARCH-01..05 — Adapter decomposition.** TypeORM service slimmed from 1023 → 249 lines (Phase 5). Drizzle service −214 lines (−35.8%). MikroORM service −196 lines (−36.6%). Each adapter now composes `WhereBuilder` + `QueryComposer` + `FetchHelper` under a shared `QueryTranslator<Q, W>` facade. See [CONTRIBUTING.md — Adapter shape](https://github.com/kodjunkie/nestjs-crud/blob/master/CONTRIBUTING.md#adapter-shape).
+- **Config-object constructors at every translator/piece boundary** — no service-locator casts, no piece-to-service backrefs.
+- **REFACTOR-01 — `integration/typeorm/` deleted**, `examples/typeorm-demo/` is the canonical demo (Phase 6).
+- **PARITY-01..03 + CI-02 — Real-DB integration tests** for Drizzle + MikroORM + Prisma cells; CI matrix expanded to 4 adapters × 2 DBs (Phases 7 + 9.1 + 10).
+- **CI-03 — Swagger-less CI matrix added** (Phase 10) — verifies `safeRequire` correctness when `@nestjs/swagger` not installed.
+- **Per-package Jest configs** — each adapter package owns its `jest.config.js` (required for MikroORM ESM via `--experimental-vm-modules`).
+
+### Migration
+
+Full breaking-change inventory and step-by-step upgrade guidance: [v2 Migration guide](https://github.com/kodjunkie/nestjs-crud/wiki/v2-Migration).
+
+**Want to stay on v1?** Pin `"@nestjs-crud/<pkg>": "^1.0.2"` in your `package.json`. There is **no `v1-lts` dist-tag** — `latest` flips to `2.0.0` on this release. Consumers who don't pin will pull v2 on their next `npm update`.
+
+### Legal
+
+- (No new attribution changes from v1.0.2 — `LICENSE` + `NOTICE.md` carried forward.)
+
+### Forward-looking (v2.x / v3 work)
+
+The following work is tracked separately and NOT promised by v2.0.0:
+- Unified caching API across all 4 adapters (currently TypeORM-only).
+- Unified `relationLoadStrategy` across all 4 adapters (currently TypeORM-only).
+- `@zmotivat0r/mrepo` evaluation against alternatives (Nx, Turborepo).
+- Drizzle / MikroORM / Prisma coverage threshold uplift to uniform 80%.
+
+---
+
 ## [1.0.2] — 2026-04-21
 
 **Milestone:** Security & Release Readiness — lean, strictly non-breaking patch release.
@@ -66,6 +137,7 @@ See the [v1.0.1 release](https://github.com/kodjunkie/nestjs-crud/releases/tag/v
 
 ---
 
-[Unreleased]: https://github.com/kodjunkie/nestjs-crud/compare/v1.0.2...HEAD
+[Unreleased]: https://github.com/kodjunkie/nestjs-crud/compare/v2.0.0...HEAD
+[2.0.0]: https://github.com/kodjunkie/nestjs-crud/compare/v1.0.2...v2.0.0
 [1.0.2]: https://github.com/kodjunkie/nestjs-crud/compare/v1.0.1...v1.0.2
 [1.0.1]: https://github.com/kodjunkie/nestjs-crud/releases/tag/v1.0.1
