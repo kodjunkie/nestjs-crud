@@ -15,9 +15,12 @@
         "test/**/*.spec.ts",
         "test/parity/**/*.ts",
         "test/__stubs__/**/*.ts",
-        "test/__fixture__/**/*.ts"
+        "test/__fixture__/**/*.ts",
+        "test/__shared-fixture__/**/*.ts"
       ],
-      "project": ["src/**/*.ts", "test/**/*.ts"]
+      "project": ["src/**/*.ts", "test/**/*.ts"],
+      "ignore": ["src/crud/swagger.helper.ts"],
+      "ignoreDependencies": ["express"]
     },
     "packages/typeorm": {
       "entry": [
@@ -65,19 +68,33 @@
         "jest.config.no-swagger.js",
         "examples/**/*.ts"
       ],
-      "project": ["*.js", "examples/**/*.ts"]
+      "project": ["*.js", "examples/**/*.ts"],
+      "ignoreDependencies": [
+        "@mikro-orm/knex",
+        "pluralize",
+        "swagger-ui-express",
+        "@typescript-eslint/eslint-plugin",
+        "@typescript-eslint/parser",
+        "conventional-changelog-cli",
+        "eslint-config-airbnb-base",
+        "eslint-plugin-import",
+        "lerna",
+        "nodemon",
+        "cz-conventional-changelog",
+        "@nestjs-crud/core",
+        "@nestjs-crud/util",
+        "@nestjs-crud/request",
+        "@nestjs-crud/typeorm",
+        "@nestjs-crud/drizzle",
+        "@nestjs-crud/mikro-orm",
+        "@nestjs-crud/prisma"
+      ]
     }
   },
   "rules": {
-    "duplicates": "off"
+    "duplicates": "off",
+    "enumMembers": "off"
   },
-  "ignore": [
-    "**/lib/**",
-    "**/node_modules/**",
-    "**/.mrepo/**",
-    "**/coverage/**",
-    "**/coverage-no-swagger/**",
-    "examples/*/node_modules/**"
-  ],
+  "ignoreExportsUsedInFile": true,
   "ignoreBinaries": []
 }
