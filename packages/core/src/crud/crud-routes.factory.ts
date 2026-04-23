@@ -357,7 +357,14 @@ export class CrudRoutesFactory {
         // set metadata
         R.setInterceptors([...baseInterceptors, ...interceptors], this.targetProto[name]);
         R.setAction(baseAction, this.targetProto[name]);
-        Swagger.setOperation({ ...baseOperation, ...operation }, this.targetProto[name]);
+        // Re-apply the factory-computed operationId LAST so a consumer-placed
+        // @ApiOperation({ operationId }) on an @Override handler cannot collide
+        // with the auto-generated ID emitted across the controller. Matches the
+        // runtime guarantee in setSwaggerOperation().
+        Swagger.setOperation(
+          { ...baseOperation, ...operation, operationId: baseOperation?.operationId },
+          this.targetProto[name],
+        );
         Swagger.setParams([...baseSwaggerParams, ...swaggerParams], this.targetProto[name]);
         Swagger.setResponseOk({ ...baseResponseOk, ...responseOk }, this.targetProto[name]);
         this.overrideParsedBodyDecorator(override, name);
@@ -489,8 +496,15 @@ export class CrudRoutesFactory {
 
   protected setSwaggerOperation(name: BaseRouteName) {
     const { summary, description } = Swagger.operationsMap(this.modelName)[name];
+    const override = this.options.swagger?.operations?.[name] ?? {};
     const operationId = name + this.targetProto.constructor.name + this.modelName;
-    Swagger.setOperation({ summary, description, operationId }, this.targetProto[name]);
+    // Spread order is load-bearing: consumer override merges over base, then the
+    // factory-computed operationId is re-applied LAST so consumers cannot smuggle
+    // a duplicate operationId through the override surface. OpenAPI requires
+    // operationId uniqueness across the entire document; the type-level Omit on
+    // CrudSwaggerOperationOptions provides the static guard, this line is the
+    // runtime backstop.
+    Swagger.setOperation({ summary, description, ...override, operationId }, this.targetProto[name]);
   }
 
   protected setSwaggerPathParams(name: BaseRouteName) {
