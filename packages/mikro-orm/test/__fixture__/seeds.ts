@@ -15,12 +15,15 @@ export async function seedAll(orm: MikroORM): Promise<void> {
   const conn = orm.em.getConnection();
   const isMysql = (conn as any).constructor?.name?.toLowerCase()?.includes('mysql');
   if (isMysql) {
-    // Drop unowned tables that have FKs pointing at our tables (user_projects has FKs to both
-    // projects.id and users.id, created by the TypeORM fixture with int unsigned PKs; MikroORM
-    // creates those PKs as plain int, causing an incompatible-type error on CREATE even with
-    // foreign_key_checks=0 — MySQL validates type compatibility regardless of FK check setting).
+    // Drop unowned tables that have FKs pointing at our tables (user_projects + user_licenses
+    // have FKs to projects.id / users.id, created by the TypeORM fixture with int unsigned
+    // PKs; MikroORM creates those PKs as plain int, causing an incompatible-type error on
+    // CREATE even with foreign_key_checks=0 — MySQL validates type compatibility regardless
+    // of FK check setting). Plan 10-07: extend the drop list to cover user_licenses, surfaced
+    // when the typeorm fixture seeded that table after PARITY-03 work landed.
     await (orm.schema as any).execute('SET FOREIGN_KEY_CHECKS = 0');
     await (orm.schema as any).execute('DROP TABLE IF EXISTS `user_projects`');
+    await (orm.schema as any).execute('DROP TABLE IF EXISTS `user_licenses`');
     await (orm.schema as any).execute('SET FOREIGN_KEY_CHECKS = 1');
   }
   await (orm.schema as any).drop({ dropMigrationsTable: true });

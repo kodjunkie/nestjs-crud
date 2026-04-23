@@ -45,7 +45,6 @@ export class MikroOrmJoinResolver implements JoinResolver<QueryBuilder<object>> 
 
     for (const joinField of allowedJoins) {
       const options = joinOptions[joinField];
-      /* istanbul ignore else */
       if (options.eager) {
         this.applyJoin(query, joinField, options);
         appliedJoins.add(joinField);
