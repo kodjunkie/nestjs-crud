@@ -21,9 +21,9 @@ Generate eight RESTful endpoints for any NestJS controller — list, paginate, f
 <img align="right" src="img/crud-usage.png" alt="A NestJS service and controller using @Crud()" width="380" />
 
 - Full-featured CRUD controllers and services, ready to use
-- DB- and service-agnostic — extendable base classes per adapter
+- DB and service agnostic — extendable base classes per adapter
 - Rich query parsing — filters, pagination, sorting, relations, nested relations, cache
-- Framework-agnostic query builder for the frontend
+- Framework agnostic query builder for the frontend
 - Body, query, and path-param validation built in
 - Override any generated handler with `@Override()`
 - Tiny config — per-controller or global defaults
@@ -50,12 +50,12 @@ You get `GET /users`, `GET /users/:id`, `POST /users`, `POST /users/bulk`, `PATC
 
 ## Adapters
 
-| Adapter | Package |
-| ------- | ------- |
-| TypeORM | [`@nestjs-crud/typeorm`](https://www.npmjs.com/package/@nestjs-crud/typeorm) |
-| Drizzle | [`@nestjs-crud/drizzle`](https://www.npmjs.com/package/@nestjs-crud/drizzle) |
+| Adapter  | Package                                                                          |
+| -------- | -------------------------------------------------------------------------------- |
+| TypeORM  | [`@nestjs-crud/typeorm`](https://www.npmjs.com/package/@nestjs-crud/typeorm)     |
+| Drizzle  | [`@nestjs-crud/drizzle`](https://www.npmjs.com/package/@nestjs-crud/drizzle)     |
 | MikroORM | [`@nestjs-crud/mikro-orm`](https://www.npmjs.com/package/@nestjs-crud/mikro-orm) |
-| Prisma | [`@nestjs-crud/prisma`](https://www.npmjs.com/package/@nestjs-crud/prisma) |
+| Prisma   | [`@nestjs-crud/prisma`](https://www.npmjs.com/package/@nestjs-crud/prisma)       |
 
 Plus [`@nestjs-crud/core`](https://www.npmjs.com/package/@nestjs-crud/core) (decorator + framework) and [`@nestjs-crud/request`](https://www.npmjs.com/package/@nestjs-crud/request) (frontend query builder).
 
