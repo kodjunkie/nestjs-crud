@@ -1,5 +1,5 @@
 /**
- * SEC-03 Drizzle regression: updateOne/replaceOne/deleteOne must run inside
+ * Drizzle race-condition regression: updateOne/replaceOne/deleteOne must run inside
  * a db.transaction() call with isolationLevel 'read committed'.
  *
  * Without the wrap the read-modify-write pattern is non-atomic: two
@@ -64,7 +64,7 @@ function makeCrudRequest(id: number): any {
 // ---------------------------------------------------------------------------
 // Spec
 // ---------------------------------------------------------------------------
-describe('SEC-03 Drizzle — mutations must run inside db.transaction at read committed', () => {
+describe('Drizzle mutations must run inside db.transaction at read committed', () => {
   let service: any;
   let transactionSpy: jest.Mock;
 

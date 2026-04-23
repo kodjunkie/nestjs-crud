@@ -1,5 +1,5 @@
 /**
- * PrismaCrudService unit tests — non-SEC-03 behavior.
+ * PrismaCrudService unit tests — non-transactional behavior.
  * All tests run offline — no real Postgres.
  */
 
@@ -192,10 +192,10 @@ describe('PrismaCrudService', () => {
   });
 
   // -------------------------------------------------------------------------
-  // createMany — D-03/C3: array form $transaction
+  // createMany — array-form $transaction path
   // -------------------------------------------------------------------------
   describe('createMany', () => {
-    it('D-03/C3: calls $transaction with an ARRAY (not a callback)', async () => {
+    it('calls $transaction with an ARRAY (not a callback)', async () => {
       const createMock = jest.fn().mockResolvedValue(seedRow);
       const txSpy = jest.fn().mockImplementation((fnOrArray: any) => {
         if (Array.isArray(fnOrArray)) {

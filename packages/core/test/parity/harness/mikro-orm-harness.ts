@@ -1,5 +1,5 @@
 /**
- * MikroORM parity harness for PARITY-03.
+ * MikroORM parity harness for the cross-adapter parity suite.
  *
  * STRATEGY: Pure mock EntityManager — no `MikroORM.init()`, no ESM runtime trap.
  * The MikroOrmQueryComposer only needs `propertiesMap` (a plain Record) and a

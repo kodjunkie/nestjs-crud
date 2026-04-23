@@ -130,7 +130,7 @@ describe('MikroOrmJoinResolver', () => {
     });
   });
 
-  describe('applyJoins eager flag (COVERAGE-01 D-17 sweep — non-eager else branch)', () => {
+  describe('applyJoins eager flag (non-eager else branch — pragma-sweep coverage)', () => {
     it('takes the non-eager branch when options.eager is false (no populate during eager pass; not appliedJoins)', () => {
       // Branch under test: line 48's `if (options.eager)` — the else
       // case is hit when `options.eager === false`. With NO entries in

@@ -136,7 +136,7 @@ describe('PrismaWhereBuilder', () => {
     });
   });
 
-  // Unknown relation guard (T-09-02-01)
+  // Unknown relation guard
   it('unknown relation → calls onBadRequest', () => {
     expect(() => builder.build({ 'unknown.foo': 1 } as any)).toThrow(/Unknown relation: unknown/);
   });

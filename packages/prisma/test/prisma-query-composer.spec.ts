@@ -227,12 +227,12 @@ describe('PrismaQueryComposer', () => {
     });
   });
 
-  // To-many filtered include — Phase 11 concern; not in Plan 03 MVP
-  it.todo('Plan 11 DOCS-04 documents to-many filtered include');
+  // To-many filtered include — deferred; not in current MVP
+  it.todo('Document to-many filtered include behavior');
 
-  // COVERAGE-01 D-17 sweep — getTake opts.limit fallback (Plan 10-08)
+  // Pragma-sweep branch — getTake opts.limit fallback
   // Cross-adapter convergence: same shape as typeorm/drizzle/mikro-orm composer sweeps.
-  describe('getTake (opts.limit fallback) — COVERAGE-01 D-17 sweep', () => {
+  describe('getTake (opts.limit fallback) — pragma-sweep branch', () => {
     it('uses opts.limit when parsed.limit is undefined', () => {
       const parsed = { ...emptyParsed, limit: undefined } as any;
       const take = composer.getTake(parsed, { limit: 25 } as any);

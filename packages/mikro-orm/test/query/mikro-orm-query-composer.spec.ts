@@ -1,9 +1,9 @@
 /**
  * Composer-level unit spec for `MikroOrmQueryComposer`.
  *
- * Currently scoped to the COVERAGE-01 D-17 sweep (Phase 10 Plan 07):
+ * Currently scoped to the istanbul-ignore pragma sweep:
  * exercises the `getTake` opts.limit fallback branch that previously
- * carried `/* istanbul ignore if * /`. Mirrors Plan 06 Task 2's
+ * carried `/* istanbul ignore if * /`. Mirrors the Drizzle composer's
  * `drizzle-query-composer.spec.ts` structure, adapted to MikroORM's
  * `(query as any).limit(n) / .offset(n)` mock surface.
  *
@@ -95,7 +95,7 @@ const baseParsed = (): ParsedRequestParams =>
   }) as unknown as ParsedRequestParams;
 
 describe('MikroOrmQueryComposer', () => {
-  describe('getTake (opts.limit fallback) — COVERAGE-01 D-17 sweep', () => {
+  describe('getTake (opts.limit fallback) — pragma-sweep branch', () => {
     it('uses opts.limit when parsed.limit is undefined', () => {
       const composer = buildComposer();
       const query = buildMockQuery();

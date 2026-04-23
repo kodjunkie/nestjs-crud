@@ -1,5 +1,5 @@
 /**
- * T-09-02: SEC-03 real-DB regression — PrismaCrudService.updateOne must run inside
+ * Real-DB race-condition regression — PrismaCrudService.updateOne must run inside
  * $transaction at ReadCommitted isolation.  Two concurrent PATCH /users/1 requests
  * must not produce a lost-update (the last write either wins or both serialize —
  * the important thing is the row count never shrinks and the final state is valid).
@@ -18,7 +18,7 @@ import { HttpExceptionFilter } from './__fixture__/app/http-exception.filter';
 const dialect = (process.env.PRISMA_PROVIDER === 'mysql' ? 'mysql' : 'postgres') as 'postgres' | 'mysql';
 const runSuite = process.env.PRISMA_PROVIDER === 'postgresql' || process.env.PRISMA_PROVIDER === 'mysql';
 
-(runSuite ? describe : describe.skip)(`T-09-02 SEC-03 real-DB race regression [${dialect}]`, () => {
+(runSuite ? describe : describe.skip)(`Prisma real-DB race regression [${dialect}]`, () => {
   let app: INestApplication;
   let server: any;
 

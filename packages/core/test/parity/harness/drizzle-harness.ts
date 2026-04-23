@@ -1,5 +1,5 @@
 /**
- * Drizzle parity harness for PARITY-03.
+ * Drizzle parity harness for the cross-adapter parity suite.
  *
  * Uses better-sqlite3 + drizzle-orm/better-sqlite3 with a sqliteTable schema.
  * Builds a DrizzleQueryComposer with a throwing `onBadRequest` stub.

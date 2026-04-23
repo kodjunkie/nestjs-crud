@@ -130,14 +130,14 @@ describe('MikroOrmCrudService', () => {
     });
   });
 
-  // `sqlInjectionRegEx parity (QUALITY-03)` block deleted in Plan 04-05;
+  // `sqlInjectionRegEx parity` block deleted during the v2.0 input-sanitizer migration;
   // the denylist regex was subsequently removed entirely in the v2.0 cleanup.
   // Adapters now delegate field validation to `InputSanitizer` (pure allowlist).
   // See packages/core/test/input-sanitizer.spec.ts for the class-level matrix.
 
   // Blocks `#getSelect`, `#getSort`, `#getSoftDeleteCondition`,
   // `#buildPrimaryKeyCondition`, `#buildSearchCondition`, `#getColumn` were
-  // removed in Phase 6 Plan 08: these methods now live on
+  // removed during the v2.0 adapter-alignment refactor: these methods now live on
   // `MikroOrmQueryTranslator` (getSelect/mapSort/getSoftDeleteCondition/
   // buildWhere) and are exercised via translator unit specs added in
   // Plan 09. Retaining them on the service would double-cover internals
@@ -145,9 +145,8 @@ describe('MikroOrmCrudService', () => {
   //
   // See:
   //   - packages/mikro-orm/src/mikro-orm-query-translator.ts
-  //   - .planning/phases/06-arch-05-refactor-01-align-adapters-decouple-fixture/06-09-PLAN.md
 
-  // `SQL injection detection` block deleted in Plan 04-05 — coverage now
+  // `SQL injection detection` block deleted during the v2.0 input-sanitizer migration — coverage now
   // lives in packages/core/test/input-sanitizer.spec.ts (class-level unit).
 
   describe('#getAllowedColumns', () => {

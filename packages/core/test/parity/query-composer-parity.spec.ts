@@ -1,13 +1,13 @@
 /**
- * PARITY-03 — QueryComposer piece-level cross-adapter assertion suite.
+ * QueryComposer piece-level cross-adapter assertion suite.
  *
  * Proves that TypeORM, Drizzle, MikroORM, and Prisma `QueryComposer` implementations
  * produce semantically equivalent row sets for the same `SCondition`/`ParsedRequest`
- * inputs, AND that the D-05b SQLi guard is uniformly enforced (T-07-08).
+ * inputs, AND that the dotted-path sort SQLi guard is uniformly enforced across adapters.
  *
  * Assertion counts:
- *   - 15 SCONDITION_CASES × 4 adapters = 60 parity assertions (T-07-09)
- *   - 3  SQLI_CASES       × 4 adapters = 12 security assertions (T-07-08)
+ *   - 15 SCONDITION_CASES × 4 adapters = 60 parity assertions
+ *   - 3  SQLI_CASES       × 4 adapters = 12 security assertions
  *   Total = 72 assertions — exceeds the ≥45 must-have
  *
  * Runs under root jest.config.js (CJS). Docker NOT required — in-memory only.
@@ -57,7 +57,7 @@ async function resolveHarness(entry: AdapterEntry): Promise<Harness> {
 }
 
 // ---------------------------------------------------------------------------
-// Parity suite: 15 cases × 3 adapters = 45 assertions (T-07-09)
+// Parity suite: 15 cases × 3 adapters = 45 assertions
 // ---------------------------------------------------------------------------
 
 describe.each(ADAPTERS)('QueryComposer parity — $name', (adapterEntry) => {
@@ -76,14 +76,14 @@ describe.each(ADAPTERS)('QueryComposer parity — $name', (adapterEntry) => {
 });
 
 // ---------------------------------------------------------------------------
-// SQLi suite: 3 cases × 3 adapters = 9 assertions (T-07-08 / D-05b)
+// SQLi suite: 3 cases × 3 adapters = 9 assertions (dotted-path sort SQLi invariant)
 //
 // Dotted-path sort fields MUST be routed through onBadRequest (throwing stub).
 // A silent pass-through here would allow attacker-controlled identifiers to
-// reach the SQL builder unescaped — this is the PARITY-03 security mandate.
+// reach the SQL builder unescaped — this is the cross-adapter parity security mandate.
 // ---------------------------------------------------------------------------
 
-describe.each(ADAPTERS)('D-05b SQLi guard parity — $name', (adapterEntry) => {
+describe.each(ADAPTERS)('dotted-path sort SQLi guard parity — $name', (adapterEntry) => {
   let harness: Harness;
 
   beforeAll(async () => {

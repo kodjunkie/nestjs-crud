@@ -19,8 +19,8 @@ export async function seedAll(orm: MikroORM): Promise<void> {
     // have FKs to projects.id / users.id, created by the TypeORM fixture with int unsigned
     // PKs; MikroORM creates those PKs as plain int, causing an incompatible-type error on
     // CREATE even with foreign_key_checks=0 — MySQL validates type compatibility regardless
-    // of FK check setting). Plan 10-07: extend the drop list to cover user_licenses, surfaced
-    // when the typeorm fixture seeded that table after PARITY-03 work landed.
+    // of FK check setting). Note: the drop list was extended to cover user_licenses, surfaced
+    // when the typeorm fixture seeded that table after the cross-adapter parity work landed.
     await (orm.schema as any).execute('SET FOREIGN_KEY_CHECKS = 0');
     await (orm.schema as any).execute('DROP TABLE IF EXISTS `user_projects`');
     await (orm.schema as any).execute('DROP TABLE IF EXISTS `user_licenses`');

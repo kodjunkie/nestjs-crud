@@ -1,1 +1,1 @@
-throw new Error('module not found (CI-03 swagger-absent sentinel)');
+throw new Error('module not found (Swagger not installed — @nestjs/swagger is an optional peer dependency)');

@@ -1,7 +1,6 @@
-// T-09-02 SEC-03 regression: updateOne/replaceOne/deleteOne MUST wrap read-modify-write
+// Race-condition regression: updateOne/replaceOne/deleteOne MUST wrap read-modify-write
 // in prisma.$transaction(async (tx) => ..., { isolationLevel: 'ReadCommitted' }).
-// SEC-03 scope excludes recoverOne (single write, no prior read → no race window).
-// Matches Phase 8 Plan 04 CONTEXT.md D-02 exactly.
+// Scope excludes recoverOne (single write, no prior read → no race window).
 
 import { PrismaCrudService } from '../src/prisma-crud.service';
 import { PrismaJoinResolver } from '../src/prisma-join-resolver';
@@ -44,7 +43,7 @@ function makeCrudRequest(id: number): any {
 // ---------------------------------------------------------------------------
 // Spec
 // ---------------------------------------------------------------------------
-describe('T-09-02 SEC-03 concurrent update race — Prisma SEC-03 regression', () => {
+describe('Prisma concurrent update race regression', () => {
   let service: any;
   let transactionSpy: jest.Mock;
   let userFindFirstMock: jest.Mock;
@@ -240,9 +239,9 @@ describe('T-09-02 SEC-03 concurrent update race — Prisma SEC-03 regression', (
   });
 
   // -------------------------------------------------------------------------
-  // recoverOne — SEC-03 EXCLUSION
+  // recoverOne — transactional-wrap EXCLUSION
   // -------------------------------------------------------------------------
-  it('recoverOne — does NOT call prisma.$transaction (SEC-03 excluded — single write, no prior read)', async () => {
+  it('recoverOne — does NOT call prisma.$transaction (excluded — single write, no prior read)', async () => {
     // Setup: service with softDelete enabled
     const userUpdateDirectMock = jest.fn().mockResolvedValue({ ...seedRow, deletedAt: null });
     const localTxSpy = jest.fn();

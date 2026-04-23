@@ -457,7 +457,7 @@ describe('#request-query', () => {
       });
     });
 
-    describe('#setAuthPersist SEC-02 — runtime persist-key validation', () => {
+    describe('#setAuthPersist — runtime persist-key validation', () => {
       const entityColumnsHash = { user_id: true, email: true, isActive: true };
 
       // Test 1: typo key not in entity → throws RequestQueryException naming the key

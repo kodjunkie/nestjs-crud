@@ -10,7 +10,6 @@
  * regression gate exists to close.
  *
  * @see packages/typeorm/test/sort-sqli.regression.spec.ts (source matrix)
- * @see .planning/phases/05-arch-04-slim-typeormcrudservice... 05-CONTEXT.md D-05a/D-05b
  */
 import { BadRequestException } from '@nestjs/common';
 // eslint-disable-next-line @typescript-eslint/no-require-imports

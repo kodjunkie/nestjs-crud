@@ -10,10 +10,10 @@ const testTable = pgTable('test_users', {
   deletedAt: timestamp('deleted_at'),
 });
 
-// Phase 6 Plan 04 scope-narrow: the service no longer owns
+// Scope-narrow cleanup: the service no longer owns
 // `buildSearchCondition` / `buildFieldCondition` / `getSort` / `applyJoins` /
 // `getSelect` / `getSoftDeleteCondition` / `getColumn` — those moved to
-// `DrizzleQueryTranslator` + `DrizzleJoinResolver` (Plan 03). Plan 05 adds
+// `DrizzleQueryTranslator` + `DrizzleJoinResolver`. A companion suite adds
 // class-level specs on the extracted classes. This file retains only the
 // describe blocks that still exercise live surface on `DrizzleCrudService`.
 describe('DrizzleCrudService', () => {

@@ -40,7 +40,7 @@ describe('PrismaJoinResolver', () => {
     });
   });
 
-  describe('applyJoins (intentional throw — Prisma uses include, not joins) — COVERAGE-01 D-17 sweep', () => {
+  describe('applyJoins (intentional throw — Prisma uses include, not joins) — pragma-sweep branch', () => {
     it('throws explaining the contract — Prisma never invokes this path', () => {
       const resolver = makeResolver();
       expect(() => resolver.applyJoins({} as any, [], {})).toThrow(

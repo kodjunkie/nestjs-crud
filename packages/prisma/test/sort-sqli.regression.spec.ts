@@ -1,6 +1,6 @@
-// T-09-01 regression: D-05b SQLi invariant for PrismaQueryComposer sort branch.
+// Regression: dotted-path sort SQLi invariant for PrismaQueryComposer sort branch.
 // Mirrors packages/drizzle/test/sort-sqli.regression.spec.ts. onBadRequest MUST throw
-// (never jest.fn() — per CLAUDE.md D-05b guard pattern).
+// (never jest.fn() — per CLAUDE.md security-path guard pattern).
 import { BadRequestException } from '@nestjs/common';
 
 import { PrismaJoinResolver } from '../src/prisma-join-resolver';
@@ -19,7 +19,7 @@ const allowedColumnsByRelation: Record<string, string[]> = {
   projects: ['id', 'name', 'companyId'],
 };
 
-describe('T-09-01 PrismaQueryComposer sort SQLi regression (D-05b invariant)', () => {
+describe('PrismaQueryComposer sort SQLi regression (dotted-path sort invariant)', () => {
   let composer: PrismaQueryComposer;
 
   const emptyParsed = {

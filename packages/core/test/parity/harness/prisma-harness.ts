@@ -1,5 +1,5 @@
 /**
- * Prisma parity harness for PARITY-03.
+ * Prisma parity harness for the cross-adapter parity suite.
  *
  * Pure in-memory mock — no @prisma/client runtime. applyAndRun evaluates
  * the composed `where` tree against REFERENCE_DATASET using evalPrismaWhere,

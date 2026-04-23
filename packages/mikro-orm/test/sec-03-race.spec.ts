@@ -1,5 +1,5 @@
 /**
- * SEC-03 MikroORM regression: updateOne/replaceOne/deleteOne must run inside
+ * MikroORM race-condition regression: updateOne/replaceOne/deleteOne must run inside
  * em.transactional() at READ_COMMITTED + RequestContext.create(txEm, ...).
  *
  * Without the wrap:
@@ -71,7 +71,7 @@ function makeCrudRequest(id: number): any {
 // ---------------------------------------------------------------------------
 // Spec
 // ---------------------------------------------------------------------------
-describe('SEC-03 MikroORM — mutations must run inside em.transactional at READ_COMMITTED', () => {
+describe('MikroORM mutations must run inside em.transactional at READ_COMMITTED', () => {
   let service: any;
   let transactionalSpy: jest.Mock;
   let mockEm: any;

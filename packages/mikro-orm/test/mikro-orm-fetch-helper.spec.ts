@@ -1,5 +1,5 @@
 /**
- * @description T-06-02 regression spec for `MikroOrmFetchHelper`.
+ * @description Regression spec for `MikroOrmFetchHelper` thunk contract.
  *
  * Asserts the di-scope-awareness contract: the ctor takes `getEm: () => EntityManager`
  * as a THUNK (not a captured em). Every call that needs em re-invokes the thunk —
@@ -8,7 +8,7 @@
  * re-introducing the cross-request pollution defect this pattern was introduced to
  * prevent.
  *
- * @since 2.0.0 (retargeted in 06.2-04)
+ * @since 2.0.0
  * @see packages/mikro-orm/src/query/mikro-orm-fetch-helper.ts
  */
 import { EntitySchema } from '@mikro-orm/core';
@@ -31,7 +31,7 @@ const TUserSchema = new EntitySchema<TUser>({
   },
 });
 
-describe('MikroOrmFetchHelper — T-06-02 getEm thunk contract', () => {
+describe('MikroOrmFetchHelper — getEm thunk contract', () => {
   let orm: MikroORM;
 
   beforeAll(async () => {
@@ -74,7 +74,7 @@ describe('MikroOrmFetchHelper — T-06-02 getEm thunk contract', () => {
     expect(calls[0]).not.toBe(calls[1]);
   });
 
-  it('accepts a getEm thunk via ctor config (type-level preservation of T-06-02)', () => {
+  it('accepts a getEm thunk via ctor config (type-level preservation)', () => {
     const helper = new MikroOrmFetchHelper<TUser>({
       onNotFound: () => undefined,
       getEm: () => orm.em.fork(),

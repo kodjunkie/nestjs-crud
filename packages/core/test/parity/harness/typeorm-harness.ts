@@ -1,5 +1,5 @@
 /**
- * TypeORM parity harness for PARITY-03.
+ * TypeORM parity harness for the cross-adapter parity suite.
  *
  * Uses better-sqlite3 DataSource with a minimal entity. Builds a
  * TypeOrmQueryComposer with a throwing `onBadRequest` stub (PATTERNS.md §5).

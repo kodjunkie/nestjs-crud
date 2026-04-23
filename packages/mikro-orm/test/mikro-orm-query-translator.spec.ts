@@ -17,7 +17,7 @@
  * All specs use `@mikro-orm/sqlite` in-memory em. `onBadRequest` is a
  * throwing stub (security-path contract — PATTERNS.md §5).
  *
- * di-scope-awareness (T-06-02): translator ctor receives a fresh
+ * di-scope-awareness: translator ctor receives a fresh
  * `() => em.fork()` thunk; never a captured em.
  */
 import { BadRequestException } from '@nestjs/common';
@@ -299,7 +299,7 @@ describe('MikroOrmQueryTranslator', () => {
       // `${className}.${name}` as the join reference, but MikroORM's QB
       // aliases the root entity as `t0`. This surfaces as an "unknown
       // alias" error on the resolver's eager QB path — a pre-existing
-      // brittleness tracked for Phase 6 follow-up (NOT in Plan 09 scope,
+      // brittleness tracked as a follow-up (out of scope for this spec,
       // see CLAUDE.md scope-boundary rule). The assertion below confirms
       // the translator dispatches to resolver.applyJoins; the actual
       // error identity proves the hand-off — we are not asserting on
@@ -374,7 +374,7 @@ describe('MikroOrmQueryTranslator', () => {
   });
 
   // ---------------------------------------------------------------------------
-  describe('defaultOnNotFound (COVERAGE-01 D-17)', () => {
+  describe('defaultOnNotFound (pragma-sweep branch)', () => {
     it('returns undefined (default no-op for FetchHelper.onNotFound)', () => {
       expect(defaultOnNotFound()).toBeUndefined();
     });

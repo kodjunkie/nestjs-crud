@@ -1,5 +1,5 @@
 /**
- * Shared SCondition parity matrix + SQLi cases for PARITY-03.
+ * Shared SCondition parity matrix + SQLi cases for the cross-adapter parity suite.
  *
  * REFERENCE_DATASET: 10 deterministic users (IDs 1–10) used by all 3 harnesses.
  * Field shapes mirror CanonicalUser but trimmed to what the parity spec exercises.

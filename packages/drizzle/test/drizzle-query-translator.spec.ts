@@ -1,7 +1,7 @@
 /**
  * Translator-level unit spec for `DrizzleQueryTranslator`.
  *
- * Currently scoped to the COVERAGE-01 D-17 sweep (Phase 10 Plan 06):
+ * Currently scoped to the istanbul-ignore pragma sweep:
  * exercises the hoisted `defaultOnNotFound` no-op thunk that previously
  * lived as an inline `/* istanbul ignore next * /` arrow at construction
  * time. When other internal branches grow dedicated unit tests, extend
@@ -10,7 +10,7 @@
 import { defaultOnNotFound } from '../src/drizzle-query-translator';
 
 describe('DrizzleQueryTranslator', () => {
-  describe('defaultOnNotFound (COVERAGE-01 D-17)', () => {
+  describe('defaultOnNotFound (pragma-sweep branch)', () => {
     it('returns undefined (default no-op for FetchHelper.onNotFound)', () => {
       expect(defaultOnNotFound()).toBeUndefined();
     });

@@ -13,7 +13,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
 
   prepareException(exc: any): { status: number; json: object } {
     if (process.env.NODE_ENV !== 'test') {
-      // OBS-01: log err.stack (not err.message) to avoid PII in log output
+      // Log err.stack (not err.message) to avoid PII in log output
       console.log(exc?.stack ?? exc);
     }
 
