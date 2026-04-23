@@ -103,3 +103,48 @@ jobs:
         with:
           name: coverage-no-swagger
           path: coverage-no-swagger/
+
+  knip:
+    name: knip (warn-only)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # Does NOT depend on parity — knip is static analysis, not runtime.
+    # Runs in parallel with parity/test/test-no-swagger.
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Pin Yarn version
+        # CI-wide pin; keeps --immutable working against committed yarn.lock (v8 format).
+        run: yarn set version 4.12.0
+
+      - name: install
+        run: yarn install --immutable
+
+      - name: build
+        # knip needs built .d.ts for type-level reachability in some edge cases;
+        # also catches config drift where knip entries reference non-existent files.
+        run: yarn build
+
+      - name: run knip
+        id: knip
+        # Warn-only posture at launch: findings produce output + artifact but do NOT fail the job.
+        # Tighten to `continue-on-error: false` in a follow-up phase after config stabilizes.
+        continue-on-error: true
+        run: |
+          yarn knip --reporter markdown > knip-report.md 2>&1 || true
+          # Also capture JSON for tooling (dashboards, PR comments) in a follow-up:
+          npx knip --reporter json --no-exit-code > knip-report.json 2>&1 || true
+          echo "--- knip findings ---"
+          cat knip-report.md
+
+      - name: upload knip report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: knip-report
+          path: |
+            knip-report.md
+            knip-report.json
