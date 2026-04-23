@@ -10,14 +10,13 @@ import { MikroOrmAllowedRelation, MikroOrmJoinResolverConfig } from './interface
  * Resolves eager + client-requested joins for the MikroORM CRUD adapter.
  * Ports the inline `applyJoins` / relations-hash logic from
  * `MikroOrmCrudService` (v1.x) and exposes `getAllowedColumnsFor` for
- * dotted-path sort allowlist enforcement (D-05b SQLi-guard invariant —
- * Phase 5 Plan 06.5 pattern).
+ * dotted-path sort allowlist enforcement (SQLi-guard invariant).
  *
  * The resolver does NOT import from `mikro-orm-crud.service.ts` — entity
  * metadata flows in via the ctor (arch-avoid-circular-deps invariant).
  *
- * MikroORM's QB surface is typed `any` here (TYPES-04 debt — tightened in
- * Phase 8). The resolver implements `JoinResolver<any>`.
+ * MikroORM's QB surface is typed `any` here (type debt — tightened later).
+ * The resolver implements `JoinResolver<any>`.
  *
  * @since 2.0.0
  */
@@ -66,7 +65,7 @@ export class MikroOrmJoinResolver implements JoinResolver<QueryBuilder<object>> 
    * Return the allowed column name set for a given relation (or dotted
    * path). Returns an empty Set if the relation is unknown — callers must
    * check `.size` and reject before the identifier reaches the SQL builder.
-   * D-05b SQLi mitigation surface.
+   * SQLi mitigation surface.
    *
    * @since 2.0.0
    */
@@ -127,7 +126,7 @@ export class MikroOrmJoinResolver implements JoinResolver<QueryBuilder<object>> 
         if (cp['persist'] === false) continue;
         // MikroORM v7 sets `kind: 'scalar'` on scalar props too; only skip
         // relation kinds (m:1, 1:m, m:n, 1:1, embedded). Treat 'scalar' as a
-        // regular column for allowlist purposes (D-05b dotted-path gate).
+        // regular column for allowlist purposes (dotted-path gate).
         const kind = cp['kind'];
         if (kind && typeof kind === 'string' && kind !== 'scalar') continue;
         columns.push(colName);

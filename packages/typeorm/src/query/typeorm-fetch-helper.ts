@@ -8,11 +8,11 @@ export interface TypeOrmFetchHelperConfig {
 /**
  * Adapter-internal `FetchHelper<SelectQueryBuilder<T>>` implementation.
  *
- * Executes prepared `SelectQueryBuilder` state. Per D-07, `Q` (not `W`) is
- * the input type — the caller is responsible for composing the query first
+ * Executes prepared `SelectQueryBuilder` state. `Q` (not `W`) is the
+ * input type — the caller is responsible for composing the query first
  * (via `TypeOrmQueryComposer.applyToQuery` or equivalent).
  *
- * @internal — subject to change without semver-major (D-03 / §api-versioning).
+ * @internal — subject to change without semver-major.
  * @since 2.0.0
  */
 export class TypeOrmFetchHelper<T extends ObjectLiteral> implements FetchHelper<SelectQueryBuilder<T>> {
@@ -45,7 +45,7 @@ export class TypeOrmFetchHelper<T extends ObjectLiteral> implements FetchHelper<
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     _options: import('@nestjs-crud/core').CrudRequestOptions,
   ): Promise<R[]> {
-    // Reserved for future parity (Phase 7). The TypeOrmCrudService currently
+    // Reserved for future parity. The TypeOrmCrudService currently
     // owns `doGetMany` (pagination-aware). Keeping this method declared so
     // `FetchHelper<Q>` is fully implemented; not yet wired into the facade.
     return (await qb.getMany()) as unknown as R[];

@@ -4,7 +4,7 @@ import { ParsedRequestParams, QuerySort } from '@nestjs-crud/request';
 import { objKeys } from '@nestjs-crud/util';
 import { and, Column, isNull as drizzleIsNull, SQL, sql, Table } from 'drizzle-orm';
 
-// TYPES-01 debt: Drizzle's $dynamic select-builder type surface is unstable.
+// Type debt: Drizzle's $dynamic select-builder type surface is unstable.
 type AnyDrizzleSelect = any;
 
 export interface DrizzleQueryComposerConfig {
@@ -27,17 +27,17 @@ export interface DrizzleQueryComposerConfig {
  * WHERE (delegated to the injected `WhereBuilder`), eager/requested joins,
  * soft-delete, sort, pagination.
  *
- * **OWNS the D-05b SQLi invariant**: the dotted-path sort branch validates
+ * **OWNS the SQLi invariant**: the dotted-path sort branch validates
  * `relation` + `column` against `joinResolver.getAllowedColumnsFor(relation)`
  * before any identifier reaches `sql.identifier` (Drizzle does NOT
  * parameterize column identifiers — the allowlist is the only defense).
  *
- * **Pitfall 2 (RESEARCH §Pitfall 2):** `count(qb)` extracts WHERE via the
- * internal `.config?.where` shape (stable across drizzle-orm 0.29.x–0.45.x)
- * to avoid double-applying WHERE on the count query. Preserved verbatim from
- * the pre-6.2 monolithic translator.
+ * **Count-query pitfall:** `count(qb)` extracts WHERE via the internal
+ * `.config?.where` shape (stable across drizzle-orm 0.29.x–0.45.x) to
+ * avoid double-applying WHERE on the count query. Preserved verbatim
+ * from the pre-refactor monolithic translator.
  *
- * @internal — subject to change without semver-major (D-03 / §api-versioning).
+ * @internal — subject to change without semver-major.
  * @since 2.0.0
  */
 export class DrizzleQueryComposer implements QueryComposer<AnyDrizzleSelect> {
@@ -140,12 +140,11 @@ export class DrizzleQueryComposer implements QueryComposer<AnyDrizzleSelect> {
   /**
    * Execute a COUNT against a composed query.
    *
-   * RESEARCH §Pitfall 2 — Drizzle's `$dynamic()` builder does not expose a
-   * public `.getCount()` method. The public API has no way to reflect on a
-   * builder's WHERE clause without re-exporting internals, so we rely on
-   * `.config.where` — an internal but stable shape across
-   * drizzle-orm 0.29.x – 0.45.x. TYPES-01 debt flag: re-evaluate on each
-   * drizzle-orm minor bump.
+   * Drizzle's `$dynamic()` builder does not expose a public `.getCount()`
+   * method. The public API has no way to reflect on a builder's WHERE
+   * clause without re-exporting internals, so we rely on `.config.where` —
+   * an internal but stable shape across drizzle-orm 0.29.x – 0.45.x.
+   * Re-evaluate on each drizzle-orm minor bump.
    *
    * @since 2.0.0
    */
@@ -208,7 +207,7 @@ export class DrizzleQueryComposer implements QueryComposer<AnyDrizzleSelect> {
   }
 
   /**
-   * D-05b SQLi invariant: dotted-path sort fields MUST round-trip through
+   * SQLi invariant: dotted-path sort fields MUST round-trip through
    * `joinResolver.getAllowedColumnsFor(relation)` before reaching the ORDER BY
    * clause. Single-segment fields assert against `columnsMap`.
    */

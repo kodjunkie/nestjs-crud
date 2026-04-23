@@ -15,7 +15,7 @@ import { mapOperator } from '../operators';
  * @since 2.0.0
  */
 
-// TYPES-01 debt: Prisma client delegate types are model-specific structural — adapters pin `any` at the piece boundary and carry forward.
+// Type debt: Prisma client delegate types are model-specific structural — adapters pin `any` at the piece boundary and carry forward.
 export interface PrismaWhereBuilderConfig {
   entityColumns: string[];
 
@@ -88,7 +88,7 @@ export class PrismaWhereBuilder implements WhereBuilder<any, Record<string, any>
       return { [relation]: this.buildFieldCondition(rest, value) };
     }
 
-    // Validate column/relation (T-09-02-01)
+    // Validate column/relation
     if (!this.entityColumns.includes(field) && !this.relationFields.includes(field)) {
       this.onBadRequest(`Unknown column: ${field}`);
       return {};

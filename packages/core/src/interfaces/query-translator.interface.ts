@@ -54,7 +54,7 @@ export interface QueryTranslator<Q, W> {
    * Required by all adapters so pagination can be composed at the service
    * layer (`createPageInfo`) without leaking ORM-specific count idioms.
    *
-   * @since 2.0.0 (Phase 6 ARCH-05 D-01)
+   * @since 2.0.0
    */
   count(query: Q): Promise<number>;
 }

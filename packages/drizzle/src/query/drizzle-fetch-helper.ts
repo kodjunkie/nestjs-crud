@@ -2,7 +2,7 @@ import type { FetchHelper, FetchHelperFindOneOpts } from '@nestjs-crud/core/quer
 import type { CrudRequestOptions } from '@nestjs-crud/core';
 import type { ParsedRequestParams } from '@nestjs-crud/request';
 
-// TYPES-01 debt: Drizzle's $dynamic select-builder type surface is unstable.
+// Type debt: Drizzle's $dynamic select-builder type surface is unstable.
 type AnyDrizzleSelect = any;
 
 export interface DrizzleFetchHelperConfig {
@@ -12,11 +12,11 @@ export interface DrizzleFetchHelperConfig {
 /**
  * Adapter-internal `FetchHelper<AnyDrizzleSelect>` implementation.
  *
- * Executes prepared Drizzle `$dynamic()` builder state. Per D-07, `Q` (not
- * `W`) is the input type — the caller is responsible for composing the query
+ * Executes prepared Drizzle `$dynamic()` builder state. `Q` (not `W`) is
+ * the input type — the caller is responsible for composing the query
  * first (via `DrizzleQueryComposer.applyToQuery` or equivalent).
  *
- * @internal — subject to change without semver-major (D-03 / §api-versioning).
+ * @internal — subject to change without semver-major.
  * @since 2.0.0
  */
 export class DrizzleFetchHelper implements FetchHelper<AnyDrizzleSelect> {
@@ -52,7 +52,7 @@ export class DrizzleFetchHelper implements FetchHelper<AnyDrizzleSelect> {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     _options: CrudRequestOptions,
   ): Promise<R[]> {
-    // Reserved for future parity (Phase 7). The DrizzleCrudService currently
+    // Reserved for future parity. The DrizzleCrudService currently
     // owns `getMany` (pagination-aware). Keeping this method declared so
     // `FetchHelper<Q>` is fully implemented; not yet wired into the facade.
     return (await qb) as unknown as R[];

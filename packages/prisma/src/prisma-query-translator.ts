@@ -12,7 +12,7 @@ import { PrismaQueryComposer } from './query/prisma-query-composer';
 
 import { PrismaWhereBuilder } from './query/prisma-where-builder';
 
-// TYPES-01 debt: Prisma client delegate types are model-specific structural — adapters pin `any` at the piece boundary and carry forward.
+// Type debt: Prisma client delegate types are model-specific structural — adapters pin `any` at the piece boundary and carry forward.
 export class PrismaQueryTranslator<T extends Record<string, unknown>> implements QueryTranslator<
   any,
   Record<string, any>
@@ -66,7 +66,7 @@ export class PrismaQueryTranslator<T extends Record<string, unknown>> implements
     return (this.prisma as any)[this.modelName].count({ where: q.where });
   }
 
-  /** SEC-03 scope-clone hook (Plan 04 will implement). */
+  /** Transaction scope-clone hook. */
   public cloneFor(tx: PrismaClientLike): PrismaQueryTranslator<T> {
     return new PrismaQueryTranslator<T>(tx, this.modelName, this.config);
   }

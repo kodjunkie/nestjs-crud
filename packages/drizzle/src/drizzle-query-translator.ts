@@ -8,15 +8,15 @@ import { DrizzleFetchHelper } from './query/drizzle-fetch-helper';
 import { DrizzleQueryComposer } from './query/drizzle-query-composer';
 import { DrizzleWhereBuilder } from './query/drizzle-where-builder';
 
-// TYPES-01 debt: Drizzle's $dynamic select-builder type surface is unstable.
+// Type debt: Drizzle's $dynamic select-builder type surface is unstable.
 type AnyDrizzleSelect = any;
 
 /**
  * Default no-op `onNotFound` thunk wired into `DrizzleFetchHelper`.
  *
- * Hoisted to module scope (COVERAGE-01 D-17 sweep, Phase 10 Plan 06) so
- * the previously inline arrow can be unit-tested directly — replaces a
- * coverage pragma that previously sat on the constructor wiring.
+ * Hoisted to module scope so the previously inline arrow can be
+ * unit-tested directly — replaces a coverage pragma that previously
+ * sat on the constructor wiring.
  */
 export const defaultOnNotFound = (): undefined => undefined;
 
@@ -74,11 +74,11 @@ export class DrizzleQueryTranslator<T extends Record<string, unknown>> implement
   }
 
   /**
-   * SEC-03: Returns a new translator sharing the same config but bound to `tx`.
+   * Returns a new translator sharing the same config but bound to `tx`.
    * All internal pieces (WhereBuilder, QueryComposer, FetchHelper) are rebuilt
    * against `tx` so reads + writes inside the transaction stay scoped.
    *
-   * The D-05b SQLi guard in QueryComposer is preserved — it stays centralised
+   * The SQLi guard in QueryComposer is preserved — it stays centralised
    * in the facade, not duplicated at callsites.
    */
   public cloneFor(tx: DrizzleClient): DrizzleQueryTranslator<T> {

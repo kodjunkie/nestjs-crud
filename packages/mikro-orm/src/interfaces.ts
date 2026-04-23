@@ -15,13 +15,13 @@ export interface MikroOrmAllowedRelation {
 }
 
 /**
- * Config object for `MikroOrmQueryTranslator` (Phase 6 ARCH-05 Pattern 1).
+ * Config object for `MikroOrmQueryTranslator`.
  *
  * Note: `em` is intentionally NOT on this interface. The translator ctor takes
  * `getEm: () => EntityManager` as a SEPARATE (first) argument so em is
  * resolved fresh per-call under MikroORM's request-scope middleware.
  * Capturing em in config would freeze a stale identity map across requests
- * (di-scope-awareness — cross-request pollution / T-06-02).
+ * (di-scope-awareness — cross-request pollution).
  *
  * @since 2.0.0
  */

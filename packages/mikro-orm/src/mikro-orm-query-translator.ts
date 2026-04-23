@@ -11,11 +11,11 @@ import { MikroOrmWhereBuilder } from './query/mikro-orm-where-builder';
 /**
  * Default no-op `onNotFound` thunk wired into `MikroOrmFetchHelper`.
  *
- * Hoisted to module scope (COVERAGE-01 D-17 sweep, Phase 10 Plan 07) so
- * the previously inline arrow can be unit-tested directly — replaces a
- * coverage pragma that previously sat on the constructor wiring. Mirrors
- * the same hoist applied to TypeORM (Plan 05) and Drizzle (Plan 06)
- * translators; same name preserved for cross-adapter symmetry.
+ * Hoisted to module scope so the previously inline arrow can be
+ * unit-tested directly — replaces a coverage pragma that previously
+ * sat on the constructor wiring. Mirrors the same hoist applied to
+ * the TypeORM and Drizzle translators; same name preserved for
+ * cross-adapter symmetry.
  */
 export const defaultOnNotFound = (): undefined => undefined;
 
@@ -25,10 +25,9 @@ export const defaultOnNotFound = (): undefined => undefined;
  * `QueryTranslator<QueryBuilder<T>, FilterQuery<T>>` contract. Public API
  * is byte-identical to the pre-6.2 monolithic implementation.
  *
- * T-06-02: `getEm` thunk is threaded into `MikroOrmFetchHelper` (per-call
- * em resolution); `MikroOrmQueryComposer` does NOT receive `getEm` — no
- * branch in its `applyToQuery` reads `em.*` (see §T-06-02 Extensions in
- * 06.2-04-SUMMARY.md).
+ * The `getEm` thunk is threaded into `MikroOrmFetchHelper` (per-call
+ * em resolution); `MikroOrmQueryComposer` does NOT receive `getEm` —
+ * no branch in its `applyToQuery` reads `em.*`.
  *
  * @since 2.0.0
  */

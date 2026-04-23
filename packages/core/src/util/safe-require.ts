@@ -4,7 +4,7 @@ export function safeRequire<T = any>(path: string, loader?: () => T): T | null {
     const pack = loader ? loader() : require(path);
     return pack;
   } catch (_) {
-    /* istanbul ignore next -- catch branch: covered by jest.config.no-swagger.js sentinel via moduleNameMapper, but instrumentation of the catch in the same module's own coverage is a chicken-and-egg problem (D-18) */
+    /* istanbul ignore next -- catch branch: covered by jest.config.no-swagger.js sentinel via moduleNameMapper, but instrumentation of the catch in the same module's own coverage is a chicken-and-egg problem */
     return null;
   }
 }

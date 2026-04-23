@@ -22,12 +22,12 @@ export interface TypeOrmQueryComposerConfig<T extends ObjectLiteral> {
  * field selection, WHERE (delegated to the injected `WhereBuilder`), eager /
  * requested joins, soft-delete filter, sort, pagination, cache.
  *
- * **OWNS the D-05b SQLi invariant**: the dotted-path sort branch validates
+ * **OWNS the SQLi invariant**: the dotted-path sort branch validates
  * `relation` and `column` against `joinResolver.getAllowedColumnsFor(relation)`
  * before any identifier reaches `addOrderBy` (TypeORM does not parameterize
  * column identifiers — the allowlist is the only defense).
  *
- * @internal — subject to change without semver-major (D-03 / §api-versioning).
+ * @internal — subject to change without semver-major.
  * @since 2.0.0
  */
 export class TypeOrmQueryComposer<T extends ObjectLiteral> implements QueryComposer<SelectQueryBuilder<T>> {
@@ -69,12 +69,12 @@ export class TypeOrmQueryComposer<T extends ObjectLiteral> implements QueryCompo
     const where = this.whereBuilder.build(parsed.search);
     if (where) query.andWhere(where);
 
-    // 3. Joins (eager + requested) — D-02/D-03 amended: strategy switch.
+    // 3. Joins (eager + requested) — relation-load strategy switch.
     const joinOptions = queryOptions.join || {};
     if (objKeys(joinOptions).length) {
       const strategy = queryOptions.relationLoadStrategy ?? 'join';
       if (strategy === 'query') {
-        // PERF-01 split-query path: translate our JoinOptions + requested joins
+        // Split-query path: translate our JoinOptions + requested joins
         // into FindOptionsRelations<T> and let TypeORM emit per-relation
         // queries via setFindOptions. The manual joinResolver.applyJoins is
         // bypassed here because relationLoadStrategy is honored by TypeORM
@@ -120,7 +120,7 @@ export class TypeOrmQueryComposer<T extends ObjectLiteral> implements QueryCompo
       query.skip(skip as number);
     }
 
-    // 7. Cache (PERF-02 D-06 — fail-fast on missing DataSource cache provider)
+    // 7. Cache (fail-fast on missing DataSource cache provider)
     if (queryOptions.cache && parsed.cache !== 0) {
       const cacheProvider = this.repo.manager.connection?.queryResultCache;
       if (!cacheProvider) {
@@ -145,7 +145,7 @@ export class TypeOrmQueryComposer<T extends ObjectLiteral> implements QueryCompo
   }
 
   /**
-   * D-05b SQLi invariant: dotted-path sort fields MUST round-trip through
+   * SQLi invariant: dotted-path sort fields MUST round-trip through
    * `joinResolver.getAllowedColumnsFor(relation)` before reaching `addOrderBy`.
    * Single-segment fields assert against `entityColumnsHash`.
    */
@@ -156,8 +156,8 @@ export class TypeOrmQueryComposer<T extends ObjectLiteral> implements QueryCompo
       if (s.field.includes('.')) {
         // Dotted-path sort: validate the relation (or its leaf alias for
         // nested joins like `company.projects` → alias `projects`) plus
-        // column against the join resolver's allowlist. Closes D-05b SQLi
-        // vector while preserving legacy behavior where TypeORM's generated
+        // column against the join resolver's allowlist. Closes the dotted-path
+        // SQLi vector while preserving legacy behavior where TypeORM's generated
         // SQL aliases nested joins to their final segment name.
         const segments = s.field.split('.');
         const relation = segments.slice(0, -1).join('.');
@@ -181,7 +181,7 @@ export class TypeOrmQueryComposer<T extends ObjectLiteral> implements QueryCompo
   /**
    * Translate our JoinOptions + requested joins into TypeORM's
    * `FindOptionsRelations<T>` tree for the `relationLoadStrategy: 'query'`
-   * branch (PERF-01 / Phase 10 D-02/D-03 amended).
+   * branch.
    *
    * Server allowlist (`joinOptions` from `@Crud()`) is the upper bound — only
    * relations declared there are eligible. Within that allowlist we union:

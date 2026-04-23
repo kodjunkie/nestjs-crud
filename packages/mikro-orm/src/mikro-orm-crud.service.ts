@@ -65,7 +65,7 @@ export class MikroOrmCrudService<T extends object> extends CrudService<T> {
       onBadRequest: (msg: string) => this.throwBadRequestException(msg),
     });
 
-    // di-scope-awareness (T-06-02): pass `() => this.em` thunk, never
+    // di-scope-awareness: pass `() => this.em` thunk, never
     // a captured `this.em` reference. MikroORM request-scope middleware
     // returns a fresh per-request em; the translator resolves via the
     // thunk each call so the identity map never goes stale.
@@ -90,7 +90,7 @@ export class MikroOrmCrudService<T extends object> extends CrudService<T> {
    * Returns the current EntityManager, resolving via MikroORM's ALS-backed
    * RequestContext when available. Inside `RequestContext.create(txEm, ...)` this
    * returns `txEm` — the transaction-scoped em — not the outer request em.
-   * Exposed as a method so the SEC-03 regression test can assert identity.
+   * Exposed as a method so transaction regression tests can assert identity.
    *
    * @internal not part of the public CrudService contract
    */
@@ -164,11 +164,11 @@ export class MikroOrmCrudService<T extends object> extends CrudService<T> {
   }
 
   public async updateOne(req: CrudRequest, dto: T | Partial<T>): Promise<T> {
-    // SEC-03: wrap read-modify-write in em.transactional at READ_COMMITTED.
+    // Wrap read-modify-write in em.transactional at READ_COMMITTED.
     // RequestContext.create(txEm, ...) rebinds the ALS-backed em so that
     // getEm() / this.em inside the callback resolves to txEm — the
     // FetchHelper thunk (getEm: () => EntityManager) is therefore unchanged
-    // (Phase 6.2 T-06-02 contract preserved).
+    // (getEm thunk contract preserved).
     const em = this.getEm();
     return em.transactional(
       async (txEm) => {
@@ -186,7 +186,7 @@ export class MikroOrmCrudService<T extends object> extends CrudService<T> {
             this.getEm().assign(found as any, toSave as any);
             await this.getEm().flush();
           } catch (err) {
-            // PII GUARD (T-08-08): DB drivers surface SQL + bound params in err.message.
+            // PII GUARD: DB drivers surface SQL + bound params in err.message.
             this.logger.error(
               `CrudService [updateOne] failed: ${err instanceof Error ? err.name : 'UnknownError'}`,
               err instanceof Error ? err.stack : String(err),
@@ -230,7 +230,7 @@ export class MikroOrmCrudService<T extends object> extends CrudService<T> {
             toReturn = found;
           } catch (error) {
             if (!(error instanceof NotFoundException)) {
-              // PII GUARD (T-08-08): DB drivers surface SQL + bound params in err.message.
+              // PII GUARD: DB drivers surface SQL + bound params in err.message.
               this.logger.error(
                 `CrudService [replaceOne] failed: ${error instanceof Error ? error.name : 'UnknownError'}`,
                 error instanceof Error ? error.stack : String(error),
@@ -280,7 +280,7 @@ export class MikroOrmCrudService<T extends object> extends CrudService<T> {
               await this.getEm().flush();
             }
           } catch (err) {
-            // PII GUARD (T-08-08): DB drivers surface SQL + bound params in err.message.
+            // PII GUARD: DB drivers surface SQL + bound params in err.message.
             this.logger.error(
               `CrudService [deleteOne] failed: ${err instanceof Error ? err.name : 'UnknownError'}`,
               err instanceof Error ? err.stack : String(err),

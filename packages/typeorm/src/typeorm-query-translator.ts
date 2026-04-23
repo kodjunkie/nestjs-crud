@@ -9,7 +9,7 @@ import { TypeOrmWhereBuilder } from './query/typeorm-where-builder';
 /**
  * Default no-op `onNotFound` thunk wired into `TypeOrmFetchHelper` when the
  * caller does not override via `findOneOrFail` hooks. Hoisted to module-scope
- * so it can be unit-tested directly (closes COVERAGE-01 D-17 sweep target).
+ * so it can be unit-tested directly.
  *
  * @internal
  */

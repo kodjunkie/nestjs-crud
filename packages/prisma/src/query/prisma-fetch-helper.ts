@@ -9,7 +9,7 @@ import type { CrudRequestOptions } from '@nestjs-crud/core';
  * Executes prepared Prisma arg-object queries: count, findOne, executeMany.
  */
 
-// TYPES-01 debt: Prisma client delegate types are model-specific structural — adapters pin `any` at the piece boundary and carry forward.
+// Type debt: Prisma client delegate types are model-specific structural — adapters pin `any` at the piece boundary and carry forward.
 export interface PrismaFetchHelperConfig {
   // thunk — matches MikroORM's getEm pattern; protects against stale references across $transaction scopes
   getDelegate: () => any;

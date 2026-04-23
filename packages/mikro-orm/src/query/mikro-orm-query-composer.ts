@@ -23,7 +23,7 @@ export interface MikroOrmQueryComposerConfig<T extends object> {
  * field selection, WHERE (delegated to the injected `WhereBuilder`), eager /
  * requested joins, soft-delete filter, sort, pagination.
  *
- * **OWNS the D-05b SQLi invariant**: the dotted-path sort branch validates
+ * **OWNS the SQLi invariant**: the dotted-path sort branch validates
  * `relation` and `column` against `joinResolver.getAllowedColumnsFor(relation)`
  * before any identifier reaches `orderBy` (MikroORM does not parameterize
  * column identifiers — the allowlist is the only defense).
@@ -31,9 +31,9 @@ export interface MikroOrmQueryComposerConfig<T extends object> {
  * Does NOT hold any `em` reference. No branch in this composer reads
  * `em.getMetadata()` or any other `em.*` call — all entity shape arrives via
  * `propertiesMap` injected through config. `getEm` is therefore NOT threaded
- * into this piece (see §T-06-02 Extensions in 06.2-04-SUMMARY.md).
+ * into this piece.
  *
- * @internal — subject to change without semver-major (D-03 / §api-versioning).
+ * @internal — subject to change without semver-major.
  * @since 2.0.0
  */
 export class MikroOrmQueryComposer<T extends object> implements QueryComposer<QueryBuilder<T>> {
@@ -168,7 +168,7 @@ export class MikroOrmQueryComposer<T extends object> implements QueryComposer<Qu
   }
 
   /**
-   * D-05b SQLi invariant: dotted-path sort fields MUST round-trip through
+   * SQLi invariant: dotted-path sort fields MUST round-trip through
    * `joinResolver.getAllowedColumnsFor(relation)` before reaching `orderBy`.
    * Single-segment fields assert against `propertiesMap`.
    */

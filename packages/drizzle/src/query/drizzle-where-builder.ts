@@ -5,7 +5,7 @@ import { and, Column, eq, isNull as drizzleIsNull, or, SQL } from 'drizzle-orm';
 
 import { mapOperator } from '../operators';
 
-// TYPES-01 debt: Drizzle's $dynamic select-builder type surface is unstable
+// Type debt: Drizzle's $dynamic select-builder type surface is unstable
 // across versions; adapters pin `any` here and carry the invariant forward.
 type AnyDrizzleSelect = any;
 
@@ -21,9 +21,9 @@ export interface DrizzleWhereBuilderConfig {
  * Compiles an `SCondition` search tree into a Drizzle `SQL` predicate. Pure
  * predicate production — no sort / pagination / join / soft-delete concerns
  * (those live in `DrizzleQueryComposer`). Does NOT touch the `joinResolver` —
- * D-05b SQLi invariant is concentrated in the composer.
+ * the SQLi invariant is concentrated in the composer.
  *
- * @internal — subject to change without semver-major (D-03 / §api-versioning).
+ * @internal — subject to change without semver-major.
  * @since 2.0.0
  */
 export class DrizzleWhereBuilder implements WhereBuilder<AnyDrizzleSelect, SQL | undefined> {
@@ -84,7 +84,7 @@ export class DrizzleWhereBuilder implements WhereBuilder<AnyDrizzleSelect, SQL |
   private buildFieldCondition(field: string, value: any): SQL | undefined {
     const col = this.columnsMap[field];
     if (!col) {
-      // D-05b: reject unknown fields on the filter/search path.
+      // SQLi guard: reject unknown fields on the filter/search path.
       this.onBadRequest(`Invalid field: '${field}'`);
       return undefined;
     }

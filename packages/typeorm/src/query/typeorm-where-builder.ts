@@ -15,9 +15,9 @@ export interface TypeOrmWhereBuilderConfig<T extends ObjectLiteral> {
  * Compiles an `SCondition` search tree into a TypeORM `Brackets` predicate.
  * Pure predicate production — no sort / pagination / join / soft-delete concerns
  * (those live in `TypeOrmQueryComposer`). Does NOT touch the `joinResolver` —
- * D-05b SQLi invariant is concentrated in the composer.
+ * the SQLi invariant is concentrated in the composer.
  *
- * @internal — subject to change without semver-major (D-03 / §api-versioning).
+ * @internal — subject to change without semver-major.
  * @since 2.0.0
  */
 export class TypeOrmWhereBuilder<T extends ObjectLiteral> implements WhereBuilder<SelectQueryBuilder<T>, Brackets> {

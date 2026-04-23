@@ -12,7 +12,7 @@ import { DbDialect } from './interfaces';
 // @internal — value is user-supplied filter data whose shape varies per operator
 // (scalar, array, range pair). Return type is a MikroORM FilterQuery fragment
 // whose exact shape also varies per operator. Both sides are genuinely unknowable
-// without a discriminated-union per operator — deferred to TYPES-06.
+// without a discriminated-union per operator — deferred.
 export function mapOperator(
   field: string,
   operator: ComparisonOperator | string,

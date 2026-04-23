@@ -5,7 +5,7 @@ import { eq, getTableColumns, getTableName } from 'drizzle-orm';
 
 import { DrizzleAllowedRelation, DrizzleJoinResolverConfig, DrizzleRelationsConfig } from './interfaces';
 
-// TYPES-01 debt: Drizzle's select-builder type surface is unstable across
+// Type debt: Drizzle's select-builder type surface is unstable across
 // versions; adapters pin `any` here and carry the invariant forward.
 type AnyDrizzleSelect = any;
 
@@ -13,7 +13,7 @@ type AnyDrizzleSelect = any;
  * Resolves eager + client-requested joins for Drizzle CRUD adapters. Ports
  * the inline `applyJoins` logic from `DrizzleCrudService` (v1.x) and exposes
  * `getAllowedColumnsFor` for dotted-path sort allowlist enforcement
- * (D-05b SQLi-guard invariant — Phase 5 Plan 06.5 pattern).
+ * (dotted-path sort SQLi-guard invariant).
  *
  * The resolver does NOT import from `drizzle-crud.service.ts` — it receives
  * the relations config via its ctor (arch-avoid-circular-deps invariant).
@@ -66,7 +66,7 @@ export class DrizzleJoinResolver implements JoinResolver<AnyDrizzleSelect> {
    * Return the allowed column name set for a given relation (or its leaf
    * segment for dotted paths). Returns an empty Set if the relation is
    * unknown — callers must check `.size` and reject before letting the
-   * identifier reach the SQL builder. D-05b SQLi mitigation surface.
+   * identifier reach the SQL builder. SQLi mitigation surface.
    *
    * @since 2.0.0
    */

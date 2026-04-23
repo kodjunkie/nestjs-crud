@@ -8,7 +8,7 @@ import { getAllowedColumns } from './get-allowed-columns';
  * Compose the `builder.select(...)` column list from the parsed request,
  * route options, and entity-metadata column lists. Pure function — no
  * instance state, all entity-state inputs passed as arguments.
- * Extracted from `TypeOrmCrudService.getSelect` in v2.0.0 (Phase 5 ARCH-04).
+ * Extracted from `TypeOrmCrudService.getSelect` in v2.0.0.
  *
  * @since 2.0.0
  */

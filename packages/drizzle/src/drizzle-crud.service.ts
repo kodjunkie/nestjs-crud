@@ -139,9 +139,9 @@ export class DrizzleCrudService<T extends Record<string, unknown>> extends CrudS
   }
 
   public async updateOne(req: CrudRequest, dto: T | Partial<T>): Promise<T> {
-    // SEC-03: wrap read-modify-write in db.transaction at READ COMMITTED.
+    // Wrap read-modify-write in db.transaction at READ COMMITTED.
     // All reads + writes go through scopedTranslator — service never calls
-    // tx.update/insert/delete directly (D-05b SQLi guard stays in QueryComposer).
+    // tx.update/insert/delete directly (SQLi guard stays in QueryComposer).
     return this.db.transaction(
       async (tx: DrizzleClient) => {
         const scopedTranslator = this.translator.cloneFor(tx);
@@ -287,7 +287,7 @@ export class DrizzleCrudService<T extends Record<string, unknown>> extends CrudS
    * `plainToClass(entityType, ...)`, but Drizzle has no entity class — it
    * operates on plain row objects. The local version preserves
    * `paramsFilter` + `authPersist` semantics without class-transformer.
-   * Forward-flag (TYPES-01): a typed Drizzle client in v2.1 may enable a
+   * Forward-flag: a typed Drizzle client in a future minor may enable a
    * class-less core util variant that this adapter can delegate to.
    */
   protected prepareEntityBeforeSave(
@@ -394,7 +394,7 @@ export class DrizzleCrudService<T extends Record<string, unknown>> extends CrudS
       }
       return this.getOneOrFail(req, false, false, t);
     } catch (err) {
-      // PII GUARD (T-08-08): DB drivers surface SQL + bound params in err.message.
+      // PII GUARD: DB drivers surface SQL + bound params in err.message.
       this.logger.error(
         `CrudService [updateOne] failed: ${err instanceof Error ? err.name : 'UnknownError'}`,
         err instanceof Error ? err.stack : String(err),
@@ -419,7 +419,7 @@ export class DrizzleCrudService<T extends Record<string, unknown>> extends CrudS
       toReturn = await this.updateReturning(toSave, pkCondition, t);
     } catch (error) {
       if (!(error instanceof NotFoundException)) {
-        // PII GUARD (T-08-08): DB drivers surface SQL + bound params in err.message.
+        // PII GUARD: DB drivers surface SQL + bound params in err.message.
         this.logger.error(
           `CrudService [replaceOne] failed: ${error instanceof Error ? error.name : 'UnknownError'}`,
           error instanceof Error ? error.stack : String(error),
@@ -463,7 +463,7 @@ export class DrizzleCrudService<T extends Record<string, unknown>> extends CrudS
         await db.delete(this.table).where(pkCondition);
       }
     } catch (err) {
-      // PII GUARD (T-08-08): DB drivers surface SQL + bound params in err.message.
+      // PII GUARD: DB drivers surface SQL + bound params in err.message.
       this.logger.error(
         `CrudService [deleteOne] failed: ${err instanceof Error ? err.name : 'UnknownError'}`,
         err instanceof Error ? err.stack : String(err),

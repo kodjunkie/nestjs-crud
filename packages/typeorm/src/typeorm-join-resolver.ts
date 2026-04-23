@@ -64,8 +64,8 @@ export class TypeOrmJoinResolver<T> implements JoinResolver<SelectQueryBuilder<T
    * the resolver's cached `entityRelationsHash`. Returns an empty Set if the
    * relation is unknown — callers must check `.size` and reject.
    *
-   * Exposed publicly in v2.0.0 (Phase 5 ARCH-04 D-05c) for `mapSort`
-   * dotted-path allowlist enforcement.
+   * Exposed publicly in v2.0.0 for `mapSort` dotted-path allowlist
+   * enforcement.
    *
    * @since 2.0.0
    */
@@ -177,7 +177,7 @@ export class TypeOrmJoinResolver<T> implements JoinResolver<SelectQueryBuilder<T
 
       return null;
     } catch (_) {
-      /* istanbul ignore next -- TODO Phase 11 followup: surface metadata errors via `onBadRequest` instead of swallowing (refactor scope deferred to keep Plan 05 atomic) */
+      /* istanbul ignore next -- future work: surface metadata errors via `onBadRequest` instead of swallowing */
       return null;
     }
   }

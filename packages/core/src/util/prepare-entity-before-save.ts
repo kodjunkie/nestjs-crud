@@ -6,8 +6,7 @@ import type { CrudRequest } from '../interfaces/crud-request.interface';
 /**
  * Normalise a DTO against its entity class ahead of persistence.
  * Pure function — no side effects on shared state, no instance state.
- * Extracted from `TypeOrmCrudService.prepareEntityBeforeSave` in v2.0.0
- * (Phase 5 ARCH-04 slim).
+ * Extracted from `TypeOrmCrudService.prepareEntityBeforeSave` in v2.0.0.
  *
  * @since 2.0.0
  */

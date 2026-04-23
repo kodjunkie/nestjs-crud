@@ -39,10 +39,10 @@ export interface DrizzleAllowedRelation {
 
 /**
  * Configuration for the DrizzleQueryTranslator.
- * Introduced in v2.0.0 (Phase 6 ARCH-05 Plan 03). Mirrors
- * `TypeOrmQueryTranslatorConfig` (Phase 5) — the translator receives all
- * entity-shape inputs via this config to avoid any runtime or type-only
- * import from `drizzle-crud.service.ts` (arch-avoid-circular-deps).
+ * Introduced in v2.0.0. Mirrors `TypeOrmQueryTranslatorConfig` — the
+ * translator receives all entity-shape inputs via this config to avoid
+ * any runtime or type-only import from `drizzle-crud.service.ts`
+ * (arch-avoid-circular-deps).
  *
  * @since 2.0.0
  */

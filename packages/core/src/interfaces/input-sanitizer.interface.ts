@@ -2,9 +2,9 @@
  * Strategy interface for validating field names against an allowlist derived
  * from entity column metadata (plus optional joined-relation columns).
  *
- * Interface ships in Phase 4 (ARCH-03); the reference implementation is the
- * `InputSanitizer` concrete class in the same package. Adapters instantiate
- * it directly (not via DI) in their constructor.
+ * The reference implementation is the `InputSanitizer` concrete class in
+ * the same package. Adapters instantiate it directly (not via DI) in their
+ * constructor.
  *
  * @since 2.0.0
  */

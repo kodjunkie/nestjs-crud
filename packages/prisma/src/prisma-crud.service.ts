@@ -7,7 +7,7 @@ import { PrismaClientLike, PrismaQueryTranslatorConfig } from './interfaces';
 import { PrismaQueryTranslator } from './prisma-query-translator';
 
 export interface PrismaCrudServiceConfig<T> extends PrismaQueryTranslatorConfig<T> {
-  // OBS-01 optional logger
+  // Optional logger
   logger?: {
     error: (msg: string, trace?: string) => void;
     warn?: (msg: string) => void;
@@ -69,7 +69,7 @@ export class PrismaCrudService<T extends Record<string, unknown>> extends CrudSe
       if (!bulk.length) {
         return [];
       }
-      // D-03/C3: array form — Prisma native createMany returns {count} only; array form returns full records
+      // Array form — Prisma native createMany returns {count} only; array form returns full records
       return this.prisma.$transaction([
         ...bulk.map((d) => this.getDelegate().create({ data: this.prepareForSave(d as T | Partial<T>, req) })),
       ]) as Promise<T[]>;
@@ -154,8 +154,8 @@ export class PrismaCrudService<T extends Record<string, unknown>> extends CrudSe
   }
 
   public async recoverOne(req: CrudRequest): Promise<void | T> {
-    // SEC-03 EXCLUSION: single write, no prior read, no race window.
-    // Mirrors Phase 8 Plan 04 exactly — recoverOne is NOT wrapped in $transaction.
+    // Transaction-wrap EXCLUSION: single write, no prior read, no race window.
+    // recoverOne is NOT wrapped in $transaction.
     try {
       const softDel = this.serviceConfig.softDeleteColumn;
       if (!softDel) {

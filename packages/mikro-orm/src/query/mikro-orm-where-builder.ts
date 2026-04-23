@@ -19,11 +19,11 @@ export interface MikroOrmWhereBuilderConfig {
  * Compiles an `SCondition` search tree into a MikroORM `FilterQuery` predicate.
  * Pure predicate production — no sort / pagination / join / soft-delete concerns
  * (those live in `MikroOrmQueryComposer`). Does NOT touch `joinResolver` —
- * D-05b SQLi invariant is concentrated in the composer.
+ * the SQLi invariant is concentrated in the composer.
  *
- * Does NOT hold any `em` reference (T-06-02: em is only needed by FetchHelper).
+ * Does NOT hold any `em` reference (em is only needed by FetchHelper).
  *
- * @internal — subject to change without semver-major (D-03 / §api-versioning).
+ * @internal — subject to change without semver-major.
  * @since 2.0.0
  */
 export class MikroOrmWhereBuilder<T extends object> implements WhereBuilder<QueryBuilder<T>, FilterQuery<T>> {
@@ -94,7 +94,7 @@ export class MikroOrmWhereBuilder<T extends object> implements WhereBuilder<Quer
   // @internal — value is a raw filter value whose shape varies per operator (scalar, array, range); unknowable without per-operator discrimination
   private buildFieldCondition(field: string, value: unknown): Record<string, unknown> | undefined {
     if (!this.propertiesMap[field]) {
-      // D-05b: reject unknown fields on the filter/search path.
+      // SQLi guard: reject unknown fields on the filter/search path.
       this.onBadRequest(`Invalid field: '${field}'`);
       return undefined;
     }

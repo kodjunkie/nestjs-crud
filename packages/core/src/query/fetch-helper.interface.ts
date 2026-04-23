@@ -10,7 +10,7 @@ export interface FetchHelperFindOneOpts {
 }
 
 /**
- * Executes prepared queries. Method signatures take Q (not W) per D-07 —
+ * Executes prepared queries. Method signatures take Q (not W) because
  * Drizzle's two-query dance needs already-prepared query state.
  *
  * @internal — implementation detail of @nestjs-crud adapters.

@@ -7,7 +7,7 @@ import type { ParsedRequestParams } from '@nestjs-crud/request';
  * @internal — subject to change without semver-major.
  * Applies WHERE + sort + pagination + field selection + soft-delete + eager joins to a Prisma arg object.
  *
- * **OWNS the D-05b SQLi invariant**: the dotted-path sort branch validates
+ * **OWNS the SQLi invariant**: the dotted-path sort branch validates
  * `relation` + `column` against `joinResolver.getAllowedColumnsFor(relation)`
  * before any identifier reaches Prisma's orderBy.
  *
@@ -19,7 +19,7 @@ import type { ParsedRequestParams } from '@nestjs-crud/request';
  * @since 2.0.0
  */
 
-// TYPES-01 debt: Prisma client delegate types are model-specific structural — adapters pin `any` at the piece boundary and carry forward.
+// Type debt: Prisma client delegate types are model-specific structural — adapters pin `any` at the piece boundary and carry forward.
 export interface PrismaQueryComposerConfig {
   entityColumns: string[];
 
@@ -88,7 +88,7 @@ export class PrismaQueryComposer implements QueryComposer<any> {
       out.where = { AND: whereParts };
     }
 
-    // 3. Sort — ASC/DESC → asc/desc (spike pattern 2); dotted-path via JoinResolver allowlist (T-09-01 guard)
+    // 3. Sort — ASC/DESC → asc/desc; dotted-path via JoinResolver allowlist (SQLi guard)
     if (parsed.sort?.length) {
       out.orderBy = parsed.sort.map((s) => this.compileSort(s));
     }
@@ -126,7 +126,7 @@ export class PrismaQueryComposer implements QueryComposer<any> {
   }
 
   /**
-   * D-05b SQLi invariant: dotted-path sort fields MUST round-trip through
+   * SQLi invariant: dotted-path sort fields MUST round-trip through
    * `joinResolver.getAllowedColumnsFor(relation)` before reaching Prisma's orderBy.
    * Single-segment fields assert against `entityColumns`.
    */
@@ -167,8 +167,8 @@ export class PrismaQueryComposer implements QueryComposer<any> {
   /**
    * Build a Prisma `select` object from parsed fields filtered by allowed columns.
    * Prisma's `select` and `include` are mutually exclusive at the same level.
-   * For Plan 03 MVP: if both select fields and include relations are requested,
-   * prefer `select` and merge include relations as `{ [relation]: true }` entries.
+   * If both select fields and include relations are requested, prefer
+   * `select` and merge include relations as `{ [relation]: true }` entries.
    */
   private getSelectObject(parsed: ParsedRequestParams, options: CrudRequestOptions): Record<string, true> | undefined {
     const queryOptions = options?.query ?? {};
@@ -197,7 +197,7 @@ export class PrismaQueryComposer implements QueryComposer<any> {
    * L2: to-one filtered include is NEVER emitted — consumer routes filters
    *     to parent where via SCondition dotted-path (handled by WhereBuilder).
    *
-   * // TODO: Phase 11 DOCS-04 — to-many filtered include support
+   * // TODO: to-many filtered include support (future work)
    */
   private getIncludeObject(parsed: ParsedRequestParams, options: CrudRequestOptions): Record<string, any> | undefined {
     const queryOptions = options?.query ?? {};
@@ -208,8 +208,8 @@ export class PrismaQueryComposer implements QueryComposer<any> {
     for (const [field, opts] of Object.entries(joinOptions)) {
       if (this.relationFields.includes(field)) {
         // L3: emit true only — no auto-deletedAt injection
-        // L2: to-one filtered include NEVER emitted; to-many filter = Phase 11
-        // TODO: Phase 11 DOCS-04 — to-many filtered include support
+        // L2: to-one filtered include NEVER emitted; to-many filter is future work
+        // TODO: to-many filtered include support
         include[field] = true;
       } else if (opts) {
         // Field declared in joinOptions but not in known relationFields — skip

@@ -7,7 +7,7 @@ import type { QueryBuilder } from '@mikro-orm/knex';
 export interface MikroOrmFetchHelperConfig {
   onNotFound: (alias: string) => void;
   /**
-   * di-scope-awareness (T-06-02): MUST be a thunk, NEVER a captured
+   * di-scope-awareness: MUST be a thunk, NEVER a captured
    * `em: EntityManager` instance. MikroORM's per-request middleware returns
    * a fresh em with its own identity map — capturing em at ctor time would
    * freeze a stale map across requests, corrupting write paths ("row was
@@ -21,11 +21,11 @@ export interface MikroOrmFetchHelperConfig {
 /**
  * Adapter-internal `FetchHelper<QueryBuilder<T>>` implementation.
  *
- * Executes prepared MikroORM `QueryBuilder` state. Per D-07, `Q` (not `W`) is
- * the input type — the caller is responsible for composing the query first
+ * Executes prepared MikroORM `QueryBuilder` state. `Q` (not `W`) is the
+ * input type — the caller is responsible for composing the query first
  * (via `MikroOrmQueryComposer.applyToQuery` or equivalent).
  *
- * ### T-06-02 — getEm thunk contract
+ * ### getEm thunk contract
  *
  * The ctor takes `getEm: () => EntityManager` — a thunk, NOT a captured
  * `em` field. `findOneOrFail` resolves em fresh via `this.config.getEm()`
@@ -33,7 +33,7 @@ export interface MikroOrmFetchHelperConfig {
  * identity map never goes stale. DO NOT add `private readonly em` — the
  * acceptance grep explicitly rejects that shape.
  *
- * @internal — subject to change without semver-major (D-03 / §api-versioning).
+ * @internal — subject to change without semver-major.
  * @since 2.0.0
  */
 export class MikroOrmFetchHelper<T extends object> implements FetchHelper<QueryBuilder<T>> {
@@ -44,10 +44,10 @@ export class MikroOrmFetchHelper<T extends object> implements FetchHelper<QueryB
   }
 
   public async findOneOrFail<R = T>(qb: QueryBuilder<T>, opts: FetchHelperFindOneOpts): Promise<R> {
-    // Fresh em per call (di-scope-awareness — T-06-02). The getEm() thunk is
+    // Fresh em per call (di-scope-awareness). The getEm() thunk is
     // re-invoked here instead of captured at ctor time.
     const em = this.config.getEm();
-    void em; // em is currently resolved by callers via translator.findOneOrFail; reserved for Phase 7 parity.
+    void em; // em is currently resolved by callers via translator.findOneOrFail; reserved for future parity.
 
     (qb as any).limit(1);
     const result = await (qb as any).getSingleResult();
@@ -66,7 +66,7 @@ export class MikroOrmFetchHelper<T extends object> implements FetchHelper<QueryB
    * preserve the pre-6.2 public contract (which takes `entityClass` +
    * `parsed` rather than a prepared QB).
    *
-   * Every call resolves em via the `getEm()` thunk — T-06-02.
+   * Every call resolves em via the `getEm()` thunk.
    */
   public createQueryBuilder(entityClass: EntityClass<T>): QueryBuilder<T> {
     const em = this.config.getEm();
@@ -84,7 +84,7 @@ export class MikroOrmFetchHelper<T extends object> implements FetchHelper<QueryB
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     _options: CrudRequestOptions,
   ): Promise<R[]> {
-    // Reserved for future parity (Phase 7). The MikroOrmCrudService currently
+    // Reserved for future parity. The MikroOrmCrudService currently
     // owns `getMany` (pagination-aware). Keeping this method declared so
     // `FetchHelper<Q>` is fully implemented; not yet wired into the facade.
     return (await (qb as any).getResult()) as unknown as R[];

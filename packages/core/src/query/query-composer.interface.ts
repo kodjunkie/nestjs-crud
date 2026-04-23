@@ -4,7 +4,7 @@ import type { CrudRequestOptions } from '../interfaces/crud-options.interface';
 
 /**
  * Applies WHERE + sort + pagination + field selection + soft-delete + eager joins to Q.
- * OWNS the D-05b SQLi invariant (dotted-path sort allowlist via JoinResolver).
+ * OWNS the SQLi invariant (dotted-path sort allowlist via JoinResolver).
  *
  * @internal — implementation detail of @nestjs-crud adapters.
  * Subject to change without a semver-major bump. Not exported from the main

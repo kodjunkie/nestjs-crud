@@ -8,7 +8,6 @@
  * fail loud so the operator fixes the config, not be rendered as a generic 500
  * by Nest's default exception filter.
  *
- * @see Phase 10 PERF-02 (D-06..D-09)
  * @since 2.0.0
  */
 export class CrudCacheNotConfiguredError extends Error {
