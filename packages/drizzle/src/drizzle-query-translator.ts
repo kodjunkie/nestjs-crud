@@ -12,6 +12,15 @@ import { DrizzleWhereBuilder } from './query/drizzle-where-builder';
 type AnyDrizzleSelect = any;
 
 /**
+ * Default no-op `onNotFound` thunk wired into `DrizzleFetchHelper`.
+ *
+ * Hoisted to module scope (COVERAGE-01 D-17 sweep, Phase 10 Plan 06) so
+ * the previously inline arrow can be unit-tested directly — replaces a
+ * coverage pragma that previously sat on the constructor wiring.
+ */
+export const defaultOnNotFound = (): undefined => undefined;
+
+/**
  * Facade translator composing 3 internal pieces (`DrizzleWhereBuilder`,
  * `DrizzleQueryComposer`, `DrizzleFetchHelper`) behind the stable
  * `QueryTranslator<AnyDrizzleSelect, SQL>` contract. Public API is
@@ -60,7 +69,7 @@ export class DrizzleQueryTranslator<T extends Record<string, unknown>> implement
       whereBuilder: this.whereBuilder,
     });
     this.fetchHelper = new DrizzleFetchHelper({
-      onNotFound: /* istanbul ignore next */ () => undefined,
+      onNotFound: defaultOnNotFound,
     });
   }
 
