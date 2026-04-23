@@ -63,15 +63,15 @@ Plus [`@nestjs-crud/core`](https://www.npmjs.com/package/@nestjs-crud/core) (dec
 
 Full docs live on the [**Wiki**](https://github.com/kodjunkie/nestjs-crud/wiki) — controllers, services, request shape, per-adapter setup, migration guides.
 
-## Skills (for AI coding assistants)
+## Skills
 
 Three agent skills ship with the repo:
 
-| Skill | Scope |
-| ----- | ----- |
-| `nestjs-crud` | Current v2.x — setup, adapters, `@Crud()` options, Swagger customization, transactions, common issues |
-| `nestjs-crud-v1` | Legacy v1.0.x behavior reference |
-| `nestjs-crud-migration` | v1 → v2 upgrade playbook — audit greps, error-to-fix mapping |
+| Skill                   | Scope                                                                                                 |
+| ----------------------- | ----------------------------------------------------------------------------------------------------- |
+| `nestjs-crud`           | Current v2.x — setup, adapters, `@Crud()` options, Swagger customization, transactions, common issues |
+| `nestjs-crud-v1`        | Legacy v1.0.x behavior reference                                                                      |
+| `nestjs-crud-migration` | v1 → v2 upgrade playbook — audit greps, error-to-fix mapping                                          |
 
 Install all three:
 
