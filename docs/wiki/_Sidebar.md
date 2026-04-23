@@ -30,6 +30,7 @@
 
 - [Description](https://github.com/kodjunkie/nestjs-crud/wiki/Requests#description)
 - [Query params](https://github.com/kodjunkie/nestjs-crud/wiki/Requests#query-params)
+- [Query Syntax](https://github.com/kodjunkie/nestjs-crud/wiki/Query-Syntax)
 - [Frontend usage](https://github.com/kodjunkie/nestjs-crud/wiki/Requests#frontend-usage)
 
 ### Services
