@@ -404,7 +404,11 @@ export class CrudRoutesFactory {
         const paramTypes = R.getRouteArgsTypes(this.targetProto, name);
         const metatype = paramTypes[parsedBody.index];
         const types = [String, Boolean, Number, Array, Object];
-        const toCopy = isIn(metatype, types) || /* istanbul ignore next -- isNil fallback: metatype is normally a class constructor; null/undefined occurs only when reflect-metadata is not properly configured (consumer setup error) */ isNil(metatype);
+        const toCopy =
+          isIn(metatype, types) ||
+          /* istanbul ignore next -- isNil fallback: metatype is normally a class constructor; null/undefined occurs only when reflect-metadata is not properly configured (consumer setup error) */ isNil(
+            metatype,
+          );
 
         /* istanbul ignore else -- toCopy=false branch: when consumer's @Override createManyBase has a custom DTO that's not a primitive/Array/Object — we leave their type alone (no-op else, intentional) */
         if (toCopy) {
@@ -469,11 +473,7 @@ export class CrudRoutesFactory {
   protected setInterceptors(name: BaseRouteName) {
     const interceptors = this.options.routes[name].interceptors;
     R.setInterceptors(
-      [
-        CrudRequestInterceptor,
-        CrudResponseInterceptor,
-        ...(isArrayFull(interceptors) ? interceptors : []),
-      ],
+      [CrudRequestInterceptor, CrudResponseInterceptor, ...(isArrayFull(interceptors) ? interceptors : [])],
       this.targetProto[name],
     );
   }
@@ -516,11 +516,17 @@ export class CrudRoutesFactory {
   protected setSwaggerResponseOk(name: BaseRouteName) {
     const metadata = Swagger.getResponseOk(this.targetProto[name]);
     const metadataToAdd =
-      Swagger.createResponseMeta(name, this.options, this.swaggerModels) || /* istanbul ignore next -- defensive default: createResponseMeta returns a truthy object for every BaseRouteName + the swagger-absent branch; this `|| {}` covers the impossible falsy path */ {};
+      Swagger.createResponseMeta(name, this.options, this.swaggerModels) ||
+      /* istanbul ignore next -- defensive default: createResponseMeta returns a truthy object for every BaseRouteName + the swagger-absent branch; this `|| {}` covers the impossible falsy path */ {};
     Swagger.setResponseOk({ ...metadata, ...metadataToAdd }, this.targetProto[name]);
   }
 
   protected routeNameAction(name: BaseRouteName): string {
-    return name.split('OneBase')[0] || /* istanbul ignore next -- ManyBase fallback: only reachable for createManyBase, but setRouteArgs() filters to *OneBase routes before calling, so this branch is structurally unreachable in current call sites */ name.split('ManyBase')[0];
+    return (
+      name.split('OneBase')[0] ||
+      /* istanbul ignore next -- ManyBase fallback: only reachable for createManyBase, but setRouteArgs() filters to *OneBase routes before calling, so this branch is structurally unreachable in current call sites */ name.split(
+        'ManyBase',
+      )[0]
+    );
   }
 }

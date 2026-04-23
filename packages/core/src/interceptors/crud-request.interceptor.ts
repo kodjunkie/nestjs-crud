@@ -131,7 +131,9 @@ export class CrudRequestInterceptor extends CrudBaseInterceptor implements NestI
       }
 
       if (isFunction(crudOptions.auth.filter) && !auth.or) {
-        auth.filter = crudOptions.auth.filter(userOrRequest) || /* istanbul ignore next -- defensive default: consumer's auth.filter returning null/undefined is misuse; spec contract is to return SCondition */ {};
+        auth.filter =
+          crudOptions.auth.filter(userOrRequest) ||
+          /* istanbul ignore next -- defensive default: consumer's auth.filter returning null/undefined is misuse; spec contract is to return SCondition */ {};
       }
 
       if (isFunction(crudOptions.auth.persist)) {

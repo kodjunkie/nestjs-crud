@@ -42,7 +42,10 @@ export abstract class CrudService<T> {
     return (
       options.query.alwaysPaginate ||
       ((Number.isFinite(parsed.page) || Number.isFinite(parsed.offset)) &&
-        /* istanbul ignore next -- truth-coercion of getTake() return: !! is always evaluated, the branch is the falsy-getTake return path which only fires when both query.limit and options.maxLimit are unset (rare config) */ !!this.getTake(parsed, options.query))
+        /* istanbul ignore next -- truth-coercion of getTake() return: !! is always evaluated, the branch is the falsy-getTake return path which only fires when both query.limit and options.maxLimit are unset (rare config) */ !!this.getTake(
+          parsed,
+          options.query,
+        ))
     );
   }
 
