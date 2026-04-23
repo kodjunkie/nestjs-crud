@@ -26,6 +26,7 @@ jobs:
       github.event_name == 'workflow_dispatch' ||
       (github.event.pull_request.merged && startsWith(github.head_ref, 'release'))
     runs-on: ubuntu-latest
+    environment: Release
 
     env:
       COMPOSE_FILE: ./compose.yml
@@ -150,9 +151,15 @@ jobs:
           NPM_CONFIG_PROVENANCE: true
         run: |
           set -euo pipefail
+          # @nestjs-crud/prisma temporarily excluded: first publish cannot use
+          # Trusted Publisher (npm requires the package to exist before TP can be
+          # configured). First prisma release will be a one-time local publish;
+          # subsequent releases will flow through CI once TP is wired.
+          # Remove --ignore flag once prisma is on npm + TP-configured.
           npx lerna publish from-package \
             --no-git-reset \
             --no-verify-access \
+            --ignore @nestjs-crud/prisma \
             --yes \
             --dist-tag "${{ steps.version.outputs.dist_tag }}"
 
