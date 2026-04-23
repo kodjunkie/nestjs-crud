@@ -6,7 +6,7 @@
  * composer's `onBadRequest` throwing sink — a silent pass-through would let an
  * attacker-controlled identifier reach the underlying SQL builder.
  *
- * Retargeted in 06.2-04 to `MikroOrmQueryComposer` (D-05b owner post-decomposition).
+ * System-Under-Test: `MikroOrmQueryComposer` — the dotted-path SQLi invariant concentrates there post-decomposition.
  *
  * Harness contract (PATTERNS.md §5 + input-sanitizer.spec.ts:11-22):
  * `onBadRequest` MUST throw. A `jest.fn()` stub would let a miss return
