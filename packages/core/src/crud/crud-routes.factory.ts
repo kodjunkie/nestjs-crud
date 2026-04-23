@@ -1,4 +1,4 @@
-import { RequestMethod } from '@nestjs/common';
+import { HttpStatus, RequestMethod } from '@nestjs/common';
 import { RouteParamtypes } from '@nestjs/common/enums/route-paramtypes.enum';
 import {
   isFalse,
@@ -24,7 +24,7 @@ const deepmerge: typeof deepmergeNs = (
 
 import { R } from './reflection.helper';
 import { SerializeHelper } from './serialize.helper';
-import { Swagger } from './swagger.helper';
+import { Swagger, swaggerConst } from './swagger.helper';
 import { Validation } from './validation.helper';
 import { CrudRequestInterceptor, CrudResponseInterceptor } from '../interceptors';
 import { BaseRoute, CrudOptions, CrudRequest, MergedCrudOptions } from '../interfaces';
@@ -442,6 +442,7 @@ export class CrudRoutesFactory {
     this.setSwaggerOperation(name);
     this.setSwaggerPathParams(name);
     this.setSwaggerQueryParams(name);
+    this.setSwaggerBodyExamples(name);
     this.setSwaggerResponseOk(name);
     // set decorators after Swagger so metadata can be overwritten
     this.setDecorators(name);
@@ -532,7 +533,61 @@ export class CrudRoutesFactory {
     const metadataToAdd =
       Swagger.createResponseMeta(name, this.options, this.swaggerModels) ||
       /* istanbul ignore next -- defensive default: createResponseMeta returns a truthy object for every BaseRouteName + the swagger-absent branch; this `|| {}` covers the impossible falsy path */ {};
+
+    // 401 emission OR-gate: auto-emit when @CrudAuth() is on the controller class,
+    // OR when the consumer explicitly opts in via `swagger.errorResponses.unauthorized`
+    // (global-guard escape hatch for APP_GUARD consumers whose controllers lack
+    // @CrudAuth()). Default (neither set) emits no 401 entry, preserving the
+    // pre-Phase-12 behavior on controllers without auth configured.
+    const hasCrudAuth = isObjectFull(this.options.auth);
+    const errorResponsesUnauthorized = this.options.swagger?.errorResponses?.unauthorized === true;
+    if (hasCrudAuth || errorResponsesUnauthorized) {
+      (metadataToAdd as Record<number, any>)[HttpStatus.UNAUTHORIZED] = {
+        description: 'Missing or invalid authentication',
+      };
+    }
+
     Swagger.setResponseOk({ ...metadata, ...metadataToAdd }, this.targetProto[name]);
+  }
+
+  // modeled on crud-routes.factory.ts Swagger.setParams call site (overrideRoutes /
+  // setSwaggerPathParams / setSwaggerQueryParams all emit per-route params through
+  // API_PARAMETERS). Body examples ride the same rail: a single body-param entry
+  // appended to the method's API_PARAMETERS metadata. Do NOT emit via API_OPERATION
+  // requestBody — Swagger UI renders examples from both sites, but only the params
+  // path participates in the existing @Override merge pipeline.
+  protected setSwaggerBodyExamples(name: BaseRouteName) {
+    if (!swaggerConst) {
+      return;
+    }
+    if (this.options.swagger?.examples === false) {
+      return;
+    }
+    const bodyRoutes: BaseRouteName[] = ['createOneBase', 'createManyBase', 'updateOneBase', 'replaceOneBase'];
+    if (!bodyRoutes.includes(name)) {
+      return;
+    }
+    const consumerSynth = this.options.swagger?.synthExample;
+    const single = Swagger.synthesizeBodyExample(this.modelType, consumerSynth, name);
+    if (
+      single &&
+      typeof single === 'object' &&
+      Object.keys(single as Record<string, unknown>).length === 0
+    ) {
+      return;
+    }
+    // Consumer-fn may return the full bulk wrapper when it inspects route === 'createManyBase'.
+    // Detect and pass through without double-wrapping.
+    const alreadyBulk =
+      name === 'createManyBase' &&
+      single &&
+      typeof single === 'object' &&
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      Array.isArray((single as any).bulk);
+    const example = name === 'createManyBase' && !alreadyBulk ? { bulk: [single] } : single;
+    const bodyParam = { in: 'body', name: 'body', required: true, schema: { example } };
+    const existing = Swagger.getParams(this.targetProto[name]);
+    Swagger.setParams([...existing, bodyParam], this.targetProto[name]);
   }
 
   protected routeNameAction(name: BaseRouteName): string {
