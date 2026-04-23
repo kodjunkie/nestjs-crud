@@ -547,7 +547,14 @@ export class CrudRoutesFactory {
     // (global-guard escape hatch for APP_GUARD consumers whose controllers lack
     // @CrudAuth()). Default (neither set) emits no 401 entry, preserving the
     // pre-Phase-12 behavior on controllers without auth configured.
-    const hasCrudAuth = isObjectFull(this.options.auth);
+    //
+    // Probe the RAW @CrudAuth metadata on the target class rather than the merged
+    // `this.options.auth` object — mergeOptions() sprays property/groups/
+    // classTransformOptions defaults (even when undefined-valued) onto an empty
+    // auth object, which makes `isObjectFull(this.options.auth)` always return
+    // true and emits a spurious 401 on unauthenticated controllers.
+    const rawAuthOptions = R.getCrudAuthOptions(this.target);
+    const hasCrudAuth = isObjectFull(rawAuthOptions);
     const errorResponsesUnauthorized = this.options.swagger?.errorResponses?.unauthorized === true;
     if (hasCrudAuth || errorResponsesUnauthorized) {
       (metadataToAdd as Record<number, any>)[HttpStatus.UNAUTHORIZED] = {
@@ -610,7 +617,11 @@ export class CrudRoutesFactory {
       return;
     }
     const configured = this.options.swagger?.tag;
-    let tags: string[] = Array.isArray(configured) ? [...configured] : configured ? [configured] : [pluralize(this.modelName)];
+    let tags: string[] = Array.isArray(configured)
+      ? [...configured]
+      : configured
+        ? [configured]
+        : [pluralize(this.modelName)];
 
     if (this.options.swagger?.tagWithVersion === true) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any

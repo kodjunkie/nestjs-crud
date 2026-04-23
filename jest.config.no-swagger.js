@@ -37,6 +37,15 @@ module.exports = {
     ...(rootConfig.testPathIgnorePatterns || ['/node_modules/']),
     '/packages/core/test/crud\\.decorator\\.override\\.spec\\.ts$',
     '/packages/core/test/crud\\.decorator\\.options\\.spec\\.ts$',
+    // Swagger text-surface spec: reads swaggerConst.DECORATORS at module load
+    // time to resolve the metadata keys it asserts on. Cannot pass when swagger
+    // is absent (same class as the two specs above). Skipped for the sentinel;
+    // runs in the default jest config where swagger IS installed.
+    '/packages/core/test/swagger-description\\.spec\\.ts$',
+    // Swagger OpenAPI snapshot spec: wraps its describe blocks in describe.skip
+    // when @nestjs/swagger / @nestjs/testing are absent, so it self-skips under
+    // the sentinel. Listed here anyway so it's surfaced alongside its siblings.
+    '/packages/core/test/swagger-openapi-snapshot\\.spec\\.ts$',
     // Pre-existing TS2740 failure under default config too (supertest typing
     // drift vs INestApplication generic). Not a swagger issue. Excluded here
     // so the no-swagger sentinel cell can go green; original `test` matrix
