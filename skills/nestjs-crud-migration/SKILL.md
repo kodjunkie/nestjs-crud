@@ -1,6 +1,6 @@
 ---
 name: nestjs-crud-migration
-description: Use when migrating a NestJS project from @nestjs-crud/* v1.0.x to v2.0, diagnosing v2 upgrade errors (`Field "X" is not allowed`, `setSearchCondition is not a function`, `checkSqlInjection is not a function`, `entityRelationsHash` undefined, `translator.count is not a function`, `findOneOrFail is not a function`, `RequestQueryException: Invalid persist key`, `CrudCacheNotConfiguredError`, Drizzle `Type 'any' is not assignable to type 'DrizzleClient'`, MikroORM `FilterQuery<T>` type errors, MikroORM stale-em identity-map issues, Prisma `Unknown argument 'where'` inside include, `EBADENGINE: Unsupported engine`), opting into the new TypeORM `relationLoadStrategy: 'query'`, adopting `@nestjs-crud/prisma`, or auditing peerDependencies for `@nestjs/common ^10 || ^11`.
+description: Use when migrating a NestJS project from @nestjs-crud/* v1.0.x to v2.0, diagnosing v2 upgrade errors (`Field "X" is not allowed`, `setSearchCondition is not a function`, `checkSqlInjection is not a function`, `entityRelationsHash` undefined, `translator.count is not a function`, `findOneOrFail is not a function`, `RequestQueryException: Invalid persist key`, `CrudCacheNotConfiguredError`, Drizzle `Type 'any' is not assignable to type 'DrizzleClient'`, MikroORM `FilterQuery<T>` type errors, MikroORM stale-em identity-map issues, Prisma `Unknown argument 'where'` inside include, `EBADENGINE: Unsupported engine`), Swagger snapshot-test drift (summaries rewritten to imperative form, `operationsMap` return-shape break), opting into the new TypeORM `relationLoadStrategy: 'query'`, adopting `@nestjs-crud/prisma`, or auditing peerDependencies for `@nestjs/common ^10 || ^11`.
 ---
 
 # @nestjs-crud v1 → v2 Migration
@@ -69,6 +69,9 @@ grep -rE "cache:\s*[0-9]+|cache:\s*true" src/
 
 # 13. Node version — engines.node now ">=22.0.0"
 node --version  # must be >=22; else install will refuse
+
+# 14. Swagger snapshot tests or direct operationsMap import — v2 rewrites default text and changes internal shape
+grep -rE "toMatchSnapshot.*swagger|toMatchSnapshot.*apioperation|Swagger\.operationsMap" src/ test/
 ```
 
 **Disposition:**
@@ -79,6 +82,7 @@ node --version  # must be >=22; else install will refuse
 - Non-zero on (11) with any typo in `persist` keys → expect `RequestQueryException` at runtime (§D — auth persist)
 - Non-zero on (12) without DataSource cache configured → expect `CrudCacheNotConfiguredError` (§D — cache fail-fast)
 - (13) failing → either upgrade Node or stay on v1.0.x
+- Non-zero on (14) → Swagger snapshot-drift or `operationsMap` return-shape break (§D — Swagger)
 
 ## Quick Reference — What Breaks
 
@@ -104,6 +108,7 @@ node --version  # must be >=22; else install will refuse
 | **`recoverOne` EXCLUDED from transaction wrap** — plain `update(...)`, no read-modify-write race | None — documented behavior | §D |
 | **TypeORM split-query relation loading opt-in** — `@Crud({ query: { relationLoadStrategy: 'query' \| 'join' } })`, default `'join'` (today's behavior) | None — additive opt-in. ⚠ Footgun: under `'query'`, `JoinOption.allow` does NOT constrain relation columns | §D |
 | **TypeORM cache fail-fast** — `@Crud({ query: { cache: N } })` without `DataSource({ cache: ... })` now throws `CrudCacheNotConfiguredError` | Medium — was silent no-op in v1; now loud config error | §D |
+| **Swagger default text rewritten** + new `@Crud({ swagger: {...} })` override surface + `Swagger.operationsMap` internal shape break (`string` → `{ summary, description }`) | Low for runtime (additive). Medium for Swagger **snapshot-testing** consumers or direct `operationsMap` callers | §D |
 | **`engines.node: ">=22.0.0"`** in all 7 packages | Low — `npm install` refuses on older Node | §E |
 | **peerDependencies declared on all packages** | Low — `npm install` warns if peers missing | §E |
 | **`@nestjs-crud/prisma` new adapter package** (Prisma 5+) | None for existing consumers — additive | §F |
@@ -329,9 +334,9 @@ export class UsersService extends TypeOrmCrudService<User> {
 
 Additive only — no migration required.
 
-### Optional logger — Prisma (different shape)
+### Optional logger — Prisma (different surface, same default behavior)
 
-The Prisma adapter exposes the logger inside the `serviceConfig` object as a structural shape `{ error, warn?, debug? }`, **not** a separate ctor arg. Default when omitted: **silent no-op** (the adapter optional-chains every log call). If you want Prisma to behave like the other 3 adapters, pass `new Logger(...)` explicitly via `serviceConfig.logger`:
+The Prisma adapter exposes the logger inside the `serviceConfig` object as a structural shape `{ error, warn?, debug? }`, **not** a separate ctor arg. Default when omitted: ctor auto-instantiates `new Logger(PrismaCrudService.name)` — same as the other 3 adapters. Consumers who previously passed `new Logger(...)` explicitly can drop the line.
 
 ```ts
 constructor(prisma: PrismaClient) {
@@ -339,10 +344,14 @@ constructor(prisma: PrismaClient) {
     entityColumns: [...],
     primaryColumns: [...],
     softDeleteColumn: 'deletedAt',
-    logger: new Logger('UsersService'),  // satisfies {error, warn?, debug?} shape
+    // Omit to get `new Logger(PrismaCrudService.name)` — parity with other 3 adapters.
+    // Override with a custom logger only when you need non-default sinks:
+    // logger: new Logger('UsersService'),
   });
 }
 ```
+
+**Remaining asymmetry vs other 3 adapters:** surface only (field inside `serviceConfig` vs separate positional ctor arg). Default-instantiation behavior is unified across all 4 in v2.0.0. Moving Prisma to a separate ctor parameter is a breaking change deferred to v3.
 
 ### Logger emission policy (all adapters)
 
@@ -429,6 +438,28 @@ import { CrudCacheNotConfiguredError } from '@nestjs-crud/core';
 
 **Adapter coverage:** TypeORM only honors `@Crud({ query: { cache } })`. Drizzle, MikroORM, and Prisma do not currently honor this option — use each ORM's native caching primitives at the application layer.
 
+### Swagger default text rewrite
+
+v2 rewrites default Swagger/OpenAPI metadata for all 8 generated routes: imperative operation summaries, outcome-focused response descriptions, multi-line route descriptions (previously empty), auto `@ApiTags`, auto request-body examples, 400/401-if-auth/404 error emission. Runtime-additive — no code change required for consumers who don't snapshot Swagger metadata.
+
+**Snapshot tests on operation summaries or response descriptions will drift.** Two fixes:
+
+1. **Re-record snapshots** against v2 text (recommended — v2 copy is cleaner).
+2. **Preserve v1 wording** via the new override surface:
+   ```ts
+   @Crud({
+     model: { type: User },
+     swagger: {
+       operations: {
+         getManyBase: { summary: 'Retrieve multiple Users' },
+         // ...any subset of the 8 base routes
+       },
+     },
+   })
+   ```
+
+**Internal `Swagger.operationsMap(modelName)` return shape changed** from `{ [k]: string }` to `{ [k]: { summary, description } }` tuples. Direct callers (rare — deep-path `@internal` API) must destructure. Prefer the stable `@Crud({ swagger: { operations: {...} } })` override surface instead; see the `nestjs-crud` skill §Swagger Customization for the full shape (`tag`, `description`, `examples`, `operations`, `errorResponses`, `synthExample`, `tagWithVersion`).
+
 ---
 
 ## §E. Packaging — engines.node + peerDependencies
@@ -438,7 +469,7 @@ import { CrudCacheNotConfiguredError } from '@nestjs-crud/core';
 
 **Current peer ranges:**
 
-- `@nestjs-crud/core`: `class-validator`, `class-transformer`, `@nestjs/common ^10.0.0 || ^11.0.0`
+- `@nestjs-crud/core`: `class-validator ^0.14.0`, `class-transformer ^0.5.0`, `@nestjs/common ^10.0.0 || ^11.0.0`
 - `@nestjs-crud/typeorm`: `typeorm ^0.3`, `@nestjs/typeorm`, `@nestjs-crud/core ^2.0`, `@nestjs/common ^10.0.0 || ^11.0.0`
 - `@nestjs-crud/drizzle`: `drizzle-orm >=0.45.2`, `@nestjs-crud/core ^2.0`, `@nestjs/common ^10.0.0 || ^11.0.0`
 - `@nestjs-crud/mikro-orm`: `@mikro-orm/core ^7.0.0`, `@mikro-orm/knex ^7.0.0`, `@nestjs-crud/{core,request,util} ^2.0.0`, `@nestjs/common ^10.0.0 || ^11.0.0`
@@ -476,8 +507,10 @@ export class UsersService extends PrismaCrudService<User> {
       entityColumns: ['id', 'email', 'isActive', 'companyId', 'deletedAt'],
       primaryColumns: ['id'],
       softDeleteColumn: 'deletedAt',
-      // Optional logger lives INSIDE serviceConfig (not a separate ctor arg):
-      logger: new Logger('UsersService'),  // OR omit for silent no-op
+      // Optional logger lives INSIDE serviceConfig (not a separate ctor arg).
+      // Omitted → ctor auto-instantiates new Logger(PrismaCrudService.name).
+      // Override only when you need non-default sinks:
+      // logger: new Logger('UsersService'),
     });
   }
 }
@@ -548,7 +581,9 @@ If your code only uses the public surface (decorator, overrides with `@ParsedReq
 | `CrudCacheNotConfiguredError` thrown on first cached read | `@Crud({ query: { cache } })` set but `DataSource({ cache: ... })` not configured | Configure DataSource cache provider OR remove `@Crud cache` option |
 | `@Crud({ query: { cache } })` silently does nothing on Drizzle/MikroORM/Prisma | Adapter doesn't honor the option — only TypeORM does | Use the ORM's native caching at the application layer; or move the cached read to a TypeORM-backed controller |
 | Relation columns under `'query'` strategy include columns NOT in `JoinOption.allow` | Documented divergence — `setFindOptions` doesn't expose alias-level select control | Either keep `'join'` strategy on those controllers, or audit every relation explicitly. See §D — TypeORM split-query relation loading |
-| Prisma logger silently does nothing | Prisma's `serviceConfig.logger` defaults to no-op when omitted (asymmetry vs other adapters) | Pass `new Logger(...)` explicitly via `serviceConfig.logger`. See §D — Optional logger Prisma |
+| Prisma service now emits logs when it didn't before | Phase 15 unified Prisma's default with the other 3 adapters — omitting `serviceConfig.logger` now auto-instantiates `new Logger(PrismaCrudService.name)`, not silent no-op | If you relied on silent behavior: pass an explicit no-op logger (`{ error: () => {}, warn: () => {}, debug: () => {} }`) via `serviceConfig.logger`. See §D — Optional logger Prisma |
+| `Property 'summary' does not exist on type 'string'` on `Swagger.operationsMap(...)` | Internal API shape changed — `string` → `{ summary, description }` tuples | Destructure, or switch to the stable `@Crud({ swagger: { operations: {...} } })` override surface (see `nestjs-crud` skill §Swagger Customization) |
+| Swagger snapshot tests fail after upgrade | v2 rewrites default operation summaries + response descriptions (imperative + outcome-focused form) | Re-record snapshots, OR pin v1 wording via `@Crud({ swagger: { operations: {...} } })` (see §D — Swagger) |
 | Unexpected SERIALIZABLE isolation inside your outer tx, or rollback cascading unexpectedly | Consumer `@Override()` wraps updateOne/replaceOne/deleteOne in an outer transaction; adapter now adds an inner savepoint at READ COMMITTED | Decide intent: either remove the outer wrap, or accept savepoint nesting semantics |
 | `Class 'X' incorrectly implements interface 'QueryTranslator<Q, W>'. Missing: count, findOneOrFail` | Custom translator from pre-v2 code | Add the two methods to your implementation |
 | npm install warnings about missing peer: `typeorm`, `@nestjs/typeorm`, `@nestjs/common` | peerDeps audit landed in v2 | Install the peers explicitly: `yarn add typeorm @nestjs/typeorm @nestjs/common` (or the relevant adapter's peers) |

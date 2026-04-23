@@ -63,6 +63,29 @@ Plus [`@nestjs-crud/core`](https://www.npmjs.com/package/@nestjs-crud/core) (dec
 
 Full docs live on the [**Wiki**](https://github.com/kodjunkie/nestjs-crud/wiki) — controllers, services, request shape, per-adapter setup, migration guides.
 
+## Skills (for AI coding assistants)
+
+Three agent skills ship with the repo for Claude Code / Codex:
+
+| Skill | Scope |
+| ----- | ----- |
+| `nestjs-crud` | Current v2.x — setup, adapters, `@Crud()` options, Swagger customization, transactions, common issues |
+| `nestjs-crud-v1` | Legacy v1.0.x behavior reference |
+| `nestjs-crud-migration` | v1 → v2 upgrade playbook — audit greps, error-to-fix mapping |
+
+Install all three:
+
+```bash
+npx skills add kodjunkie/nestjs-crud
+```
+
+Install a specific one with `-s`:
+
+```bash
+npx skills add kodjunkie/nestjs-crud -s nestjs-crud
+npx skills add kodjunkie/nestjs-crud -s nestjs-crud-migration
+```
+
 ## License & Credits
 
 [MIT](LICENSE). Fork of [`@nestjsx/crud`](https://github.com/nestjsx/crud) at `5.0.0-alpha.3`. See [`NOTICE.md`](NOTICE.md) for full attribution.
