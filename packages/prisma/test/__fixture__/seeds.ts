@@ -18,21 +18,28 @@ async function main(dialect: 'postgres' | 'mysql'): Promise<void> {
       ? 'packages/prisma/test/__fixture__/schema.postgres.prisma'
       : 'packages/prisma/test/__fixture__/schema.mysql.prisma';
 
+  // Prisma v7 does not auto-discover config outside cwd root, so pass --config
+  // explicitly. prisma.config.ts forwards DATABASE_URL into datasource.url
+  // (required by v7 Migrate; schema files no longer carry the url).
+  const config = 'packages/prisma/test/__fixture__/prisma.config.ts';
+
   // db push creates Prisma-managed tables only — does NOT touch other adapters' tables.
   // --accept-data-loss allows column changes. Note: Prisma v7 removed the
   // previous flag that suppressed auto-generation; db push now always generates,
   // so the explicit `prisma generate` below is a no-op but kept for
   // belt-and-suspenders parity with existing CI expectations.
   // No --force-reset: that wipes the entire DB schema, breaking TypeORM/Drizzle/MikroORM tables.
-  execSync(`npx prisma db push --schema=${schema} --accept-data-loss`, {
+  execSync(`npx prisma db push --config=${config} --schema=${schema} --accept-data-loss`, {
     stdio: 'inherit',
   });
 
-  execSync(`npx prisma generate --schema=${schema}`, { stdio: 'inherit' });
+  execSync(`npx prisma generate --config=${config} --schema=${schema}`, { stdio: 'inherit' });
 
   // eslint-disable-next-line @typescript-eslint/no-var-requires
   const { PrismaClient } = require('../../../../node_modules/.prisma/client-smoke');
-  const prisma = new PrismaClient();
+  // Prisma v7: PrismaClient no longer reads env.DATABASE_URL implicitly —
+  // consumers must forward it via datasourceUrl (or a driver adapter).
+  const prisma = new PrismaClient({ datasourceUrl: process.env.DATABASE_URL });
 
   try {
     // Clear Prisma-managed tables before seeding (preserves other adapters' tables)
