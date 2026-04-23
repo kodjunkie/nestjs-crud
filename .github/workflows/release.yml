@@ -163,13 +163,8 @@ jobs:
           # when `id-token: write` permission + `environment: Release` are set
           # at the job level (both are already configured above).
           #
-          # @nestjs-crud/prisma intentionally excluded: first-publish of a new
-          # scoped package cannot use TP (npm requires the package to exist
-          # before TP config can be attached). First prisma release is a
-          # one-time local publish; once the package is on the registry with
-          # TP wired, add it back to the PACKAGES array below.
           DIST_TAG="${{ steps.version.outputs.dist_tag }}"
-          PACKAGES=(core util request typeorm drizzle mikro-orm)
+          PACKAGES=(core util request typeorm drizzle mikro-orm prisma)
           for pkg in "${PACKAGES[@]}"; do
             echo "::group::Publishing @nestjs-crud/$pkg@${{ steps.version.outputs.version }}"
             (cd "packages/$pkg" && npm publish --access public --tag "$DIST_TAG")
