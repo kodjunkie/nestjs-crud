@@ -3,6 +3,13 @@ name: Release
 on:
   pull_request:
     types: [closed]
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: 'PR number to source release notes + comment from (recovery path when pull_request trigger misfired)'
+        required: false
+        type: string
+        default: ''
 
 permissions:
   contents: write
@@ -15,7 +22,9 @@ concurrency:
 
 jobs:
   release:
-    if: github.event.pull_request.merged && startsWith(github.head_ref, 'release')
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.pull_request.merged && startsWith(github.head_ref, 'release'))
     runs-on: ubuntu-latest
 
     env:
@@ -30,13 +39,20 @@ jobs:
       - name: Start Database Services
         run: docker compose up -d
 
+      - name: Enable Corepack (pre-setup-node)
+        # setup-node@v5 auto-probes `yarn cache dir` during setup; without corepack
+        # enabled first, the probe hits the runner's global yarn 1.22 and fails
+        # against our `packageManager: yarn@4.12.0` pin. Enable corepack on the
+        # runner's system Node BEFORE setup-node switches Node versions.
+        run: corepack enable
+
       - name: Setup Node.js
         uses: actions/setup-node@v5
         with:
           node-version: '24'
           registry-url: https://registry.npmjs.org
 
-      - name: Enable Corepack
+      - name: Enable Corepack (post-setup-node)
         run: corepack enable
 
       - name: Pin Yarn version
@@ -92,11 +108,33 @@ jobs:
             echo "exists=false" >> "$GITHUB_OUTPUT"
           fi
 
+      - name: Resolve Release Notes Source
+        id: notes
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+          PR_NUMBER_INPUT: ${{ inputs.pr_number }}
+        run: |
+          set -euo pipefail
+          if [ -n "${PR_NUMBER_INPUT:-}" ]; then
+            BODY=$(gh pr view "$PR_NUMBER_INPUT" --json body --jq .body)
+            PR_NUM="$PR_NUMBER_INPUT"
+          else
+            BODY="$PR_BODY"
+            PR_NUM="${{ github.event.pull_request.number }}"
+          fi
+          {
+            echo "body<<EOF_RELEASE_BODY"
+            echo "$BODY"
+            echo "EOF_RELEASE_BODY"
+          } >> "$GITHUB_OUTPUT"
+          echo "pr_number=$PR_NUM" >> "$GITHUB_OUTPUT"
+
       - name: Create Tag and Release
         if: steps.check_tag.outputs.exists == 'false'
         env:
           GH_TOKEN: ${{ github.token }}
-          RELEASE_BODY: ${{ github.event.pull_request.body }}
+          RELEASE_BODY: ${{ steps.notes.outputs.body }}
         run: |
           set -euo pipefail
           git tag "${{ steps.version.outputs.version }}"
@@ -119,9 +157,9 @@ jobs:
             --dist-tag "${{ steps.version.outputs.dist_tag }}"
 
       - name: Comment on Pull Request
-        if: steps.check_tag.outputs.exists == 'false'
+        if: steps.check_tag.outputs.exists == 'false' && steps.notes.outputs.pr_number != ''
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh pr comment ${{ github.event.pull_request.number }} \
+          gh pr comment ${{ steps.notes.outputs.pr_number }} \
             --body "Packages with version [${{ steps.version.outputs.version }}](https://github.com/${{ github.repository }}/releases/tag/${{ steps.version.outputs.version }}) have been released"
