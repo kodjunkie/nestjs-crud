@@ -22,9 +22,7 @@ export const swaggerPkgJson = safeRequire('@nestjs/swagger/package.json', () =>
 );
 
 export class Swagger {
-  static operationsMap(
-    modelName: string,
-  ): { [key in BaseRouteName]: { summary: string; description: string } } {
+  static operationsMap(modelName: string): { [key in BaseRouteName]: { summary: string; description: string } } {
     const lower = modelName.toLowerCase();
     const lowerPlural = pluralize(lower);
 
@@ -176,8 +174,7 @@ export class Swagger {
       'deleteOneBase',
       'recoverOneBase',
     ]);
-    const badRequestText =
-      name === 'getManyBase' || name === 'getOneBase' ? 'Malformed query' : 'Validation failed';
+    const badRequestText = name === 'getManyBase' || name === 'getOneBase' ? 'Malformed query' : 'Validation failed';
 
     // Build the success entry per route. Names below reference concrete DTOs assembled
     // in crud-routes.factory.setResponseModels (GetMany{Model}ResponseDto,
@@ -588,11 +585,7 @@ export class Swagger {
         out[propName] = '2026-04-23T00:00:00.000Z';
       } else if (declaredType === String || declaredType === 'string') {
         out[propName] = 'string';
-      } else if (
-        declaredType === Number ||
-        declaredType === 'number' ||
-        declaredType === 'integer'
-      ) {
+      } else if (declaredType === Number || declaredType === 'number' || declaredType === 'integer') {
         out[propName] = 0;
       } else if (declaredType === Boolean || declaredType === 'boolean') {
         out[propName] = true;
