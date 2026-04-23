@@ -4,17 +4,19 @@ Thanks for your interest in contributing. This guide covers local setup, the com
 
 ## Branches
 
-- **`v1.0.2`** — current patch release branch. Security + correctness fixes only (strictly non-breaking from `v1.0.1`).
-- **`master`** — `v2.0.0` development. Architectural cleanup, breaking changes.
+- **`master`** — current stable line. v2.0.0 ships here; future v2.x work merges here.
+- **`dev`** — active development for the next minor/major.
+- **`release/*`** — short-lived cut branches (e.g., `release/v2.0.0`). PR `release/* → master` triggers `.github/workflows/release.yml` which tags + publishes to npm.
+- **`v1.0.2`** — preserved patch line. v1.0.3 lands here if a critical v1 bugfix is ever needed; v1 consumers stay on the v1 line by pinning `"@nestjs-crud/<pkg>": "^1.0.2"` in their package.json.
 
 Pick the right branch for your contribution:
-- **Bug fix or security patch** → branch off `v1.0.2`, target `v1.0.2`
-- **New feature, architectural work, or breaking change** → branch off `master`, target `master`
+- **Bug fix, feature, or breaking change targeting v2.x** → branch off `dev`, target `dev`.
+- **Critical v1 bugfix** → branch off `v1.0.2`, target `v1.0.2`.
 
 ## Local setup
 
 Prerequisites:
-- Node.js 22.x (see `@types/node` version for the floor)
+- Node.js >=22.0.0 (enforced via `engines.node` in every package.json — see BUILD-01)
 - Yarn (classic, via Corepack or `npm i -g yarn`)
 - Docker Desktop (for integration tests against Postgres + MySQL)
 
@@ -36,22 +38,48 @@ yarn clean       # Remove lib/ dirs and .mrepo cache
 
 ## Running tests
 
-Tests run against source via Jest's `moduleNameMapper` — no pre-build required.
+Tests run against source via Jest's `moduleNameMapper` — no pre-build required for the typeorm/drizzle/core/request/util packages.
+
+Each adapter has its **own jest.config.js** (Phases 09.1 + 10). The `test:*` scripts route correctly:
 
 ```bash
-# Fast: unit tests only (no DB)
+# Fast: unit tests (no DB) — core, request, util only
 yarn test
 
-# Full suite with databases (requires Docker)
-docker compose up -d                   # Postgres 5455, MySQL 3316, Redis 6399
-yarn db:prepare:typeorm:postgres       # Drop + sync + seed Postgres
-yarn test:postgres                     # Integration tests against Postgres
+# Per-adapter integration matrices (Docker required)
+docker compose up -d                          # Postgres 5455, MySQL 3316, Redis 6399
+
+yarn db:prepare:typeorm:postgres
+yarn test:typeorm:postgres                    # TypeORM cell against Postgres
 
 yarn db:prepare:typeorm:mysql
-yarn test:mysql                        # Integration tests against MySQL
+yarn test:typeorm:mysql                       # TypeORM cell against MySQL
 
-yarn test:coverage                     # Full suite + coverage report
+yarn db:prepare:drizzle:postgres
+yarn test:drizzle:postgres                    # Drizzle cell against Postgres
+
+yarn db:prepare:drizzle:mysql
+yarn test:drizzle:mysql                       # Drizzle cell against MySQL
+
+yarn db:prepare:mikro-orm:postgres
+yarn test:mikro-orm                           # MikroORM cell — see ESM caveat below
+
+yarn db:prepare:prisma:postgres
+yarn test:prisma                              # Prisma cell
+
+yarn test:parity                              # Cross-adapter parity assertions
+yarn test:all                                 # Full matrix (8 cells; ~8 min)
+yarn test:coverage                            # Coverage report
 ```
+
+### MikroORM ESM caveat
+
+`yarn test:mikro-orm` is the **only** supported way to run `packages/mikro-orm/test/*.spec.ts`. `@mikro-orm/core` v7 is pure ESM (uses `import.meta.url`); the script sets `NODE_OPTIONS=--experimental-vm-modules` and points Jest at `packages/mikro-orm/jest.config.js` (ts-jest ESM preset). Invoking `npx jest packages/mikro-orm/test/...` directly will fail with `SyntaxError: Cannot use 'import.meta' outside a module`.
+
+### Test fixtures vs examples
+
+- **Test fixtures** live in `packages/{adapter}/test/__fixture__/` — self-contained Nest apps imported by spec files. Not consumer-facing.
+- **Runnable demos** live in `examples/` (e.g., `examples/typeorm-demo/`). These ARE consumer-facing reference apps. **Demos must NOT import from `test/`.** This separation prevents the test harness from being load-bearing on a consumer-facing app.
 
 ## Code style
 
@@ -85,6 +113,8 @@ Types: `feat`, `fix`, `docs`, `test`, `refactor`, `chore`, `build`, `ci`.
 Scopes: `core`, `request`, `util`, `typeorm`, `drizzle`, `mikro-orm`, `docs`, `ci`, `legal`, etc.
 
 Lerna's `--conventional-commits` mode reads these when generating CHANGELOGs, so a clean commit history becomes readable release notes automatically.
+
+In v2.x, Lerna's `--conventional-commits` mode also drives per-package CHANGELOG generation during `lerna version`. Commit scopes like `feat(09-04)` (phase-numbered) work but produce noisy auto-CHANGELOG entries — the root `CHANGELOG.md` is hand-curated on release branches to compensate.
 
 ## Pull requests
 
