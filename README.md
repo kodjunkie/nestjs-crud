@@ -1,65 +1,68 @@
 <h1 align="center">
   <img src="img/logo.svg" alt="nestjs-crud" height="56" />
 </h1>
-<p align="center"><strong>RESTful APIs for NestJS — from a single <code>@Crud()</code> decorator</strong></p>
+
+<p align="center">
+  <strong>RESTful APIs for NestJS — from a single <code>@Crud()</code> decorator</strong>
+</p>
+
+<p align="center">
+  <a href="https://www.npmjs.com/package/@nestjs-crud/core"><img src="https://img.shields.io/npm/v/@nestjs-crud/core.svg" alt="npm version" /></a>
+  <a href="https://github.com/kodjunkie/nestjs-crud/actions/workflows/tests.yml"><img src="https://github.com/kodjunkie/nestjs-crud/actions/workflows/tests.yml/badge.svg" alt="CI" /></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License: MIT" /></a>
+</p>
 
 <br />
 
-<div align="center">
-
-[![npm version](https://img.shields.io/npm/v/@nestjs-crud/core.svg)](https://www.npmjs.com/package/@nestjs-crud/core)
-[![CI](https://github.com/kodjunkie/nestjs-crud/actions/workflows/tests.yml/badge.svg)](https://github.com/kodjunkie/nestjs-crud/actions/workflows/tests.yml)
-[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-
-</div>
-
-<br />
-
-> This project is a fork of [`@nestjsx/crud`](https://github.com/nestjsx/crud) at upstream version `5.0.0-alpha.3`. See [`NOTICE.md`](NOTICE.md) for attribution and fork history.
-
-Works with **TypeORM**, **Drizzle**, and **MikroORM**.
-
-## Branches
-
-- **[`v1.0.2`](https://github.com/kodjunkie/nestjs-crud/tree/v1.0.2)** — current stable patch release (security + correctness fixes, 100% non-breaking from `v1.0.1`). Browse this branch for what's shipping now.
-- **`master`** — `v2.0.0` development (architectural cleanup, breaking changes). Follow this branch to track upcoming work.
-- **Tagged releases** (`v1.0.1` and earlier) remain accessible as Git tags.
-
-Released packages on npm always reflect the latest stable tag.
+Generate eight RESTful endpoints for any NestJS controller — list, paginate, filter, sort, join, nested-join, soft-delete, recover — without writing the handlers.
 
 ## Features
 
-<img align="right" src="img/crud-usage.png" alt="CRUD usage" width="400" />
+<img align="right" src="img/crud-usage.png" alt="A NestJS service and controller using @Crud()" width="380" />
 
-- :electric_plug: Full-featured controllers and services, ready to use
-- :octopus: DB- and service-agnostic, extendable CRUD controllers
-- :mag_right: Rich query parsing — filters, pagination, sorting, relations, nested relations, cache
-- :telescope: Framework-agnostic query builder for frontend use
-- :space_invader: Query, path params, and DTO validation included
-- :clapper: Override any generated controller method with ease
-- :wrench: Tiny config (per-controller or global)
-- :gift: Additional helper decorators
-- :pencil2: Swagger documentation (optional peer)
+- Full-featured CRUD controllers and services, ready to use
+- DB- and service-agnostic — extendable base classes per adapter
+- Rich query parsing — filters, pagination, sorting, relations, nested relations, cache
+- Framework-agnostic query builder for the frontend
+- Body, query, and path-param validation built in
+- Override any generated handler with `@Override()`
+- Tiny config — per-controller or global defaults
+- Swagger documentation auto-wired (optional peer)
 
-## Packages
+## Quick start
 
-- [**@nestjs-crud/core**](https://www.npmjs.com/package/@nestjs-crud/core) — `@Crud()` decorator, global configuration, validation, helper decorators ([docs](https://github.com/kodjunkie/nestjs-crud/wiki/Controllers#description))
-- [**@nestjs-crud/request**](https://www.npmjs.com/package/@nestjs-crud/request) — `RequestQueryBuilder` for frontend use and `RequestQueryParser` for backend query/path param handling ([docs](https://github.com/kodjunkie/nestjs-crud/wiki/Requests#frontend-usage))
-- [**@nestjs-crud/typeorm**](https://www.npmjs.com/package/@nestjs-crud/typeorm) — TypeORM adapter: base `TypeOrmCrudService` with CRUD database operations ([docs](https://github.com/kodjunkie/nestjs-crud/wiki/ServiceTypeorm))
-- [**@nestjs-crud/drizzle**](https://www.npmjs.com/package/@nestjs-crud/drizzle) — Drizzle ORM adapter: base `DrizzleCrudService` with CRUD database operations ([docs](https://github.com/kodjunkie/nestjs-crud/wiki/ServiceDrizzle))
-- [**@nestjs-crud/mikro-orm**](https://www.npmjs.com/package/@nestjs-crud/mikro-orm) — MikroORM adapter: base `MikroOrmCrudService` with CRUD database operations ([docs](https://github.com/kodjunkie/nestjs-crud/wiki/ServiceMikroOrm))
+```bash
+npm install @nestjs-crud/core @nestjs-crud/typeorm
+```
+
+```ts
+@Crud({
+  model: { type: User },
+  query: { limit: 25, maxLimit: 100, join: { profile: { eager: true } } },
+})
+@Controller('users')
+export class UsersController {
+  constructor(public service: UsersService) {}
+}
+```
+
+You get `GET /users`, `GET /users/:id`, `POST /users`, `POST /users/bulk`, `PATCH /users/:id`, `PUT /users/:id`, `DELETE /users/:id`, `POST /users/:id/recover` — with rich query parsing, pagination, validation, and Swagger.
+
+## Adapters
+
+| Adapter | Package |
+| ------- | ------- |
+| TypeORM | [`@nestjs-crud/typeorm`](https://www.npmjs.com/package/@nestjs-crud/typeorm) |
+| Drizzle | [`@nestjs-crud/drizzle`](https://www.npmjs.com/package/@nestjs-crud/drizzle) |
+| MikroORM | [`@nestjs-crud/mikro-orm`](https://www.npmjs.com/package/@nestjs-crud/mikro-orm) |
+| Prisma | [`@nestjs-crud/prisma`](https://www.npmjs.com/package/@nestjs-crud/prisma) |
+
+Plus [`@nestjs-crud/core`](https://www.npmjs.com/package/@nestjs-crud/core) (decorator + framework) and [`@nestjs-crud/request`](https://www.npmjs.com/package/@nestjs-crud/request) (frontend query builder).
 
 ## Documentation
 
-- :dart: [General Information](https://github.com/kodjunkie/nestjs-crud/wiki#why)
-- :video_game: [CRUD Controllers](https://github.com/kodjunkie/nestjs-crud/wiki/Controllers#description)
-- :horse_racing: [CRUD ORM Services](https://github.com/kodjunkie/nestjs-crud/wiki/Services#description)
-- :trumpet: [Handling Requests](https://github.com/kodjunkie/nestjs-crud/wiki/Requests#description)
+Full docs live on the [**Wiki**](https://github.com/kodjunkie/nestjs-crud/wiki) — controllers, services, request shape, per-adapter setup, migration guides.
 
-## Credits
+## License & Credits
 
-Built on the work of [Michael Yali](https://twitter.com/MichaelYali) and the [`@nestjsx/crud` contributors](https://github.com/nestjsx/crud/graphs/contributors). See [`NOTICE.md`](NOTICE.md) for the full fork history and attribution.
-
-## License
-
-[MIT](LICENSE) — carries both the upstream author's 2018-Present copyright and the fork maintainer's 2026-Present copyright. Both notices must be preserved in any further fork.
+[MIT](LICENSE). Fork of [`@nestjsx/crud`](https://github.com/nestjsx/crud) at `5.0.0-alpha.3`. See [`NOTICE.md`](NOTICE.md) for full attribution.

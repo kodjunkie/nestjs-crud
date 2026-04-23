@@ -1,6 +1,6 @@
 ---
 name: nestjs-crud
-description: Use when integrating @nestjs-crud into a NestJS project — setting up CRUD controllers, configuring query filters and pagination, scoping requests with @CrudAuth, overriding generated endpoints, troubleshooting relations, validation, Swagger, or debugging symptoms like `getManyBase returned a flat array`, `@CrudAuth filter not applying`, `validation always fails on update`, `maxLimit exceeded`, `repo.createQueryBuilder is not a function` after installing the adapter package, or `@deprecated` warnings on `DrizzleCrudService.db` / `ParamOption.enum`.
+description: Use when integrating @nestjs-crud v1.0.x into a NestJS project — setting up CRUD controllers, configuring query filters and pagination, scoping requests with @CrudAuth, overriding generated endpoints, troubleshooting relations, validation, Swagger, debugging symptoms like `getManyBase returned a flat array`, `@CrudAuth filter not applying` (or filter applies wrong rows due to silently-ignored persist-key typos), `validation always fails on update`, `maxLimit exceeded`, `repo.createQueryBuilder is not a function` after installing the adapter package, MikroORM stale entity returned across requests, `@Crud({ query: { cache } })` silently doing nothing on Drizzle/MikroORM. Use the `nestjs-crud-v2` skill for v2.x; use the `nestjs-crud-migration` skill to upgrade from v1 to v2.
 ---
 
 # @nestjs-crud
@@ -25,7 +25,7 @@ npm install @nestjs-crud/request
 - `@nestjs-crud/drizzle` ALSO needs: `drizzle-orm` (≥ 0.36.0), `@nestjs/common`
 - `@nestjs-crud/mikro-orm` ALSO needs: `@mikro-orm/core` (≥ 6.0.0), `@mikro-orm/knex` (≥ 6.0.0), `@nestjs/common`
 
-**Heads-up (v1.0.2):** `@nestjs-crud/typeorm`'s `package.json` does NOT declare these as peerDependencies yet, so `npm install` will NOT warn you if you forget them. If you see `TypeError: repo.createQueryBuilder is not a function` at runtime or `Cannot find module 'typeorm'`, install the peers explicitly. This is scheduled to be fixed in v2.
+**Heads-up (v1.0.2):** `@nestjs-crud/typeorm`'s `package.json` does NOT declare these as peerDependencies, so `npm install` will NOT warn you if you forget them. If you see `TypeError: repo.createQueryBuilder is not a function` at runtime or `Cannot find module 'typeorm'`, install the peers explicitly. Fixed in v2 (every adapter declares full peers).
 
 Swagger is optional — install `@nestjs/swagger` and decoration auto-generates. If `@nestjs/swagger` is absent, the library silently skips Swagger setup (via internal `safeRequire`).
 
@@ -200,7 +200,7 @@ fetch(`/users?${qb.query()}`);
   query: {
     limit: 25,                       // default page size
     maxLimit: 100,                   // hard cap
-    cache: 2000,                     // ms (TypeORM only)
+    cache: 2000,                     // ms — TypeORM only; Drizzle/MikroORM silently no-op the option
     alwaysPaginate: false,           // force pagination
     softDelete: false,               // enables `recoverOneBase` + hides soft-deleted rows from reads
     join: {
@@ -347,7 +347,7 @@ With `dto`, the controller validates the incoming body against the DTO class —
 
 Install `@nestjs/swagger` — documentation auto-generates. No extra configuration. If not installed, the library silently skips Swagger decoration (via `safeRequire` internally).
 
-**Note:** `ParamOption.enum` in `@nestjs-crud/core` is marked `@deprecated` in v1.0.2 — the internal Swagger type it references will change in v2. Your code using `enum` continues to work; you'll just see a deprecation warning in your IDE.
+**v2 heads-up:** `ParamOption.enum` references the internal `SwaggerEnumType` import from `@nestjs/swagger/dist/types/swagger-enum.type`. v2 inlines this type — if you import the same internal path directly, that import breaks in v2 (one-line swap). Your `enum: [...]` usage continues to work in v2 unchanged. (No `@deprecated` IDE warning ships in v1.0.2 source despite earlier release notes — the annotation pass was deferred.)
 
 ## Best Practices
 
@@ -425,8 +425,25 @@ Or set it globally once via `CrudConfigService.load({ query: { alwaysPaginate: t
 
 **Swagger routes documented but metadata missing / empty:** `@nestjs/swagger` not installed as a peer. The library's `safeRequire` silently skips Swagger setup when the peer is absent. Install `@nestjs/swagger` and restart.
 
-**`@deprecated` IDE warnings on `DrizzleCrudService.db` or `ParamOption.enum`:** Expected in v1.0.2 — these surfaces change in v2. No action needed; code continues to work.
+**`@CrudAuth` filter applies but persisted writes have wrong values (or are missing):** v1 silently ignores typos in `@CrudAuth({ persist: { user_id: ... } })` when the entity column is `userId`. The auth-filter side often appears to work, but `persist` quietly drops the unrecognized key — auth-filter bypass on writes. **Audit every `@CrudAuth({ persist: {...} })` block by hand against entity column names**; v1 won't catch typos at runtime. v2 does (throws `RequestQueryException`).
 
-## Planning a v2 Upgrade?
+**MikroORM: stale entity returned across requests, or `em.flush()` doesn't persist:** Subclass cached `em` at constructor time, breaking per-request identity-map isolation. Don't store `em` as a field — resolve it fresh inside every method (`this.em.fork()` or per your DI setup). Same gotcha applies in v2 (where it's structurally enforced via a `getEm` thunk).
 
-v2 is a coordinated breaking release currently in development on the `dev` branch — not yet published. If you're evaluating the upgrade path, see the `nestjs-crud-migration` skill for the full change list (allowlist validation, deleted service internals, new `QueryTranslator<Q, W>` contract, MikroORM `getEm` thunk, etc.). Until v2 publishes, pin to `^1.0.2` and stay on the patterns documented here.
+**`@Crud({ query: { cache: 5000 } })` does nothing on Drizzle/MikroORM:** Only the TypeORM adapter honors the `cache` option. Drizzle and MikroORM silently no-op it. Use each ORM's native caching primitive at the application layer instead. (v2 fail-fasts on TypeORM when the `DataSource` cache provider is missing; Drizzle/MikroORM behavior unchanged.)
+
+## Staying on v1 vs. Upgrading to v2
+
+**To stay on v1:** pin `^1.0.2` in your `package.json`:
+
+```json
+{
+  "dependencies": {
+    "@nestjs-crud/core": "^1.0.2",
+    "@nestjs-crud/typeorm": "^1.0.2"
+  }
+}
+```
+
+`npm update` continues to track the v1.0.x line. The v1.0.x line continues to receive bugfix patches.
+
+**To upgrade to v2:** v2 is a coordinated breaking release. See the `nestjs-crud-migration` skill for the full change list (strict allowlist validation, deleted service internals, new `QueryTranslator<Q, W>` contract, MikroORM `getEm` thunk, write-path transaction wrap, Prisma adapter, etc.). For v2-specific surfaces (Prisma adapter, split-query opt-in, fail-fast cache), see the `nestjs-crud-v2` skill.

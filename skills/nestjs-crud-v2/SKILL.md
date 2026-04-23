@@ -1,6 +1,6 @@
 ---
 name: nestjs-crud-v2
-description: Use when integrating `@nestjs-crud/*` v2.x into a NestJS project — setting up the Prisma adapter (`@nestjs-crud/prisma`), wiring the optional `logger?: LoggerService` on adapter ctors, debugging v2-specific symptoms like `RequestQueryException: Invalid persist key`, `EBADENGINE: Unsupported engine` (Node <22), Prisma `Unknown argument 'where'` inside include, unexpected savepoint semantics on `@Override()`-wrapped updateOne/replaceOne/deleteOne, or understanding SEC-03 transaction behavior. For patterns unchanged from v1 (decorator options, `@Crud()` surface, `@Override`, DTOs, `CrudConfigService`, `@CrudAuth` shape, query builder), see the `nestjs-crud` skill. For upgrading from v1.0.x, see the `nestjs-crud-migration` skill.
+description: Use when integrating `@nestjs-crud/*` v2.x into a NestJS project — setting up the Prisma adapter (`@nestjs-crud/prisma`), opting into TypeORM split-query relation loading (`relationLoadStrategy: 'query'`), wiring optional loggers, debugging v2-specific symptoms like `RequestQueryException: Invalid persist key`, `RequestQueryException: Invalid field 'X'` (the new strict allowlist), `CrudCacheNotConfiguredError`, `EBADENGINE: Unsupported engine` (Node <22), Prisma `Unknown argument 'where'` inside include, unexpected savepoint semantics on `@Override()`-wrapped updateOne/replaceOne/deleteOne, or understanding transaction-wrapped write-path behavior. For patterns unchanged from v1 (decorator options, `@Crud()` surface, `@Override`, DTOs, `CrudConfigService`, `@CrudAuth` shape, query builder), see the `nestjs-crud` skill. For upgrading from v1.0.x, see the `nestjs-crud-migration` skill.
 ---
 
 # @nestjs-crud v2.x
@@ -15,11 +15,14 @@ Covers behaviors and surfaces that changed or were added in v2. Unchanged patter
 | Area | Change | Section |
 |---|---|---|
 | New adapter | `@nestjs-crud/prisma` (Prisma 5+) | §Prisma Adapter |
-| Node version | `engines.node: ">=22.0.0"` on all 6 packages | §Install |
-| peerDependencies | Declared on every package (v1 typeorm had none) | §Install |
-| Optional logger | `logger?: LoggerService` as last positional ctor arg | §Optional Logger |
-| `@CrudAuth` persist | Runtime validation — typos throw `RequestQueryException` | §SEC-02 Runtime Validation |
-| Write-path transactions | `updateOne`/`replaceOne`/`deleteOne` wrap at READ COMMITTED | §SEC-03 Transaction Semantics |
+| Node version | `engines.node: ">=22.0.0"` on all 7 packages | §Install |
+| peerDependencies | Declared on every package; v2 ranges support both Nest 10 and 11 | §Install |
+| Strict field allowlist | Unknown sort/filter/search fields throw `RequestQueryException` (was: silent skip) | §Strict Field Allowlist |
+| TypeORM split-query opt-in | `@Crud({ query: { relationLoadStrategy: 'query' \| 'join' } })` | §Split-Query Relation Loading |
+| Cache fail-fast | `CrudCacheNotConfiguredError` when `@Crud cache` set without provider | §Cache Fail-Fast |
+| Optional logger | All 4 adapters accept a logger; **Prisma's surface differs** | §Optional Logger |
+| `@CrudAuth` persist | Runtime validation — typos throw `RequestQueryException` | §Auth Persist Runtime Validation |
+| Write-path transactions | `updateOne`/`replaceOne`/`deleteOne` wrap at READ COMMITTED | §Transaction Semantics |
 | Drizzle `db` field | `protected db: DrizzleClient` (was `any`) | §Typed Signatures |
 | MikroORM method signatures | `any` → typed generics on public surface | §Typed Signatures |
 
@@ -37,22 +40,38 @@ npm install -D prisma
 ```
 
 **Peers** (declared in v2 — `npm install` warns if missing):
-- `@nestjs-crud/core`: `class-validator`, `class-transformer`, `@nestjs/common`
-- `@nestjs-crud/typeorm`: `typeorm ^0.3`, `@nestjs/typeorm`, `@nestjs-crud/core ^2.0`, `@nestjs/common`
-- `@nestjs-crud/drizzle`: `drizzle-orm >=0.40`, `@nestjs-crud/core ^2.0`, `@nestjs/common`
-- `@nestjs-crud/mikro-orm`: `@mikro-orm/core >=7.0`, `@mikro-orm/knex >=6.0`, `@nestjs-crud/{core,request,util}`, `@nestjs/common`
-- `@nestjs-crud/prisma`: `@prisma/client >=5.0`, `@nestjs-crud/core ^2.0`, `@nestjs/common`
+
+- `@nestjs-crud/core`: `class-validator`, `class-transformer`, `@nestjs/common ^10.0.0 || ^11.0.0`
+- `@nestjs-crud/typeorm`: `typeorm ^0.3`, `@nestjs/typeorm`, `@nestjs-crud/core ^2.0`, `@nestjs/common ^10.0.0 || ^11.0.0`
+- `@nestjs-crud/drizzle`: `drizzle-orm >=0.45.2`, `@nestjs-crud/core ^2.0`, `@nestjs/common ^10.0.0 || ^11.0.0`
+- `@nestjs-crud/mikro-orm`: `@mikro-orm/core ^7.0.0`, `@mikro-orm/knex ^7.0.0`, `@nestjs-crud/{core,request,util} ^2.0`, `@nestjs/common ^10.0.0 || ^11.0.0`
+- `@nestjs-crud/prisma`: `@prisma/client >=5.0`, `@nestjs-crud/core ^2.0`, `@nestjs/common ^10.0.0 || ^11.0.0`
 
 **Runtime:** Node 22+ required. `npm install` refuses on older Node (`EBADENGINE`).
 
-⚠ **Known peer-range bug (backlog 999.4):** v2's current peers declare `@nestjs/common: ^10.0.0` but the repo's own devDeps use v11. If your app is on NestJS 11, you'll see a non-blocking peer warning — runtime works fine. Scheduled to be corrected to `^11.0.0` before v2.0.0 GA.
+## Strict Field Allowlist
+
+**Every v2 consumer hits this.** In v1, unknown fields in `?sort=`, `?search=`, or `?filter=` were silently skipped. In v2, they throw `RequestQueryException` (mapped to `400 Bad Request` by `CrudRequestInterceptor`).
+
+**Audit before upgrading:** every field passed in `?sort=`/`?search=`/`?filter=` MUST be either:
+1. A column in `entityColumnsHash` (real entity column), OR
+2. A relation explicitly listed in `@Crud({ query: { join: { ... } } })`, in which case dotted paths like `profile.name` work.
+
+**Common breakages:**
+- TypeORM `@VirtualColumn` and `@Formula` columns — not in `entityColumnsHash` by default; whitelist via `@Crud({ query: { allow: [...] } })`.
+- Client-side aliases for joined-subquery results.
+- Dotted paths like `profile.name` when `profile` isn't in the controller's `join=` allowlist.
+
+```
+RequestQueryException: Invalid field 'foo' for entity 'User'
+```
 
 ## Prisma Adapter
 
 New in v2. Same facade + 8 CrudService methods as the other adapters; integrates via `PrismaClient` instance.
 
 ```typescript
-// user.service.ts
+// users.service.ts
 import { Injectable } from '@nestjs/common';
 import { PrismaCrudService } from '@nestjs-crud/prisma';
 import { PrismaClient } from '@prisma/client';
@@ -64,10 +83,14 @@ export class UsersService extends PrismaCrudService<User> {
       entityColumns: ['id', 'email', 'isActive', 'companyId', 'deletedAt'],
       primaryColumns: ['id'],
       softDeleteColumn: 'deletedAt',
+      // Optional logger lives INSIDE serviceConfig (not a separate ctor arg):
+      // logger: { error: console.error, warn: console.warn, debug: console.debug },
     });
   }
 }
 ```
+
+The 3rd argument is a `PrismaCrudServiceConfig` object. The Prisma adapter's ctor signature differs from TypeORM/Drizzle/MikroORM (which take logger as a separate positional argument). See §Optional Logger for the full asymmetry.
 
 Controller + `@Crud()` decorator are identical to other adapters (see `nestjs-crud` skill).
 
@@ -82,9 +105,65 @@ Controller + `@Crud()` decorator are identical to other adapters (see `nestjs-cr
 | **`$inL`/`$notinL` translate to native Prisma `in`/`notIn`** — no OR/AND expansion. Performant at 5000+ id scale. |
 | **Schema.prisma required** as ORM source of truth (Prisma can't consume plain TS entity types). Shape it by hand to mirror your domain; run `npx prisma generate` before tests/builds. |
 
+## Split-Query Relation Loading (TypeORM only)
+
+Opt into TypeORM's native split-query strategy for deep multi-relation reads, where a single SQL JOIN would inflate parent rows by the cross-product of child counts:
+
+```typescript
+@Crud({
+  model: { type: User },
+  query: {
+    join: { company: { eager: false }, 'company.projects': { eager: false } },
+    relationLoadStrategy: 'query',  // default: 'join' (manual leftJoin/innerJoin)
+  },
+})
+@Controller('users')
+export class UsersController { /* ... */ }
+```
+
+| Strategy | What happens | When to pick |
+|---|---|---|
+| `'join'` (default) | Manual `leftJoin`/`innerJoin` via `JoinResolver`. Single SQL query. Today's behavior. | Shallow joins, small fan-out, OR you depend on `JoinOption.allow` to constrain relation columns (see footgun below). |
+| `'query'` | TypeORM emits separate queries per relation via `setFindOptions({ relationLoadStrategy: 'query' })`. | Deep multi-relation reads where the JOIN multiplies parent rows by the cross-product of child counts. Trades 1+N round-trips for linear-row payload. |
+
+**N+1 isn't always worse than one big JOIN** — when relations fan out (1→many→many), the JOIN multiplies parent rows by the cross-product of child counts, inflating bytes-on-the-wire and hurting pagination. Split queries trade per-request round-trips for linear-row payload. Pick by query shape, not by reflex.
+
+### ⚠ Footgun: `JoinOption.allow` is ignored under `'query'`
+
+Under the default `'join'` strategy, `JoinOption.allow: ['name', 'domain']` constrains which relation columns are returned. Under `'query'`, TypeORM's `setFindOptions({ relations: { company: true } })` loads **all columns** of the relation regardless. Verified by integration testing: a `company` relation declared `allow: ['name', 'domain']` returned `['createdAt', 'deletedAt', 'description', 'domain', 'id', 'name', 'updatedAt']` under `'query'` vs the expected 3 columns under `'join'`.
+
+**Implication:** if you use `JoinOption.allow` to hide sensitive relation columns from API responses, do NOT opt into `'query'` strategy on those controllers, or audit every relation explicitly.
+
+**Other adapters** (Drizzle, MikroORM, Prisma) use split queries natively — this opt-in is TypeORM-only and a no-op elsewhere.
+
+## Cache Fail-Fast
+
+If you set `@Crud({ query: { cache: 5000 } })` but forget to configure `DataSource({ cache: ... })`, v2 throws a typed error at the first cached query rather than silently no-op'ing:
+
+```
+CrudCacheNotConfiguredError: @Crud cache option requires a DataSource cache provider.
+Configure DataSource({ cache: { type: 'redis', ... } }) or remove the cache option from
+your @Crud() configuration.
+```
+
+The error is exported from `@nestjs-crud/core`:
+
+```typescript
+import { CrudCacheNotConfiguredError } from '@nestjs-crud/core';
+// extends Error, NOT @nestjs/common HttpException — surfaces as a config bug, not a 500
+```
+
+**Fix:** either configure `DataSource({ cache: { type: 'redis' | 'database' | true, ... } })` or remove the `cache` field from your `@Crud()` decorator.
+
+**Adapter coverage:** TypeORM only honors `@Crud({ query: { cache } })`. Drizzle, MikroORM, and Prisma do not currently honor this option — use each ORM's native caching primitives at the application layer for now.
+
 ## Optional Logger
 
-All 4 adapter services accept `logger?: LoggerService` as the last positional ctor argument. Default: `new Logger(this.constructor.name)` when omitted.
+All 4 adapter services accept a logger, but the surface differs between Prisma and the other 3.
+
+### TypeORM, Drizzle, MikroORM
+
+`logger?: LoggerService` as the last positional ctor argument. Default: `new Logger(<ServiceName>)` when omitted.
 
 ```typescript
 @Injectable()
@@ -93,19 +172,39 @@ export class UsersService extends TypeOrmCrudService<User> {
     @InjectRepository(User) repo: Repository<User>,
     @Inject(Logger) logger: LoggerService,   // optional
   ) {
-    super(repo, logger);                      // pass-through
+    super(repo, logger);                      // pass-through; defaults to new Logger if omitted
   }
 }
 ```
 
-**Emission policy** (adapter-internal — consumers just inject the logger):
+### Prisma (different shape)
+
+The logger lives inside the `serviceConfig` object as a structural shape `{ error, warn?, debug? }`, **not** a separate ctor arg. Default when omitted: **silent no-op** (the adapter optional-chains every log call).
+
+```typescript
+constructor(prisma: PrismaClient) {
+  super(prisma, 'user', {
+    entityColumns: [...],
+    primaryColumns: [...],
+    softDeleteColumn: 'deletedAt',
+    logger: { error: console.error, warn: console.warn, debug: console.debug },
+    // OR pass a NestJS Logger (it satisfies the {error, warn?, debug?} shape):
+    // logger: new Logger('UsersService'),
+  });
+}
+```
+
+If you want Prisma to behave like the other 3 adapters (auto-instantiate a Logger on omission), pass `new Logger(...)` explicitly via `serviceConfig.logger` until the asymmetry is harmonized in a future release.
+
+### Emission policy (all adapters)
+
 - `debug` — query-build tracing (off by default in production NestJS logger config)
-- `warn` — SQLi rejections, SEC-03 rollbacks
+- `warn` — SQLi rejections, transaction rollbacks
 - `error` — uncaught DB errors; message uses `err.name` (never `err.message`, since DB drivers leak SQL parameters there); stack passed as second arg per `LoggerService` signature
 
 `@internal` pieces (`WhereBuilder`, `QueryComposer`, `FetchHelper`) do NOT receive logger — stay pure.
 
-## SEC-02 Runtime Validation (`@CrudAuth`)
+## Auth Persist Runtime Validation
 
 In v1, typos in `@CrudAuth({ persist: { user_id: ... } })` (entity column: `userId`) were silently ignored — auth-filter bypass.
 
@@ -117,7 +216,7 @@ RequestQueryException: Invalid persist key 'user_id' — not in entityColumnsHas
 
 **Action:** audit every `@CrudAuth({ persist: { ... } })` block against your entity column names. Typos now fail fast.
 
-## SEC-03 Transaction Semantics (Write Overrides)
+## Transaction Semantics (Write Overrides)
 
 `updateOne`, `replaceOne`, `deleteOne` on all 4 adapters wrap their read-modify-write bodies in a transaction at **READ COMMITTED**. Closes a lost-update race window. Consumer-visible semantics unchanged for standard flows.
 
@@ -172,17 +271,32 @@ Standard consumer code (just extending a service and wiring it to NestJS DI) is 
 | Symptom | Cause | Fix |
 |---|---|---|
 | `EBADENGINE: Unsupported engine` on `npm install` | Node <22 | Upgrade to Node 22+ or pin to `^1.0.2` |
-| `RequestQueryException: Invalid persist key 'X'` → 400 Bad Request | SEC-02 — `@CrudAuth({ persist: { ... } })` has a typo | Fix the key name to match the entity column exactly |
+| `RequestQueryException: Invalid field 'X'` → 400 Bad Request | Strict field allowlist — `?sort=`/`?search=`/`?filter=` references a field not in `entityColumnsHash` and not in an explicit `join=` relation | Add the field to entity columns, whitelist via `@Crud({ query: { allow: [...] } })`, or join the relation. See §Strict Field Allowlist |
+| `RequestQueryException: Invalid persist key 'X'` → 400 Bad Request | `@CrudAuth({ persist: { ... } })` has a typo | Fix the key name to match the entity column exactly |
+| `CrudCacheNotConfiguredError` thrown on first cached read | `@Crud({ query: { cache } })` set but `DataSource({ cache: ... })` not configured | Configure DataSource cache provider OR remove `@Crud cache` option. See §Cache Fail-Fast |
+| `@Crud({ query: { cache } })` silently does nothing on Drizzle/MikroORM/Prisma | Adapter doesn't honor the option — only TypeORM does | Use the ORM's native caching at the application layer; or move the cached read to a TypeORM-backed controller |
+| Relation columns under `'query'` strategy include columns NOT in `JoinOption.allow` | Documented divergence — `setFindOptions` doesn't expose alias-level select control | Either keep `'join'` strategy on those controllers, or explicitly audit which columns ship for each relation. See §Split-Query Relation Loading footgun |
+| Prisma logger silently does nothing | Prisma's `serviceConfig.logger` defaults to no-op when omitted (asymmetry vs other adapters) | Pass `new Logger(...)` explicitly via `serviceConfig.logger`. See §Optional Logger |
 | Prisma: `Unknown argument 'where'` on `include: { company: { where: {...} } }` | Prisma rejects `where` inside `include` for to-one relations | Filter at parent `where`: `{ where: { company: { ... } } }`. Use filtered `include` only for to-many |
 | Prisma: deep includes feel slow / emit N+1-looking query logs | Default query decomposition — N queries where N = relation depth + 1 | Opt into Prisma's `relationJoins` preview feature on your own `PrismaClient`. Not forced by library |
 | Prisma: `createMany` returns fewer fields than other adapters | Fixed in v2 — uses `$transaction([create, ...])` for full-record parity | No action — verify you're on v2 |
-| Unexpected savepoint semantics or rollback cascading when your `@Override()` wraps updateOne in an outer tx | SEC-03 inner tx is now a savepoint | Intentional; decide whether outer-tx nesting is what you want (§SEC-03 Nesting) |
+| Unexpected savepoint semantics or rollback cascading when your `@Override()` wraps updateOne in an outer tx | Inner tx is now a savepoint | Intentional; decide whether outer-tx nesting is what you want (§Transaction Semantics — Nesting) |
 | MikroORM: `SyntaxError: Unexpected token 'export'` / `import.meta outside a module` | Running MikroORM specs without the ESM preset | Use `yarn test:mikro-orm` (has `NODE_OPTIONS=--experimental-vm-modules` inline) |
 | MikroORM: stale entity from previous request | Subclass cached `em` at ctor time | Replace captured `em` field with `this.getEm()` call inside every method |
-| npm install warning: `@nestjs/common@^10.0.0 but found ^11.x` | Known bug 999.4 | Non-blocking. Runtime works. Correction to `^11.0.0` scheduled before v2.0.0 GA |
 
 ## Still on v1.0.x?
 
-Pin to `^1.0.2` and use the `nestjs-crud` skill for general setup. The v1.0.x line continues to receive bugfix patches on the `v1.0.2` branch.
+Pin to `^1.0.2` in your package.json:
+
+```json
+{
+  "dependencies": {
+    "@nestjs-crud/core": "^1.0.2",
+    "@nestjs-crud/typeorm": "^1.0.2"
+  }
+}
+```
+
+`npm update` will continue to track the v1.0.x line. The v1.0.x line continues to receive bugfix patches on the `v1.0.2` branch.
 
 To upgrade: read the `nestjs-crud-migration` skill for the complete change list, pre-upgrade audit greps, and error-to-fix mapping.
