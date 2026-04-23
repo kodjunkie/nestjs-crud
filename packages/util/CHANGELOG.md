@@ -10,7 +10,7 @@ Coordinated v2.0.0 milestone release. No package-specific source changes — bum
 
 ### Internal
 
-* **engines:** Node `>=22.0.0` enforced (BUILD-01).
+* **engines:** Node `>=22.0.0` enforced.
 
 
 ## [1.0.2](https://github.com/kodjunkie/nestjs-crud/compare/v1.0.1...v1.0.2) (2026-04-20)

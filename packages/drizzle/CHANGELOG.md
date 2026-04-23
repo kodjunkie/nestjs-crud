@@ -10,24 +10,24 @@ Coordinated v2.0.0 milestone release. See the [root CHANGELOG.md](../../CHANGELO
 
 ### Breaking
 
-* **TYPES-01:** `DrizzleCrudService` constructor `db: any` → `db: DrizzleClient`. Subclasses must update.
-* **ARCH-03:** Strict field allowlist on `?sort=`, `?filter=`, `?search=` — unknown fields now throw `RequestQueryException`.
+* **types:** `DrizzleCrudService` constructor `db: any` → `db: DrizzleClient`. Subclasses must update.
+* **query:** Strict field allowlist on `?sort=`, `?filter=`, `?search=` — unknown fields now throw `RequestQueryException`.
 
 
 ### Features
 
-* **ARCH-01..05:** Service decomposed (-214 lines, -35.8%). Composes `WhereBuilder` + `QueryComposer` + `FetchHelper` under shared `QueryTranslator` facade.
-* **OBS-01:** Optional `LoggerService` ctor parameter.
+* **query:** Service decomposed (-214 lines, -35.8%). Composes `WhereBuilder` + `QueryComposer` + `FetchHelper` under shared `QueryTranslator` facade.
+* **logging:** Optional `LoggerService` ctor parameter.
 
 
 ### Security
 
-* **SEC-03:** Mutation methods now run inside `READ COMMITTED` transactions.
+* **mutations:** Mutation methods now run inside `READ COMMITTED` transactions.
 
 
 ### Internal
 
-* **engines:** Node `>=22.0.0` enforced (BUILD-01).
+* **engines:** Node `>=22.0.0` enforced.
 
 
 ## [1.0.2](https://github.com/kodjunkie/nestjs-crud/compare/v1.0.1...v1.0.2) (2026-04-20)

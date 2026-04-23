@@ -12,17 +12,17 @@ See the [root CHANGELOG.md](../../CHANGELOG.md#200--2026-04-23), the [ServicePri
 
 ### Features
 
-* **ADAPTER-01:** `PrismaCrudService<T>` — translates parsed CRUD requests into Prisma client operations.
-* **ARCH-01..05:** Composes `WhereBuilder` + `QueryComposer` + `FetchHelper` under shared `QueryTranslator` facade (same shape as the other adapters).
-* **OBS-01:** Optional `LoggerService` ctor parameter.
+* **adapter:** `PrismaCrudService<T>` — translates parsed CRUD requests into Prisma client operations.
+* **query:** Composes `WhereBuilder` + `QueryComposer` + `FetchHelper` under shared `QueryTranslator` facade (same shape as the other adapters).
+* **logging:** Optional `LoggerService` ctor parameter.
 
 
 ### Security
 
-* **SEC-03:** Mutation methods (`updateOne`/`replaceOne`/`deleteOne`) run inside `READ COMMITTED` transactions.
+* **mutations:** Mutation methods (`updateOne`/`replaceOne`/`deleteOne`) run inside `READ COMMITTED` transactions.
 
 
 ### Internal
 
-* **engines:** Node `>=22.0.0` enforced (BUILD-01).
-* Real-DB integration tests cover Postgres + MySQL (CI-02 / PARITY-03).
+* **engines:** Node `>=22.0.0` enforced.
+* Real-DB integration tests cover Postgres + MySQL.
