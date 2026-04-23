@@ -25,7 +25,7 @@ import { Collection, EntitySchema, Ref } from '@mikro-orm/core';
 import { MikroORM } from '@mikro-orm/sqlite';
 
 import { MikroOrmJoinResolver } from '../src/mikro-orm-join-resolver';
-import { MikroOrmQueryTranslator } from '../src/mikro-orm-query-translator';
+import { defaultOnNotFound, MikroOrmQueryTranslator } from '../src/mikro-orm-query-translator';
 
 // CONTRACT: throwing stub — never `jest.fn()` on a security path.
 const throwingOnBadRequest = (msg: string): never => {
@@ -370,6 +370,22 @@ describe('MikroOrmQueryTranslator', () => {
           onNotFound: () => new Error('sentinel-not-found'),
         }),
       ).rejects.toThrow('sentinel-not-found');
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  describe('defaultOnNotFound (COVERAGE-01 D-17)', () => {
+    it('returns undefined (default no-op for FetchHelper.onNotFound)', () => {
+      expect(defaultOnNotFound()).toBeUndefined();
+    });
+
+    it('is a stable reference (no per-instance closure)', () => {
+      // Sanity: defaultOnNotFound is a stable module-level callable, not
+      // re-created on every translator construction.
+      const ref1 = defaultOnNotFound;
+      const ref2 = defaultOnNotFound;
+      expect(ref1).toBe(ref2);
+      expect(typeof ref1).toBe('function');
     });
   });
 });

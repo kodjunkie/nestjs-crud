@@ -9,6 +9,17 @@ import { MikroOrmQueryComposer } from './query/mikro-orm-query-composer';
 import { MikroOrmWhereBuilder } from './query/mikro-orm-where-builder';
 
 /**
+ * Default no-op `onNotFound` thunk wired into `MikroOrmFetchHelper`.
+ *
+ * Hoisted to module scope (COVERAGE-01 D-17 sweep, Phase 10 Plan 07) so
+ * the previously inline arrow can be unit-tested directly — replaces a
+ * coverage pragma that previously sat on the constructor wiring. Mirrors
+ * the same hoist applied to TypeORM (Plan 05) and Drizzle (Plan 06)
+ * translators; same name preserved for cross-adapter symmetry.
+ */
+export const defaultOnNotFound = (): undefined => undefined;
+
+/**
  * Facade translator composing 3 internal pieces (`MikroOrmWhereBuilder`,
  * `MikroOrmQueryComposer`, `MikroOrmFetchHelper`) behind the stable
  * `QueryTranslator<QueryBuilder<T>, FilterQuery<T>>` contract. Public API
@@ -41,7 +52,7 @@ export class MikroOrmQueryTranslator<T extends object> implements QueryTranslato
       joinResolver,
       whereBuilder: this.whereBuilder,
     });
-    this.fetchHelper = new MikroOrmFetchHelper<T>({ onNotFound: /* istanbul ignore next */ () => undefined, getEm });
+    this.fetchHelper = new MikroOrmFetchHelper<T>({ onNotFound: defaultOnNotFound, getEm });
   }
 
   public buildWhere(search: SCondition): FilterQuery<T> | undefined {
