@@ -596,7 +596,22 @@ export class CrudRoutesFactory {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       Array.isArray((single as any).bulk);
     const example = name === 'createManyBase' && !alreadyBulk ? { bulk: [single] } : single;
-    const bodyParam = { in: 'body', name: 'body', required: true, schema: { example } };
+    // SwaggerModule's api-parameters explorer removes the reflected body param
+    // whenever an explicit body param is emitted on the same operation; the
+    // explicit entry then flows through getCustomType() which destructures
+    // param.type.prototype and crashes when param.type is undefined (see
+    // node_modules/@nestjs/swagger/dist/services/schema-object-factory.js:124).
+    // Attach the modelType as param.type — its prototype is always present,
+    // schema.example still ships in the emitted OpenAPI, and the schema.type
+    // discriminator keeps the scalar path active for environments where the
+    // model class has no @ApiProperty introspection.
+    const bodyParam = {
+      in: 'body',
+      name: 'body',
+      required: true,
+      type: this.modelType,
+      schema: { type: 'object', example },
+    };
     const existing = Swagger.getParams(this.targetProto[name]);
     Swagger.setParams([...existing, bodyParam], this.targetProto[name]);
   }
