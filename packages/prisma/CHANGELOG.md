@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [Unreleased]
+
+### Changed
+
+- **Default logger parity.** `PrismaCrudService` now auto-instantiates `new Logger(PrismaCrudService.name)` from `@nestjs/common` when `serviceConfig.logger` is omitted, matching `@nestjs-crud/typeorm`, `@nestjs-crud/drizzle`, and `@nestjs-crud/mikro-orm`. Consumers who previously omitted the logger (or passed `undefined`) now see adapter-level errors logged through NestJS's configured logger by default. Source-compatible — consumer-supplied loggers are preserved unchanged.
+
 ## [2.0.0](https://github.com/kodjunkie/nestjs-crud/releases/tag/v2.0.0) (2026-04-23)
 
 Initial release. `@nestjs-crud/prisma` ships at v2.0.0 — same conceptual surface as the other adapters (`@nestjs-crud/typeorm`, `@nestjs-crud/drizzle`, `@nestjs-crud/mikro-orm`).

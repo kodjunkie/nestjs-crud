@@ -12,6 +12,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Changed
 
 - **`@nestjs-crud/core` peer ranges for `class-transformer` and `class-validator` narrowed from `"*"` to `"^0.5.0"` and `"^0.14.0"` respectively.** Consumers on `class-transformer@0.5.x` or `class-validator@0.14.x` are unaffected. Consumers on older or newer 0.x lines (e.g. `class-validator@0.13.x`) now get a `npm WARN` peer warning at install time — the library has only been tested against the currently-pinned majors.
+- **`@nestjs-crud/prisma` default logger parity.** `PrismaCrudService` now auto-instantiates `new Logger(PrismaCrudService.name)` from `@nestjs/common` when `serviceConfig.logger` is omitted, matching `@nestjs-crud/typeorm`, `@nestjs-crud/drizzle`, and `@nestjs-crud/mikro-orm`. Consumers who previously omitted the logger (or passed `undefined`) now see adapter-level errors logged through NestJS's configured logger by default. Source-compatible — consumer-supplied loggers are preserved unchanged.
 
 ---
 
