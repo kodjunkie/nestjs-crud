@@ -8,6 +8,7 @@
 ### Getting Started
 
 - [v2 Migration guide](https://github.com/kodjunkie/nestjs-crud/wiki/v2-Migration)
+- [v2.1 Migration guide (Prisma v7)](https://github.com/kodjunkie/nestjs-crud/wiki/v2.1-Migration)
 
 ### Controllers
 
