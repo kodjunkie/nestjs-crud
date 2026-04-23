@@ -6,8 +6,7 @@ const allowedColumnsByRelation: Record<string, string[]> = {
   projects: ['id', 'name', 'companyId'],
 };
 
-const makeResolver = (): PrismaJoinResolver =>
-  new PrismaJoinResolver({ relationFields, allowedColumnsByRelation });
+const makeResolver = (): PrismaJoinResolver => new PrismaJoinResolver({ relationFields, allowedColumnsByRelation });
 
 describe('PrismaJoinResolver', () => {
   describe('getAllowedColumnsFor (D-05b SQLi mitigation surface)', () => {
