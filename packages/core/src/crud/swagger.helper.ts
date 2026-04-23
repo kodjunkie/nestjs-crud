@@ -4,6 +4,7 @@ import { HttpStatus } from '@nestjs/common';
 // ESM-safe: pluralize is a hard dep; import * as unwraps correctly in both CJS (ts-jest
 // default-esm preset returns the function directly) and native ESM (function at .default).
 import * as pluralizeNs from 'pluralize';
+import type { CrudSwaggerSynthExampleFn } from '../interfaces/crud-swagger-options.interface';
 import { MergedCrudOptions, ParamsOptions } from '../interfaces';
 import { BaseRouteName } from '../types';
 import { safeRequire } from '../util';
@@ -21,16 +22,96 @@ export const swaggerPkgJson = safeRequire('@nestjs/swagger/package.json', () =>
 );
 
 export class Swagger {
-  static operationsMap(modelName: string): { [key in BaseRouteName]: string } {
+  static operationsMap(
+    modelName: string,
+  ): { [key in BaseRouteName]: { summary: string; description: string } } {
+    const lower = modelName.toLowerCase();
+    const lowerPlural = pluralize(lower);
+
     return {
-      getManyBase: `Retrieve multiple ${pluralize(modelName)}`,
-      getOneBase: `Retrieve a single ${modelName}`,
-      createManyBase: `Create multiple ${pluralize(modelName)}`,
-      createOneBase: `Create a single ${modelName}`,
-      updateOneBase: `Update a single ${modelName}`,
-      replaceOneBase: `Replace a single ${modelName}`,
-      deleteOneBase: `Delete a single ${modelName}`,
-      recoverOneBase: `Recover one ${modelName}`,
+      getManyBase: {
+        summary: `List ${lowerPlural}`,
+        description: [
+          `Returns a paginated list of ${lowerPlural}.`,
+          '',
+          'Supports field selection (`?fields=`), search (`?s=`), filter (`?filter=`), OR',
+          'filter (`?or=`), sort (`?sort=`), relation loading (`?join=`), and pagination',
+          '(`?limit=`, `?offset=`, `?page=`).',
+          '',
+          'When the controller is configured with `@Crud({ query: { softDelete: true } })`,',
+          'soft-deleted rows are excluded by default; pass `?includeDeleted=1` to include them.',
+        ].join('\n'),
+      },
+      getOneBase: {
+        summary: `Get ${lower} by id`,
+        description: [
+          `Returns a single ${lower} matching the id path parameter.`,
+          '',
+          'Supports field selection (`?fields=`) and relation loading (`?join=`). When the',
+          'controller is configured with `@Crud({ query: { softDelete: true } })`, soft-deleted',
+          'rows are excluded by default; pass `?includeDeleted=1` to include them.',
+        ].join('\n'),
+      },
+      createOneBase: {
+        summary: `Create ${lower}`,
+        description: [
+          `Creates a single ${lower} from the request body.`,
+          '',
+          'Validation uses the `CrudValidationGroups.CREATE` group. When a dedicated create',
+          'DTO is provided via `@Crud({ dto: { create } })`, the DTO class drives validation;',
+          'otherwise validation is performed against the entity with the CREATE group.',
+        ].join('\n'),
+      },
+      createManyBase: {
+        summary: `Create ${lowerPlural} in bulk`,
+        description: [
+          `Creates multiple ${lowerPlural} in a single request.`,
+          '',
+          'The request body uses the wrapper shape `{ "bulk": [ ... ] }`. Each element is',
+          'validated with the `CrudValidationGroups.CREATE` group. The bulk insert runs inside',
+          'a single transaction so either all rows are persisted or none are.',
+        ].join('\n'),
+      },
+      updateOneBase: {
+        summary: `Partially update ${lower}`,
+        description: [
+          `Partially updates a single ${lower} (HTTP PATCH semantics).`,
+          '',
+          'Only the fields present in the request body are modified; omitted fields retain',
+          'their current values. Validation uses the `CrudValidationGroups.UPDATE` group,',
+          'which typically relaxes required-field constraints versus CREATE.',
+        ].join('\n'),
+      },
+      replaceOneBase: {
+        summary: `Replace ${lower}`,
+        description: [
+          `Replaces a single ${lower} (HTTP PUT semantics) with the full request body.`,
+          '',
+          'All entity fields are substituted from the payload, not merged — values omitted',
+          'from the body are cleared to defaults. When upsert behavior is enabled for the',
+          'route, a missing target id triggers creation instead of a 404.',
+        ].join('\n'),
+      },
+      deleteOneBase: {
+        summary: `Delete ${lower}`,
+        description: [
+          `Removes a single ${lower} by id.`,
+          '',
+          'When the entity has a soft-delete column and the controller is configured with',
+          '`@Crud({ query: { softDelete: true } })`, the row is soft-deleted (delete column',
+          'set to the current timestamp). Otherwise the row is hard-deleted.',
+        ].join('\n'),
+      },
+      recoverOneBase: {
+        summary: `Restore soft-deleted ${lower}`,
+        description: [
+          `Restores a previously soft-deleted ${lower} by clearing its delete column.`,
+          '',
+          'Requires the entity to expose a soft-delete column and the controller to be',
+          `configured with \`@Crud({ query: { softDelete: true } })\`. Hard-deleted ${lowerPlural}`,
+          'cannot be recovered.',
+        ].join('\n'),
+      },
     };
   }
 
@@ -82,146 +163,44 @@ export class Swagger {
   }
 
   static createResponseMeta(name: BaseRouteName, options: MergedCrudOptions, swaggerModels: any): any {
-    if (swagger) {
-      const { routes, query } = options;
-      const oldVersion = Swagger.getSwaggerVersion() < 4;
-
-      switch (name) {
-        case 'getOneBase':
-          return {
-            [HttpStatus.OK]: {
-              description: 'Get one base response',
-              type: swaggerModels.get,
-            },
-          };
-        case 'getManyBase':
-          if (oldVersion) {
-            return {
-              [HttpStatus.OK]: {
-                type: swaggerModels.getMany,
-              },
-            };
-          }
-
-          return {
-            [HttpStatus.OK]: query.alwaysPaginate
-              ? {
-                  description: 'Get paginated response',
-                  type: swaggerModels.getMany,
-                }
-              : {
-                  description: 'Get many base response',
-                  schema: {
-                    oneOf: [
-                      { $ref: swagger.getSchemaPath(swaggerModels.getMany.name) },
-                      {
-                        type: 'array',
-                        items: { $ref: swagger.getSchemaPath(swaggerModels.get.name) },
-                      },
-                    ],
-                  },
-                },
-          };
-        case 'createOneBase':
-          if (oldVersion) {
-            return {
-              [HttpStatus.OK]: {
-                type: swaggerModels.create,
-              },
-            };
-          }
-
-          return {
-            [HttpStatus.CREATED]: {
-              description: 'Get create one base response',
-              schema: { $ref: swagger.getSchemaPath(swaggerModels.create.name) },
-            },
-          };
-        case 'createManyBase':
-          if (oldVersion) {
-            return {
-              [HttpStatus.OK]: {
-                type: swaggerModels.create,
-                isArray: true,
-              },
-            };
-          }
-
-          return {
-            [HttpStatus.CREATED]: swaggerModels.createMany
-              ? {
-                  description: 'Get create many base response',
-                  schema: { $ref: swagger.getSchemaPath(swaggerModels.createMany.name) },
-                }
-              : {
-                  description: 'Get create many base response',
-                  schema: {
-                    type: 'array',
-                    items: { $ref: swagger.getSchemaPath(swaggerModels.create.name) },
-                  },
-                },
-          };
-        case 'deleteOneBase':
-          if (oldVersion) {
-            return {
-              [HttpStatus.OK]: routes.deleteOneBase.returnDeleted
-                ? {
-                    type: swaggerModels.delete,
-                  }
-                : {},
-            };
-          }
-          return {
-            [HttpStatus.OK]: routes.deleteOneBase.returnDeleted
-              ? {
-                  description: 'Delete one base response',
-                  schema: { $ref: swagger.getSchemaPath(swaggerModels.delete.name) },
-                }
-              : {
-                  description: 'Delete one base response',
-                },
-          };
-        case 'recoverOneBase':
-          if (oldVersion) {
-            return {
-              [HttpStatus.OK]: routes.recoverOneBase.returnRecovered
-                ? {
-                    type: swaggerModels.delete,
-                  }
-                : {},
-            };
-          }
-          return {
-            [HttpStatus.OK]: routes.recoverOneBase.returnRecovered
-              ? {
-                  description: 'Recover one base response',
-                  schema: { $ref: swagger.getSchemaPath(swaggerModels.recover.name) },
-                }
-              : {
-                  description: 'Recover one base response',
-                },
-          };
-        default:
-          const dto = swaggerModels[name.split('OneBase')[0]];
-
-          if (oldVersion) {
-            return {
-              [HttpStatus.OK]: {
-                type: dto,
-              },
-            };
-          }
-
-          return {
-            [HttpStatus.OK]: {
-              description: 'Response',
-              schema: { $ref: swagger.getSchemaPath(dto.name) },
-            },
-          };
-      }
-    } else {
+    if (!swagger) {
       return {};
     }
+
+    const { routes, query } = options;
+    const oldVersion = Swagger.getSwaggerVersion() < 4;
+    const routesWith404 = new Set<BaseRouteName>([
+      'getOneBase',
+      'updateOneBase',
+      'replaceOneBase',
+      'deleteOneBase',
+      'recoverOneBase',
+    ]);
+    const badRequestText =
+      name === 'getManyBase' || name === 'getOneBase' ? 'Malformed query' : 'Validation failed';
+
+    // Build the success entry per route. Names below reference concrete DTOs assembled
+    // in crud-routes.factory.setResponseModels (GetMany{Model}ResponseDto,
+    // {Model}ResponseDto, etc.) so the emitted prose points at the schema shown in
+    // Swagger UI's schema tree.
+    const successEntry = Swagger.buildSuccessEntry(name, options, swaggerModels, oldVersion);
+    const meta: Record<number, any> = { ...successEntry };
+
+    // 400 is emitted on every generated route. 401 is owned by the factory layer
+    // (conditional on @CrudAuth() or errorResponses.unauthorized opt-in).
+    meta[HttpStatus.BAD_REQUEST] = { description: badRequestText };
+
+    if (routesWith404.has(name)) {
+      meta[HttpStatus.NOT_FOUND] = { description: 'Resource not found' };
+    }
+
+    // Reference `query` so the closure-captured options are not flagged as unused by
+    // lint — query.alwaysPaginate is consumed inside buildSuccessEntry via the same
+    // options object.
+    void query;
+    void routes;
+
+    return meta;
   }
 
   static createPathParamsMeta(options: ParamsOptions): any[] {
@@ -258,13 +237,14 @@ export class Swagger {
     } = Swagger.getQueryParamsNames();
     const oldVersion = Swagger.getSwaggerVersion() < 4;
     const docsLink = (a: string) =>
-      `<a href="https://github.com/kodjunkie/nestjs-crud/wiki/Requests#${a}" target="_blank">Docs</a>`;
+      `<a href="https://github.com/kodjunkie/nestjs-crud/wiki/Query-Syntax#${a}" target="_blank">Docs</a>`;
 
     const fieldsMetaBase = {
       name: fields,
-      description: `Selects resource fields. ${docsLink('select')}`,
+      description: `Comma-separated resource fields to return. Empty = all fields. ${docsLink('select')}`,
       required: false,
       in: 'query',
+      example: 'id,name,email',
     };
     const fieldsMeta = oldVersion
       ? {
@@ -292,6 +272,9 @@ export class Swagger {
       description: `Adds search condition. ${docsLink('search')}`,
       required: false,
       in: 'query',
+      // Emitted as a literal JSON string so OpenAPI's `example` scalar renders the raw
+      // value consumers paste into `?s=...` rather than a parsed object.
+      example: '{"name":{"$cont":"ali"}}',
     };
     const searchMeta = oldVersion
       ? { ...searchMetaBase, type: 'string' }
@@ -302,6 +285,7 @@ export class Swagger {
       description: `Adds filter condition. ${docsLink('filter')}`,
       required: false,
       in: 'query',
+      example: 'age||$gte||18',
     };
     const filterMeta = oldVersion
       ? {
@@ -329,6 +313,7 @@ export class Swagger {
       description: `Adds OR condition. ${docsLink('or')}`,
       required: false,
       in: 'query',
+      example: 'status||$eq||active',
     };
     const orMeta = oldVersion
       ? {
@@ -356,6 +341,7 @@ export class Swagger {
       description: `Adds sort by field. ${docsLink('sort')}`,
       required: false,
       in: 'query',
+      example: 'name,ASC',
     };
     const sortMeta = oldVersion
       ? {
@@ -383,6 +369,7 @@ export class Swagger {
       description: `Adds relational resources. ${docsLink('join')}`,
       required: false,
       in: 'query',
+      example: 'profile||bio,avatar',
     };
     const joinMeta = oldVersion
       ? {
@@ -410,6 +397,7 @@ export class Swagger {
       description: `Limit amount of resources. ${docsLink('limit')}`,
       required: false,
       in: 'query',
+      example: 25,
     };
     const limitMeta = oldVersion
       ? { ...limitMetaBase, type: 'integer' }
@@ -420,6 +408,7 @@ export class Swagger {
       description: `Offset amount of resources. ${docsLink('offset')}`,
       required: false,
       in: 'query',
+      example: 50,
     };
     const offsetMeta = oldVersion
       ? { ...offsetMetaBase, type: 'integer' }
@@ -430,6 +419,7 @@ export class Swagger {
       description: `Page portion of resources. ${docsLink('page')}`,
       required: false,
       in: 'query',
+      example: 2,
     };
     const pageMeta = oldVersion
       ? { ...pageMetaBase, type: 'integer' }
@@ -440,6 +430,7 @@ export class Swagger {
       description: `Reset cache (if was enabled). ${docsLink('cache')}`,
       required: false,
       in: 'query',
+      example: 0,
     };
     const cacheMeta = oldVersion
       ? {
@@ -455,6 +446,7 @@ export class Swagger {
       description: `Include deleted. ${docsLink('includeDeleted')}`,
       required: false,
       in: 'query',
+      example: 1,
     };
     const includeDeletedMeta = oldVersion
       ? {
@@ -527,6 +519,231 @@ export class Swagger {
       cache: name('cache'),
       includeDeleted: name('includeDeleted'),
     };
+  }
+
+  /**
+   * Synthesize a request-body example for a generated route.
+   *
+   * Three-tier dispatch (evaluated in this exact order):
+   *   1. When a consumer-supplied synthesizer is passed and both `modelType` and `route`
+   *      are present, its return value is used verbatim.
+   *   2. Otherwise, `@ApiProperty` metadata on the model's prototype is introspected and
+   *      placeholder values are synthesized per property type.
+   *   3. Otherwise, an empty object is returned.
+   *
+   * The helper is pure: no Swagger metadata is emitted here. Consumers who want full
+   * control over the bulk wrapper shape can inspect the `route` argument and return the
+   * wrapped payload directly; the factory applies a convenience `{ bulk: [...] }` wrap
+   * only for the `createManyBase` route.
+   */
+  // cited: node_modules/@nestjs/swagger/dist/constants.js line 15 for
+  // DECORATORS.API_MODEL_PROPERTIES_ARRAY, line 14 for DECORATORS.API_MODEL_PROPERTIES.
+  static synthesizeBodyExample(
+    modelType: any,
+    consumerSynth?: CrudSwaggerSynthExampleFn,
+    route?: BaseRouteName,
+  ): Record<string, unknown> | unknown {
+    // Tier 1: consumer-supplied synthesizer wins and short-circuits before any
+    // introspection runs. Both modelType and route must be truthy so the consumer
+    // always receives a well-formed call site.
+    if (typeof consumerSynth === 'function' && modelType && route) {
+      return consumerSynth(modelType, route);
+    }
+
+    if (!swaggerConst || !modelType) {
+      return {};
+    }
+
+    // Tier 2: @ApiProperty introspection. Metadata layout verified against
+    // node_modules/@nestjs/swagger/dist/decorators/helpers.js:38-48 — the property array
+    // is stored on the class prototype under DECORATORS.API_MODEL_PROPERTIES_ARRAY as
+    // `:propName` strings, and per-property options are stored on the prototype at
+    // (DECORATORS.API_MODEL_PROPERTIES, propName) via Reflect.defineMetadata's 3-arg
+    // form (NOT concatenated into the key).
+    const propsKey = swaggerConst.DECORATORS.API_MODEL_PROPERTIES_ARRAY;
+    const perPropKey = swaggerConst.DECORATORS.API_MODEL_PROPERTIES;
+    const prototype = modelType.prototype;
+
+    if (!prototype) {
+      return {};
+    }
+
+    const propList: string[] = Reflect.getMetadata(propsKey, prototype) || [];
+
+    if (propList.length === 0) {
+      return {};
+    }
+
+    const out: Record<string, unknown> = {};
+
+    for (const raw of propList) {
+      const propName = raw.startsWith(':') ? raw.slice(1) : raw;
+      const meta = Reflect.getMetadata(perPropKey, prototype, propName) || {};
+      const declaredType = meta.type;
+      const fmt = meta.format;
+
+      if (fmt === 'uuid') {
+        out[propName] = '00000000-0000-0000-0000-000000000000';
+      } else if (fmt === 'date-time' || declaredType === Date) {
+        out[propName] = '2026-04-23T00:00:00.000Z';
+      } else if (declaredType === String || declaredType === 'string') {
+        out[propName] = 'string';
+      } else if (
+        declaredType === Number ||
+        declaredType === 'number' ||
+        declaredType === 'integer'
+      ) {
+        out[propName] = 0;
+      } else if (declaredType === Boolean || declaredType === 'boolean') {
+        out[propName] = true;
+      }
+      // Relations (declaredType is a function referencing another class) and virtual /
+      // unknown-typed columns are intentionally skipped — single-level synthesis only,
+      // no recursion, no cycle risk.
+    }
+
+    return out;
+  }
+
+  private static buildSuccessEntry(
+    name: BaseRouteName,
+    options: MergedCrudOptions,
+    swaggerModels: any,
+    oldVersion: boolean,
+  ): Record<number, any> {
+    const { routes, query } = options;
+
+    switch (name) {
+      case 'getOneBase':
+        return {
+          [HttpStatus.OK]: {
+            description: `Resource matching id (see ${swaggerModels.get.name})`,
+            type: swaggerModels.get,
+          },
+        };
+      case 'getManyBase':
+        if (oldVersion) {
+          return {
+            [HttpStatus.OK]: {
+              type: swaggerModels.getMany,
+            },
+          };
+        }
+        return {
+          [HttpStatus.OK]: query.alwaysPaginate
+            ? {
+                description: `Paginated list of matching resources (see ${swaggerModels.getMany.name})`,
+                type: swaggerModels.getMany,
+              }
+            : {
+                description: `Paginated list of matching resources (see ${swaggerModels.getMany.name})`,
+                schema: {
+                  oneOf: [
+                    { $ref: swagger.getSchemaPath(swaggerModels.getMany.name) },
+                    {
+                      type: 'array',
+                      items: { $ref: swagger.getSchemaPath(swaggerModels.get.name) },
+                    },
+                  ],
+                },
+              },
+        };
+      case 'createOneBase':
+        if (oldVersion) {
+          return {
+            [HttpStatus.OK]: {
+              type: swaggerModels.create,
+            },
+          };
+        }
+        return {
+          [HttpStatus.CREATED]: {
+            description: `Resource created (see ${swaggerModels.create.name})`,
+            schema: { $ref: swagger.getSchemaPath(swaggerModels.create.name) },
+          },
+        };
+      case 'createManyBase':
+        if (oldVersion) {
+          return {
+            [HttpStatus.OK]: {
+              type: swaggerModels.create,
+              isArray: true,
+            },
+          };
+        }
+        return {
+          [HttpStatus.CREATED]: swaggerModels.createMany
+            ? {
+                description: `Resources created in bulk (see ${swaggerModels.createMany.name})`,
+                schema: { $ref: swagger.getSchemaPath(swaggerModels.createMany.name) },
+              }
+            : {
+                description: `Resources created in bulk (see ${swaggerModels.create.name})`,
+                schema: {
+                  type: 'array',
+                  items: { $ref: swagger.getSchemaPath(swaggerModels.create.name) },
+                },
+              },
+        };
+      case 'deleteOneBase':
+        if (oldVersion) {
+          return {
+            [HttpStatus.OK]: routes.deleteOneBase.returnDeleted
+              ? {
+                  type: swaggerModels.delete,
+                }
+              : {},
+          };
+        }
+        return {
+          [HttpStatus.OK]: routes.deleteOneBase.returnDeleted
+            ? {
+                description: `Resource removed (see ${swaggerModels.delete.name})`,
+                schema: { $ref: swagger.getSchemaPath(swaggerModels.delete.name) },
+              }
+            : {
+                description: 'Resource removed',
+              },
+        };
+      case 'recoverOneBase':
+        if (oldVersion) {
+          return {
+            [HttpStatus.OK]: routes.recoverOneBase.returnRecovered
+              ? {
+                  type: swaggerModels.recover,
+                }
+              : {},
+          };
+        }
+        return {
+          [HttpStatus.OK]: routes.recoverOneBase.returnRecovered
+            ? {
+                description: `Resource restored (see ${swaggerModels.recover.name})`,
+                schema: { $ref: swagger.getSchemaPath(swaggerModels.recover.name) },
+              }
+            : {
+                description: 'Resource restored',
+              },
+        };
+      default: {
+        const dto = swaggerModels[name.split('OneBase')[0]];
+
+        if (oldVersion) {
+          return {
+            [HttpStatus.OK]: {
+              type: dto,
+            },
+          };
+        }
+
+        return {
+          [HttpStatus.OK]: {
+            description: name === 'updateOneBase' ? 'Resource updated' : 'Resource replaced',
+            schema: { $ref: swagger.getSchemaPath(dto.name) },
+          },
+        };
+      }
+    }
   }
 
   private static getSwaggerVersion(): number {
