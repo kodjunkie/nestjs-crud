@@ -65,7 +65,7 @@ Full docs live on the [**Wiki**](https://github.com/kodjunkie/nestjs-crud/wiki) 
 
 ## Skills (for AI coding assistants)
 
-Three agent skills ship with the repo for Claude Code / Codex:
+Three agent skills ship with the repo:
 
 | Skill | Scope |
 | ----- | ----- |
