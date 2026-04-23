@@ -229,4 +229,32 @@ describe('PrismaQueryComposer', () => {
 
   // To-many filtered include — Phase 11 concern; not in Plan 03 MVP
   it.todo('Plan 11 DOCS-04 documents to-many filtered include');
+
+  // COVERAGE-01 D-17 sweep — getTake opts.limit fallback (Plan 10-08)
+  // Cross-adapter convergence: same shape as typeorm/drizzle/mikro-orm composer sweeps.
+  describe('getTake (opts.limit fallback) — COVERAGE-01 D-17 sweep', () => {
+    it('uses opts.limit when parsed.limit is undefined', () => {
+      const parsed = { ...emptyParsed, limit: undefined } as any;
+      const take = composer.getTake(parsed, { limit: 25 } as any);
+      expect(take).toBe(25);
+    });
+
+    it('clamps opts.limit by maxLimit when opts.limit > maxLimit', () => {
+      const parsed = { ...emptyParsed, limit: undefined } as any;
+      const take = composer.getTake(parsed, { limit: 1000, maxLimit: 50 } as any);
+      expect(take).toBe(50);
+    });
+
+    it('returns opts.limit unchanged when opts.limit <= maxLimit', () => {
+      const parsed = { ...emptyParsed, limit: undefined } as any;
+      const take = composer.getTake(parsed, { limit: 30, maxLimit: 50 } as any);
+      expect(take).toBe(30);
+    });
+
+    it('parsed.limit takes precedence over opts.limit when both set', () => {
+      const parsed = { ...emptyParsed, limit: 7 } as any;
+      const take = composer.getTake(parsed, { limit: 99 } as any);
+      expect(take).toBe(7);
+    });
+  });
 });
