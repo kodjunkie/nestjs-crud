@@ -1869,7 +1869,7 @@ __metadata:
   peerDependencies:
     "@nestjs-crud/core": ^2.0.0
     "@nestjs/common": ^10.0.0 || ^11.0.0
-    "@prisma/client": ">=5.0.0"
+    "@prisma/client": ^7.0.0
   languageName: unknown
   linkType: soft
 
