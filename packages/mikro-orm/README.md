@@ -5,7 +5,9 @@
   <strong>This package provides a CRUD service for databases using MikroORM.</strong>
 </div>
 
-> The API follows the same patterns as TypeORM. See the [TypeORM service docs](https://github.com/kodjunkie/nestjs-crud/wiki/ServiceTypeorm) for full API details.
+> The API follows the same patterns as TypeORM. See the [MikroORM service docs](https://github.com/kodjunkie/nestjs-crud/wiki/ServiceMikroOrm) for full MikroORM adapter API.
+
+> **Node 22+ required.** This package depends on `@mikro-orm/core ^7.0.0` (peer-dep, bumped in v2.0.0 from v6) which uses pure ESM. Run tests via `yarn test:mikro-orm` only — bare `npx jest packages/mikro-orm/test/...` fails with `SyntaxError: Cannot use 'import.meta' outside a module`. See [CONTRIBUTING.md](https://github.com/kodjunkie/nestjs-crud/blob/master/CONTRIBUTING.md#mikroorm-esm-caveat) for the full ESM caveat.
 
 ## Install
 
@@ -66,3 +68,10 @@ export class CompaniesController implements CrudController<Company> {
   constructor(public service: CompaniesService) {}
 }
 ```
+
+## See also
+
+- [Wiki: ServiceMikroOrm](https://github.com/kodjunkie/nestjs-crud/wiki/ServiceMikroOrm) — full MikroORM adapter API
+- [Wiki: Logging](https://github.com/kodjunkie/nestjs-crud/wiki/Logging) — optional `LoggerService` ctor parameter (v2.0.0)
+- [Wiki: Caching](https://github.com/kodjunkie/nestjs-crud/wiki/Caching) — current state for MikroORM (consumer-owned)
+- [v2 Migration guide](https://github.com/kodjunkie/nestjs-crud/wiki/v2-Migration) — including TYPES-02 typed public method signatures migration
