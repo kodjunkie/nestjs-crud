@@ -13,7 +13,10 @@ export const swaggerPkgJson = res.swaggerPkgJson;
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const Swagger: any = {
-  ...ops, ...res, ...par, ...ex,
+  ...ops,
+  ...res,
+  ...par,
+  ...ex,
   operationsMap: ops.operationsMap,
   createResponseMeta: res.createResponseMeta,
   createPathParamsMeta: par.createPathParamsMeta,

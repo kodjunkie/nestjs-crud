@@ -12,9 +12,7 @@ import { safeRequire } from '../../util';
 import { R } from '../reflection.helper';
 import { getSwaggerVersion } from './responses.helper';
 
-const swaggerConst = safeRequire('@nestjs/swagger/dist/constants', () =>
-  require('@nestjs/swagger/dist/constants'),
-);
+const swaggerConst = safeRequire('@nestjs/swagger/dist/constants', () => require('@nestjs/swagger/dist/constants'));
 
 export function docsLink(section: string): string {
   return `<a href="https://github.com/kodjunkie/nestjs-crud/wiki/Query-Syntax#${section}" target="_blank">Docs</a>`;
@@ -274,9 +272,7 @@ export function createQueryParamsMeta(name: BaseRouteName, options: MergedCrudOp
     in: 'query',
     example: 2,
   };
-  const pageMeta = oldVersion
-    ? { ...pageMetaBase, type: 'integer' }
-    : { ...pageMetaBase, schema: { type: 'integer' } };
+  const pageMeta = oldVersion ? { ...pageMetaBase, type: 'integer' } : { ...pageMetaBase, schema: { type: 'integer' } };
 
   const cacheMetaBase = {
     name: cache,
@@ -329,18 +325,7 @@ export function createQueryParamsMeta(name: BaseRouteName, options: MergedCrudOp
             cacheMeta,
             includeDeletedMeta,
           ]
-        : [
-            fieldsMeta,
-            searchMeta,
-            filterMeta,
-            orMeta,
-            sortMeta,
-            joinMeta,
-            limitMeta,
-            offsetMeta,
-            pageMeta,
-            cacheMeta,
-          ];
+        : [fieldsMeta, searchMeta, filterMeta, orMeta, sortMeta, joinMeta, limitMeta, offsetMeta, pageMeta, cacheMeta];
     case 'getOneBase':
       return options.query.softDelete
         ? [fieldsMeta, joinMeta, cacheMeta, includeDeletedMeta]

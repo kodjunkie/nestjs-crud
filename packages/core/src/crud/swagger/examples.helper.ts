@@ -12,9 +12,7 @@ import type { CrudSwaggerSynthExampleFn } from '../../interfaces/crud-swagger-op
 import { BaseRouteName } from '../../types';
 import { safeRequire } from '../../util';
 
-const swaggerConst = safeRequire('@nestjs/swagger/dist/constants', () =>
-  require('@nestjs/swagger/dist/constants'),
-);
+const swaggerConst = safeRequire('@nestjs/swagger/dist/constants', () => require('@nestjs/swagger/dist/constants'));
 
 // cited: node_modules/@nestjs/swagger/dist/constants.js line 15 for
 // DECORATORS.API_MODEL_PROPERTIES_ARRAY, line 14 for DECORATORS.API_MODEL_PROPERTIES.

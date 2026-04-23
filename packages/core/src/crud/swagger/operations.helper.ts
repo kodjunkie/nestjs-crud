@@ -12,17 +12,13 @@ import { BaseRouteName } from '../../types';
 import { safeRequire } from '../../util';
 import { R } from '../reflection.helper';
 
-const swaggerConst = safeRequire('@nestjs/swagger/dist/constants', () =>
-  require('@nestjs/swagger/dist/constants'),
-);
+const swaggerConst = safeRequire('@nestjs/swagger/dist/constants', () => require('@nestjs/swagger/dist/constants'));
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const pluralize: (word: string) => string =
   typeof pluralizeNs === 'function' ? (pluralizeNs as any) : (pluralizeNs as any).default;
 
-export function operationsMap(
-  modelName: string,
-): { [key in BaseRouteName]: { summary: string; description: string } } {
+export function operationsMap(modelName: string): { [key in BaseRouteName]: { summary: string; description: string } } {
   const lower = modelName.toLowerCase();
   const lowerPlural = pluralize(lower);
 
