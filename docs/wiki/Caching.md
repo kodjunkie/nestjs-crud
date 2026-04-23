@@ -79,13 +79,13 @@ This is a deliberate plain `Error` subclass (not a NestJS `HttpException`) becau
 
 ## Drizzle, MikroORM, Prisma (consumer-owned)
 
-These adapters do NOT currently honor the `@Crud({ query: { cache } })` option. Caching for these ORMs is best handled at the application layer using each ORM's own caching primitives:
+Drizzle, MikroORM, and Prisma do not currently honor the `@Crud({ query: { cache } })` option. Use each ORM's native caching primitives at the application layer for now (links to ORM docs preserved):
 
 - **Drizzle:** No first-party query cache as of v0.45.x. Use a Redis-backed wrapper at the service layer or an HTTP-cache layer above the controller. See the [Drizzle docs](https://orm.drizzle.team/docs/overview).
 - **MikroORM:** Use [MikroORM's Result Cache](https://mikro-orm.io/docs/caching) — `em.find(User, ..., { cache: 30000 })`. Apply at your service layer above `@nestjs-crud/mikro-orm`.
 - **Prisma:** Use [Prisma Accelerate](https://www.prisma.io/docs/accelerate) for managed caching, or a Redis-backed memoization wrapper. Prisma has no first-party in-process query cache.
 
-Setting `@Crud({ query: { cache } })` on a controller backed by Drizzle / MikroORM / Prisma is currently a no-op. A unified caching API across all four adapters is tracked as a Phase 12+ deferred idea.
+Setting `@Crud({ query: { cache } })` on a controller backed by Drizzle / MikroORM / Prisma is currently a no-op (ignored silently — no error). Use the ORM-native primitives above instead.
 
 ## See also
 
