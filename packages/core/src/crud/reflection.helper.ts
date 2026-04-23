@@ -40,7 +40,7 @@ export class R {
   static createCustomRouteArg(
     paramtype: string,
     index: number,
-    /* istanbul ignore next */
+    /* istanbul ignore next -- default param expression: instrumented as a branch but always evaluated unconditionally; istanbul false-positive */
     pipes: any[] = [],
     data = undefined,
   ): any {
@@ -57,7 +57,7 @@ export class R {
   static createRouteArg(
     paramtype: RouteParamtypes,
     index: number,
-    /* istanbul ignore next */
+    /* istanbul ignore next -- default param expression: instrumented as a branch but always evaluated unconditionally; istanbul false-positive */
     pipes: any[] = [],
     data = undefined,
   ): any {
@@ -87,7 +87,7 @@ export class R {
     return R.createCustomRouteArg(PARSED_CRUD_REQUEST_KEY, index);
   }
 
-  static setBodyArg(index: number, /* istanbul ignore next */ pipes: any[] = []) {
+  static setBodyArg(index: number, /* istanbul ignore next -- default param expression: instrumented as a branch but always evaluated unconditionally; istanbul false-positive */ pipes: any[] = []) {
     return R.createRouteArg(RouteParamtypes.BODY, index, pipes);
   }
 
@@ -145,7 +145,7 @@ export class R {
   }
 
   static getRouteArgsTypes(target: any, name: string): any[] {
-    return R.get(PARAMTYPES_METADATA, target, name) || /* istanbul ignore next */ [];
+    return R.get(PARAMTYPES_METADATA, target, name) || /* istanbul ignore next -- defensive default: PARAMTYPES_METADATA is always set by setRouteArgsTypes() in the factory before this getter runs; falsy fallback unreachable in normal flow */ [];
   }
 
   static getParsedBody(func: unknown): any {
@@ -153,6 +153,6 @@ export class R {
   }
 
   static getContextRequest(ctx: ArgumentsHost): any {
-    return isFunction(ctx.switchToHttp) ? ctx.switchToHttp().getRequest() : /* istanbul ignore next */ ctx;
+    return isFunction(ctx.switchToHttp) ? ctx.switchToHttp().getRequest() : /* istanbul ignore next -- defensive fallback: NestJS always supplies an ArgumentsHost with switchToHttp() in HTTP contexts; ctx-as-request fallback covers non-HTTP contexts (RPC/WS) which do not invoke this CRUD code path */ ctx;
   }
 }

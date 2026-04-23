@@ -16,7 +16,7 @@ export class CrudRequestInterceptor extends CrudBaseInterceptor implements NestI
     const req = context.switchToHttp().getRequest();
 
     try {
-      /* istanbul ignore else */
+      /* istanbul ignore else -- defensive guard against double-interception (req already parsed by upstream interceptor); else branch is intentional no-op (request already has the parsed key) */
       if (!req[PARSED_CRUD_REQUEST_KEY]) {
         const { ctrlOptions, crudOptions, action } = this.getCrudInfo(context);
         const parser = RequestQueryParser.create();
@@ -40,7 +40,7 @@ export class CrudRequestInterceptor extends CrudBaseInterceptor implements NestI
 
       return next.handle();
     } catch (error) {
-      /* istanbul ignore next */
+      /* istanbul ignore next -- defensive: only RequestQueryException ever throws from parser/getSearch/getAuth in this interceptor; non-RequestQueryException catch is the unreachable fallback rethrow */
       throw error instanceof RequestQueryException ? new BadRequestException(error.message) : error;
     }
   }
@@ -72,7 +72,7 @@ export class CrudRequestInterceptor extends CrudBaseInterceptor implements NestI
     if (isFunction(crudOptions.query.filter)) {
       const filterCond =
         (crudOptions.query.filter as QueryFilterFunction)(parser.search, action === CrudActions.ReadAll) ||
-        /* istanbul ignore next */ {};
+        /* istanbul ignore next -- defensive default: consumer's filter function returning null/undefined is a misuse; spec contract is to return SCondition */ {};
 
       return [...paramsSearch, filterCond];
     }
@@ -122,7 +122,7 @@ export class CrudRequestInterceptor extends CrudBaseInterceptor implements NestI
   getAuth(parser: RequestQueryParser, crudOptions: Partial<MergedCrudOptions>, req: any): { filter?: any; or?: any } {
     const auth: any = {};
 
-    /* istanbul ignore else */
+    /* istanbul ignore else -- defensive guard: getAuth() is only invoked when ctrlOptions exists (which implies auth is at least {} per mergeOptions), so falsy crudOptions.auth is structurally unreachable */
     if (crudOptions.auth) {
       const userOrRequest = crudOptions.auth.property ? req[crudOptions.auth.property] : req;
 
@@ -131,7 +131,7 @@ export class CrudRequestInterceptor extends CrudBaseInterceptor implements NestI
       }
 
       if (isFunction(crudOptions.auth.filter) && !auth.or) {
-        auth.filter = crudOptions.auth.filter(userOrRequest) || /* istanbul ignore next */ {};
+        auth.filter = crudOptions.auth.filter(userOrRequest) || /* istanbul ignore next -- defensive default: consumer's auth.filter returning null/undefined is misuse; spec contract is to return SCondition */ {};
       }
 
       if (isFunction(crudOptions.auth.persist)) {

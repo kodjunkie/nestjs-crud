@@ -49,13 +49,13 @@ export class CrudResponseInterceptor extends CrudBaseInterceptor implements Nest
     const isArray = Array.isArray(data);
 
     const options: ClassTransformOptions = {};
-    /* istanbul ignore else */
+    /* istanbul ignore else -- defensive guard: when consumer doesn't supply auth.classTransformOptions the else is no-op (intentional); coverage of the else adds nothing */
     if (isFunction(crudOptions.auth?.classTransformOptions)) {
       const userOrRequest = crudOptions.auth.property ? req[crudOptions.auth.property] : req;
       Object.assign(options, crudOptions.auth.classTransformOptions(userOrRequest));
     }
 
-    /* istanbul ignore else */
+    /* istanbul ignore else -- defensive guard: when consumer doesn't supply auth.groups the else is no-op (intentional); coverage of the else adds nothing */
     if (isFunction(crudOptions.auth?.groups)) {
       const userOrRequest = crudOptions.auth.property ? req[crudOptions.auth.property] : req;
       options.groups = crudOptions.auth.groups(userOrRequest);

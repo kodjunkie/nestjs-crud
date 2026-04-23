@@ -149,7 +149,7 @@ export class RequestQueryParser implements ParsedRequestParams {
     entityColumnsHash?: ObjectLiteral,
     logger?: { warn?: (msg: string) => void },
   ) {
-    this.authPersist = persist || /* istanbul ignore next */ {};
+    this.authPersist = persist || /* istanbul ignore next -- defensive default: `persist` already defaults to `{}` via the parameter signature, so the `||` fallback is structurally unreachable */ {};
 
     // SEC-02: runtime key validation — throws on previously-silent typos.
     if (entityColumnsHash && persist) {
@@ -169,7 +169,7 @@ export class RequestQueryParser implements ParsedRequestParams {
   }
 
   setClassTransformOptions(options: ClassTransformOptions = {}) {
-    this.classTransformOptions = options || /* istanbul ignore next */ {};
+    this.classTransformOptions = options || /* istanbul ignore next -- defensive default: `options` already defaults to `{}` via the parameter signature, so the `||` fallback is structurally unreachable */ {};
   }
 
   convertFilterToSearch(filter: QueryFilter): SFields | SConditionAND {
@@ -184,7 +184,7 @@ export class RequestQueryParser implements ParsedRequestParams {
             [filter.operator]: isEmptyValue[filter.operator] ? isEmptyValue[filter.operator] : filter.value,
           },
         }
-      : /* istanbul ignore next */ {};
+      : /* istanbul ignore next -- defensive default: callers of convertFilterToSearch always pass a parsed QueryFilter (validated upstream); falsy-filter branch unreachable in current call sites */ {};
   }
 
   private getParamNames(type: keyof RequestQueryBuilderOptions['paramNamesMap']): string[] {

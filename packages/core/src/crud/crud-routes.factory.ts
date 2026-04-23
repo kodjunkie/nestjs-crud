@@ -45,7 +45,7 @@ export class CrudRoutesFactory {
     this.create();
   }
 
-  /* istanbul ignore next */
+  /* istanbul ignore next -- static factory wrapper: thin alias over `new CrudRoutesFactory(...)` not used by the @Crud decorator (which calls `new` directly); kept as a public helper for consumers that prefer factory style */
   static create(target: any, options: CrudOptions): CrudRoutesFactory {
     return new CrudRoutesFactory(target, options);
   }
@@ -139,7 +139,7 @@ export class CrudRoutesFactory {
     } else if (this.options.serialize.getMany) {
       // keep existing value
     } else if (isFalse(this.options.serialize.get)) {
-      /* istanbul ignore next */
+      /* istanbul ignore next -- serialize.get=false AND serialize.getMany undefined: rare config combo (consumers who set serialize.get=false typically also set getMany explicitly) */
       this.options.serialize.getMany = false;
     } else {
       this.options.serialize.getMany = SerializeHelper.createGetManyDto(this.options.serialize.get, this.modelName);
@@ -399,14 +399,14 @@ export class CrudRoutesFactory {
         name,
       );
 
-      /* istanbul ignore else */
+      /* istanbul ignore else -- @Override on non-createManyBase routes: else branch is no-op (intentional skip), not behavioral; defensive guard */
       if (isEqual(override, 'createManyBase')) {
         const paramTypes = R.getRouteArgsTypes(this.targetProto, name);
         const metatype = paramTypes[parsedBody.index];
         const types = [String, Boolean, Number, Array, Object];
-        const toCopy = isIn(metatype, types) || /* istanbul ignore next */ isNil(metatype);
+        const toCopy = isIn(metatype, types) || /* istanbul ignore next -- isNil fallback: metatype is normally a class constructor; null/undefined occurs only when reflect-metadata is not properly configured (consumer setup error) */ isNil(metatype);
 
-        /* istanbul ignore else */
+        /* istanbul ignore else -- toCopy=false branch: when consumer's @Override createManyBase has a custom DTO that's not a primitive/Array/Object — we leave their type alone (no-op else, intentional) */
         if (toCopy) {
           const baseParamTypes = R.getRouteArgsTypes(this.targetProto, override);
           const baseMetatype = baseParamTypes[1];
@@ -472,7 +472,7 @@ export class CrudRoutesFactory {
       [
         CrudRequestInterceptor,
         CrudResponseInterceptor,
-        ...(isArrayFull(interceptors) ? /* istanbul ignore next */ interceptors : []),
+        ...(isArrayFull(interceptors) ? interceptors : []),
       ],
       this.targetProto[name],
     );
@@ -480,7 +480,7 @@ export class CrudRoutesFactory {
 
   protected setDecorators(name: BaseRouteName) {
     const decorators = this.options.routes[name].decorators;
-    R.setDecorators(isArrayFull(decorators) ? /* istanbul ignore next */ decorators : [], this.targetProto, name);
+    R.setDecorators(isArrayFull(decorators) ? decorators : [], this.targetProto, name);
   }
 
   protected setAction(name: BaseRouteName) {
@@ -516,11 +516,11 @@ export class CrudRoutesFactory {
   protected setSwaggerResponseOk(name: BaseRouteName) {
     const metadata = Swagger.getResponseOk(this.targetProto[name]);
     const metadataToAdd =
-      Swagger.createResponseMeta(name, this.options, this.swaggerModels) || /* istanbul ignore next */ {};
+      Swagger.createResponseMeta(name, this.options, this.swaggerModels) || /* istanbul ignore next -- defensive default: createResponseMeta returns a truthy object for every BaseRouteName + the swagger-absent branch; this `|| {}` covers the impossible falsy path */ {};
     Swagger.setResponseOk({ ...metadata, ...metadataToAdd }, this.targetProto[name]);
   }
 
   protected routeNameAction(name: BaseRouteName): string {
-    return name.split('OneBase')[0] || /* istanbul ignore next */ name.split('ManyBase')[0];
+    return name.split('OneBase')[0] || /* istanbul ignore next -- ManyBase fallback: only reachable for createManyBase, but setRouteArgs() filters to *OneBase routes before calling, so this branch is structurally unreachable in current call sites */ name.split('ManyBase')[0];
   }
 }
