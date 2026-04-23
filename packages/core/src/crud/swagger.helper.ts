@@ -35,21 +35,18 @@ export class Swagger {
   }
 
   static setOperation(metadata: unknown, func: any): void {
-    /* istanbul ignore else */
     if (swaggerConst) {
       R.set(swaggerConst.DECORATORS.API_OPERATION, metadata, func);
     }
   }
 
   static setParams(metadata: unknown, func: any): void {
-    /* istanbul ignore else */
     if (swaggerConst) {
       R.set(swaggerConst.DECORATORS.API_PARAMETERS, metadata, func);
     }
   }
 
   static setExtraModels(swaggerModels: any): void {
-    /* istanbul ignore else */
     if (swaggerConst) {
       const meta = Swagger.getExtraModels(swaggerModels.get);
       const models: any[] = [
@@ -63,34 +60,28 @@ export class Swagger {
   }
 
   static setResponseOk(metadata: unknown, func: any): void {
-    /* istanbul ignore else */
     if (swaggerConst) {
       R.set(swaggerConst.DECORATORS.API_RESPONSE, metadata, func);
     }
   }
 
   static getOperation(func: any): any {
-    /* istanbul ignore next */
     return swaggerConst ? R.get(swaggerConst.DECORATORS.API_OPERATION, func) || {} : {};
   }
 
   static getParams(func: any): any[] {
-    /* istanbul ignore next */
     return swaggerConst ? R.get(swaggerConst.DECORATORS.API_PARAMETERS, func) || [] : [];
   }
 
   static getExtraModels(target: unknown): any[] {
-    /* istanbul ignore next */
     return swaggerConst ? R.get(swaggerConst.API_EXTRA_MODELS, target) || [] : [];
   }
 
   static getResponseOk(func: any): any {
-    /* istanbul ignore next */
     return swaggerConst ? R.get(swaggerConst.DECORATORS.API_RESPONSE, func) || {} : {};
   }
 
   static createResponseMeta(name: BaseRouteName, options: MergedCrudOptions, swaggerModels: any): any {
-    /* istanbul ignore else */
     if (swagger) {
       const { routes, query } = options;
       const oldVersion = Swagger.getSwaggerVersion() < 4;
@@ -104,7 +95,6 @@ export class Swagger {
             },
           };
         case 'getManyBase':
-          /* istanbul ignore if */
           if (oldVersion) {
             return {
               [HttpStatus.OK]: {
@@ -133,7 +123,6 @@ export class Swagger {
                 },
           };
         case 'createOneBase':
-          /* istanbul ignore if */
           if (oldVersion) {
             return {
               [HttpStatus.OK]: {
@@ -149,7 +138,6 @@ export class Swagger {
             },
           };
         case 'createManyBase':
-          /* istanbul ignore if */
           if (oldVersion) {
             return {
               [HttpStatus.OK]: {
@@ -161,7 +149,7 @@ export class Swagger {
 
           return {
             [HttpStatus.CREATED]: swaggerModels.createMany
-              ? /* istanbul ignore next */ {
+              ? {
                   description: 'Get create many base response',
                   schema: { $ref: swagger.getSchemaPath(swaggerModels.createMany.name) },
                 }
@@ -174,7 +162,6 @@ export class Swagger {
                 },
           };
         case 'deleteOneBase':
-          /* istanbul ignore if */
           if (oldVersion) {
             return {
               [HttpStatus.OK]: routes.deleteOneBase.returnDeleted
@@ -195,7 +182,6 @@ export class Swagger {
                 },
           };
         case 'recoverOneBase':
-          /* istanbul ignore if */
           if (oldVersion) {
             return {
               [HttpStatus.OK]: routes.recoverOneBase.returnRecovered
@@ -218,7 +204,6 @@ export class Swagger {
         default:
           const dto = swaggerModels[name.split('OneBase')[0]];
 
-          /* istanbul ignore if */
           if (oldVersion) {
             return {
               [HttpStatus.OK]: {
@@ -248,11 +233,10 @@ export class Swagger {
           type: options[param].type === 'number' ? Number : String,
           enum: options[param].enum ? Object.values(options[param].enum) : undefined,
         }))
-      : /* istanbul ignore next */ [];
+      : [];
   }
 
   static createQueryParamsMeta(name: BaseRouteName, options: MergedCrudOptions) {
-    /* istanbul ignore if */
     if (!swaggerConst) {
       return [];
     }
@@ -283,7 +267,7 @@ export class Swagger {
       in: 'query',
     };
     const fieldsMeta = oldVersion
-      ? /* istanbul ignore next */ {
+      ? {
           ...fieldsMetaBase,
           type: 'array',
           items: {
@@ -310,7 +294,7 @@ export class Swagger {
       in: 'query',
     };
     const searchMeta = oldVersion
-      ? /* istanbul ignore next */ { ...searchMetaBase, type: 'string' }
+      ? { ...searchMetaBase, type: 'string' }
       : { ...searchMetaBase, schema: { type: 'string' } };
 
     const filterMetaBase = {
@@ -320,7 +304,7 @@ export class Swagger {
       in: 'query',
     };
     const filterMeta = oldVersion
-      ? /* istanbul ignore next */ {
+      ? {
           ...filterMetaBase,
           items: {
             type: 'string',
@@ -347,7 +331,7 @@ export class Swagger {
       in: 'query',
     };
     const orMeta = oldVersion
-      ? /* istanbul ignore next */ {
+      ? {
           ...orMetaBase,
           items: {
             type: 'string',
@@ -374,7 +358,7 @@ export class Swagger {
       in: 'query',
     };
     const sortMeta = oldVersion
-      ? /* istanbul ignore next */ {
+      ? {
           ...sortMetaBase,
           items: {
             type: 'string',
@@ -401,7 +385,7 @@ export class Swagger {
       in: 'query',
     };
     const joinMeta = oldVersion
-      ? /* istanbul ignore next */ {
+      ? {
           ...joinMetaBase,
           items: {
             type: 'string',
@@ -428,7 +412,7 @@ export class Swagger {
       in: 'query',
     };
     const limitMeta = oldVersion
-      ? /* istanbul ignore next */ { ...limitMetaBase, type: 'integer' }
+      ? { ...limitMetaBase, type: 'integer' }
       : { ...limitMetaBase, schema: { type: 'integer' } };
 
     const offsetMetaBase = {
@@ -438,7 +422,7 @@ export class Swagger {
       in: 'query',
     };
     const offsetMeta = oldVersion
-      ? /* istanbul ignore next */ { ...offsetMetaBase, type: 'integer' }
+      ? { ...offsetMetaBase, type: 'integer' }
       : { ...offsetMetaBase, schema: { type: 'integer' } };
 
     const pageMetaBase = {
@@ -448,7 +432,7 @@ export class Swagger {
       in: 'query',
     };
     const pageMeta = oldVersion
-      ? /* istanbul ignore next */ { ...pageMetaBase, type: 'integer' }
+      ? { ...pageMetaBase, type: 'integer' }
       : { ...pageMetaBase, schema: { type: 'integer' } };
 
     const cacheMetaBase = {
@@ -458,7 +442,7 @@ export class Swagger {
       in: 'query',
     };
     const cacheMeta = oldVersion
-      ? /* istanbul ignore next */ {
+      ? {
           ...cacheMetaBase,
           type: 'integer',
           minimum: 0,
@@ -473,7 +457,7 @@ export class Swagger {
       in: 'query',
     };
     const includeDeletedMeta = oldVersion
-      ? /* istanbul ignore next */ {
+      ? {
           ...includeDeletedMetaBase,
           type: 'integer',
           minimum: 0,
@@ -546,17 +530,16 @@ export class Swagger {
   }
 
   private static getSwaggerVersion(): number {
-    return swaggerPkgJson ? parseInt(swaggerPkgJson.version.split('.')[0], 10) : /* istanbul ignore next */ 3;
+    return swaggerPkgJson ? parseInt(swaggerPkgJson.version.split('.')[0], 10) : 3;
   }
 }
 
 // tslint:disable-next-line:ban-types
 export function ApiProperty(options?: any): PropertyDecorator {
   return (target: unknown, propertyKey: string | symbol) => {
-    /* istanbul ignore else */
     if (swagger) {
       // tslint:disable-next-line
-      const ApiPropertyDecorator = swagger.ApiProperty || /* istanbul ignore next */ swagger.ApiModelProperty;
+      const ApiPropertyDecorator = swagger.ApiProperty || swagger.ApiModelProperty;
       // tslint:disable-next-line
       ApiPropertyDecorator(options)(target, propertyKey);
     }
