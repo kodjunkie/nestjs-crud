@@ -15,9 +15,9 @@ All 4 services support:
 
 - The 8 generated routes from `@Crud()`
 - `@Override()` to replace generated handlers
-- Field allowlist (ARCH-03 — strict in v2.0.0)
-- READ COMMITTED transaction wrapping for mutation methods (SEC-03)
-- Optional `LoggerService` constructor injection (OBS-01 — see [Logging](https://github.com/kodjunkie/nestjs-crud/wiki/Logging))
+- Field allowlist (strict in v2.0.0 — unknown sort/filter/search fields throw `RequestQueryException`)
+- READ COMMITTED transaction wrapping for mutation methods
+- Optional `LoggerService` constructor injection (see [Logging](https://github.com/kodjunkie/nestjs-crud/wiki/Logging))
 
 ## Choosing an adapter
 

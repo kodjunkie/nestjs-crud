@@ -61,11 +61,11 @@ export class CompaniesController implements CrudController<Company> {
 ## v2.0.0 notes
 
 - **Architecture:** `TypeOrmCrudService` is now a ~250-line orchestrator that delegates query composition to a shared `QueryTranslator<SelectQueryBuilder, Brackets>` facade (composed of `WhereBuilder` + `QueryComposer` + `FetchHelper`). No consumer-visible API change. See [CONTRIBUTING.md — Adapter shape](https://github.com/kodjunkie/nestjs-crud/blob/master/CONTRIBUTING.md#adapter-shape).
-- **Transactions:** `updateOne`, `replaceOne`, `deleteOne` now run inside a `QueryRunner` transaction with `READ COMMITTED` isolation (SEC-03). Closes the v1 read-modify-write race.
-- **Cache wiring:** `@Crud({ query: { cache } })` requires a `DataSource({ cache: ... })` provider; otherwise the request fails with `CrudCacheNotConfiguredError` (PERF-02). See [Caching](https://github.com/kodjunkie/nestjs-crud/wiki/Caching).
+- **Transactions:** `updateOne`, `replaceOne`, `deleteOne` now run inside a `QueryRunner` transaction with `READ COMMITTED` isolation. Closes the v1 read-modify-write race.
+- **Cache wiring:** `@Crud({ query: { cache } })` requires a `DataSource({ cache: ... })` provider; otherwise the request fails with `CrudCacheNotConfiguredError`. See [Caching](https://github.com/kodjunkie/nestjs-crud/wiki/Caching).
 - **Relation loading:** opt into the `'query'` strategy via `@Crud({ query: { relationLoadStrategy: 'query' } })` to avoid Cartesian explosion on multi-OneToMany reads. See [RelationLoadStrategy](https://github.com/kodjunkie/nestjs-crud/wiki/RelationLoadStrategy).
-- **Logging:** pass an optional `LoggerService` instance to the constructor's second argument (OBS-01). See [Logging](https://github.com/kodjunkie/nestjs-crud/wiki/Logging).
-- **Field allowlist:** unknown sort/filter/search fields now throw `RequestQueryException` (ARCH-03 — see [v2 Migration guide](https://github.com/kodjunkie/nestjs-crud/wiki/v2-Migration#1-arch-03--strict-field-allowlist-on-sortfiltersearch)).
+- **Logging:** pass an optional `LoggerService` instance to the constructor's second argument. See [Logging](https://github.com/kodjunkie/nestjs-crud/wiki/Logging).
+- **Field allowlist:** unknown sort/filter/search fields now throw `RequestQueryException` (see [v2 Migration guide](https://github.com/kodjunkie/nestjs-crud/wiki/v2-Migration#1-strict-field-allowlist-on-sortfiltersearch)).
 
 ## See also
 

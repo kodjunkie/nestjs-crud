@@ -1,15 +1,15 @@
 # Logging
 
-`@nestjs-crud` adapter services accept an optional NestJS `LoggerService` instance via the constructor (OBS-01, new in v2.0.0). Pass a logger to gain visibility into SQLi-guard rejections, transaction lifecycle, and mutation errors — without forcing a logger on consumers who don't need one.
+`@nestjs-crud` adapter services accept an optional NestJS `LoggerService` instance via the constructor (new in v2.0.0). Pass a logger to gain visibility into SQLi-guard rejections, transaction lifecycle, and mutation errors — without forcing a logger on consumers who don't need one.
 
 ## Which adapters support it
 
-All four adapter services ship the OBS-01 optional logger hook:
+All four adapter services ship the optional logger hook:
 
-- `TypeOrmCrudService` (Phase 8)
-- `DrizzleCrudService` (Phase 8)
-- `MikroOrmCrudService` (Phase 8)
-- `PrismaCrudService` (Phase 9 — exposed via `serviceConfig.logger`, see "Prisma differences" below)
+- `TypeOrmCrudService`
+- `DrizzleCrudService`
+- `MikroOrmCrudService`
+- `PrismaCrudService` (exposed via `serviceConfig.logger`, see "Prisma differences" below)
 
 If you omit the logger, the TypeORM / Drizzle / MikroORM services default to a private `new Logger(<ServiceName>)` instance from `@nestjs/common` — meaning they always log at NestJS's configured level. Pass `new Logger(MyService.name)` (or your custom `LoggerService`) explicitly when you want logs scoped to your service name. The Prisma service treats the logger as fully optional — when omitted, all log calls are no-ops.
 
@@ -91,9 +91,9 @@ On service construction, each adapter emits one debug-level breadcrumb confirmin
 
 Use this to verify per-request-scoped providers are instantiating as expected.
 
-### Transaction lifecycle (SEC-03 — `debug` + `error`)
+### Transaction lifecycle (`debug` + `error`)
 
-`updateOne`, `replaceOne`, and `deleteOne` wrap their read-modify-write sequence in a `READ COMMITTED` transaction (SEC-03 race fix). The TypeORM adapter logs commit at `debug`:
+`updateOne`, `replaceOne`, and `deleteOne` wrap their read-modify-write sequence in a `READ COMMITTED` transaction (race-condition fix). The TypeORM adapter logs commit at `debug`:
 
 ```
 [CompaniesService] Transaction [updateOne] committed
@@ -107,11 +107,11 @@ All three core adapters log mutation failures at `error`. The Prisma adapter log
 
 Note what's **missing** from the message: the original error message. That's intentional — see PII guard below.
 
-### PII guard (D-08-SEC-02)
+### PII guard
 
 DB drivers (TypeORM, Drizzle, mikro-orm-postgres, Prisma) surface the failing SQL **with bound parameter values** in `err.message`. Logging that string would write user-supplied PII (emails, names, tokens) into your log infrastructure.
 
-Per the Phase 8 D-08-SEC-02 rule, the OBS-01 logger calls are constructed to log **names only — never values**:
+Per the optional-logger PII guard rule, logger calls are constructed to log **names only — never values**:
 
 - Mutation error logs use `err.name` in the message (e.g., `QueryFailedError`) and pass `err.stack` as the `LoggerService` second argument. The driver-supplied `err.message` (which contains parameter values) is never written to the log.
 - The SQLi-guard warn logs the **rejected field name** the request tried to use, not the value the field was being compared to.
@@ -122,7 +122,7 @@ If you replace the default logger with your own implementation, preserve this di
 
 The logger is captured at construction time (per service instance). For per-request loggers (e.g., a request-scoped pino child logger carrying a request ID), wrap the service in a `Scope.REQUEST` provider — that's a NestJS DI pattern, not a `@nestjs-crud` concern.
 
-Be aware: with MikroORM, request-scoped providers also affect `EntityManager` resolution. The MikroORM adapter already uses a `() => this.em` thunk to stay request-scope-correct (T-06-02); request-scoping the service is compatible with that design.
+Be aware: with MikroORM, request-scoped providers also affect `EntityManager` resolution. The MikroORM adapter already uses a `() => this.em` thunk to stay request-scope-correct; request-scoping the service is compatible with that design.
 
 ## Disabling individual log levels
 

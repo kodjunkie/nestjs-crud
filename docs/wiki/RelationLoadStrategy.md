@@ -1,6 +1,6 @@
 # Relation load strategy
 
-`@nestjs-crud/typeorm` exposes TypeORM's `relationLoadStrategy` choice through the `@Crud({ query: { relationLoadStrategy } })` option (PERF-01, new in v2.0.0). This page covers when to use each strategy, the divergence in alias-select behavior under `'query'`, and the N+1 / Cartesian-explosion tradeoffs.
+`@nestjs-crud/typeorm` exposes TypeORM's `relationLoadStrategy` choice through the `@Crud({ query: { relationLoadStrategy } })` option (new in v2.0.0). This page covers when to use each strategy, the divergence in alias-select behavior under `'query'`, and the N+1 / Cartesian-explosion tradeoffs.
 
 ## TL;DR
 
@@ -55,12 +55,12 @@ If the controller doesn't allow per-request override, the query param is ignored
 
 ## Alias-select divergence (`'query'` strategy)
 
-When a request includes `fields=` selecting columns from joined relations, the two strategies diverge — a known limitation surfaced by the PERF-01 integration spec (`packages/typeorm/test/perf-01-relation-load-strategy.spec.ts`, Test 5):
+When a request includes `fields=` selecting columns from joined relations, the two strategies diverge — a known limitation surfaced by the integration spec (`packages/typeorm/test/perf-01-relation-load-strategy.spec.ts`):
 
 - Under `'join'`, the joined columns become aliased columns in the single SQL output (`"posts_title": "..."`). The composer's `getSelect` honors `?fields=` for top-level columns, and `JoinOption.allow` constrains relation columns at SQL-generation time.
 - Under `'query'`, TypeORM's `setFindOptions` REPLACES the SELECT clause and drives column selection from `relations` only. `?fields=` is effectively dropped on top-level columns (only the primary key is guaranteed), and `JoinOption.allow` is **ignored** — the entire relation row is loaded.
 
-**Concrete example** (recorded by Plan 10-01 Test 5 against a `User → company` relation with `allow: ['name', 'domain']`):
+**Concrete example** (against a `User → company` relation with `allow: ['name', 'domain']`):
 
 | Strategy   | `company` columns returned                                                              |
 | ---------- | --------------------------------------------------------------------------------------- |
@@ -77,7 +77,7 @@ Drizzle, MikroORM, and Prisma do NOT expose a `relationLoadStrategy` switch thro
 
 - **Drizzle:** uses explicit `with` in queries; no strategy switch.
 - **MikroORM:** has `populate` + `populateWhere`; configure at the `EntityManager` level.
-- **Prisma:** uses `include` + nested `select`; the Phase 9 spike documented divergences from SQL JOIN semantics.
+- **Prisma:** uses `include` + nested `select`; relation loading semantics diverge from SQL JOIN — see [ServicePrisma](https://github.com/kodjunkie/nestjs-crud/wiki/ServicePrisma).
 
 A unified relation-loading strategy across all 4 adapters is tracked as a v2.x / v3 forward-flag.
 

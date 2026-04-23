@@ -5,8 +5,8 @@
 ## TL;DR
 
 - **One coordinated breaking release.** All 7 packages publish at v2.0.0 simultaneously.
-- **Most consumers need TWO changes:** (1) audit field allowlists per ARCH-03, (2) configure your DataSource cache if you use `@Crud({ query: { cache } })`.
-- **Drizzle / MikroORM consumers need ONE more change each:** typed constructor signatures (TYPES-01 / TYPES-02).
+- **Most consumers need TWO changes:** (1) audit field allowlists for the new strict allowlist on sort/filter/search, (2) configure your DataSource cache if you use `@Crud({ query: { cache } })`.
+- **Drizzle / MikroORM consumers need ONE more change each:** typed constructor signatures.
 - **New: Prisma adapter** (`@nestjs-crud/prisma`) — see [ServicePrisma](https://github.com/kodjunkie/nestjs-crud/wiki/ServicePrisma).
 
 > **Want to stay on v1?** Pin `"@nestjs-crud/<pkg>": "^1.0.2"` in your `package.json` — `npm update` will continue tracking the v1.0.x line. v1.0.3 will land here if a critical bugfix is ever needed. The v1 line is preserved indefinitely.
@@ -15,7 +15,7 @@
 
 Before upgrading:
 
-- **Node.js >=22.0.0** (BUILD-01 — enforced via `engines.node` in every package.json). Yarn / npm install on Node 20 will warn (or fail with `--engine-strict`).
+- **Node.js >=22.0.0** (enforced via `engines.node` in every package.json). Yarn / npm install on Node 20 will warn (or fail with `--engine-strict`).
 - **Peer-dependency ranges (v2.0.0):**
   - `@nestjs/common`: `^10.0.0 || ^11.0.0` (all 4 adapter packages — supports both Nest v10 + v11)
   - `@nestjs/typeorm`: `^10.0.0 || ^11.0.0` (typeorm package only)
@@ -28,7 +28,7 @@ Before upgrading:
 
 These changes affect a meaningful slice of consumers. Each section has a full before/after block.
 
-### 1. ARCH-03 — Strict field allowlist on sort/filter/search
+### 1. Strict field allowlist on sort/filter/search
 
 **Every consumer hits this.** v1 silently skipped unknown fields in `?sort=`, `?filter=`, and `?search=` query params. v2 throws `RequestQueryException` (HTTP 400) at request-parse time.
 
@@ -63,9 +63,9 @@ These changes affect a meaningful slice of consumers. Each section has a full be
 - **Client aliases for joined subquery results** — if you exposed `?sort=clientAlias` where `clientAlias` was a SELECT alias from a custom query builder override, v2 rejects it. Either expose the underlying column name in the request, or extend the allowlist via the override hook.
 - **Dotted paths like `?sort=profile.name` when `profile` isn't joined** — v2 requires the relation to be declared in the controller's `@Crud({ query: { join: { profile: {} } } })` block. v1 silently fell through and ordered by nothing.
 
-There is **no opt-out flag** in v2. The v1 `strictSanitization: false` escape hatch was removed in Phase 4 — shipping a permanent kill-switch on a security control contradicts the project's security posture.
+There is **no opt-out flag** in v2. The v1 `strictSanitization: false` escape hatch was removed — shipping a permanent kill-switch on a security control contradicts the project's security posture.
 
-### 2. TYPES-01 — Drizzle `DrizzleClient` typed constructor
+### 2. Drizzle `DrizzleClient` typed constructor
 
 The `DrizzleCrudService` constructor's `db` parameter is now typed against the structural `DrizzleClient` interface instead of `any`. This catches a whole class of "wrong drizzle instance" bugs at compile time.
 
@@ -101,7 +101,7 @@ export class CompaniesService extends DrizzleCrudService<typeof companies.$infer
 
 **Migration:** import `DrizzleClient` from `@nestjs-crud/drizzle` and replace `db: any` in your subclass constructor. Subclasses that accessed `this.db` with custom typing may need to widen / cast — `DrizzleClient` is the structural minimum the adapter needs (`select` / `insert` / `update` / `delete` / `transaction`).
 
-### 3. TYPES-02 — MikroORM typed public method signatures
+### 3. MikroORM typed public method signatures
 
 The public CRUD methods on `MikroOrmCrudService` (`getMany`, `getOne`, `createOne`, `createMany`, `updateOne`, `replaceOne`, `deleteOne`, `recoverOne`) now have fully typed signatures. Subclasses overriding these methods must conform — `any`-typed overrides will fail to compile.
 
@@ -142,7 +142,7 @@ export class CompaniesService extends MikroOrmCrudService<Company> {
 
 **Migration:** import the typed surfaces from `@nestjs-crud/core` (`CrudRequest`, `GetManyDefaultResponse`, `CreateManyDto`, etc.) and update the override signatures to match. If you were not overriding these methods, no action needed.
 
-### 4. PERF-02 — Cache misconfiguration fail-fast
+### 4. Cache misconfiguration fail-fast
 
 If you set `@Crud({ query: { cache } })` but did not configure `DataSource({ cache: ... })`, v2 throws `CrudCacheNotConfiguredError` on the **first cached request** instead of silently rendering as a generic 500.
 
@@ -171,28 +171,28 @@ export class UsersController { /* ... */ }
 
 Each one-liner below is a behavior change that's transparent to most consumers. Click through to source / wiki for details.
 
-- **SEC-02 — `setAuthPersist` validates persist keys.** Optional `entityColumnsHash` + `logger?` params on `setAuthPersist(persist, entityColumnsHash?, logger?)`. Throws `RequestQueryException` on invalid keys. Backward-compatible — pre-existing calls without the new params behave as before. (Source: `packages/request/src/request-query.parser.ts`.)
-- **SEC-03 — Mutation methods run inside transactions.** `updateOne`, `replaceOne`, and `deleteOne` now wrap in `READ COMMITTED` transactions across all 3 ORM adapters (TypeORM `QueryRunner`, Drizzle `db.transaction`, MikroORM `RequestContext.create`). Closes the v1 read-modify-write race. Transparent unless you relied on the pre-fix non-atomic semantics.
-- **PERF-01 — `relationLoadStrategy: 'query'` opt-in (TypeORM only).** New per-controller and per-request switch. If you opt in, see the [RelationLoadStrategy](https://github.com/kodjunkie/nestjs-crud/wiki/RelationLoadStrategy) wiki page for the alias-select divergence caveat. (Source: `packages/typeorm/src/query/typeorm-query-composer.ts`.)
-- **TYPES-05 — Inline `SwaggerEnumType`.** The internal `@nestjs/swagger` `SwaggerEnumType` import path was inlined in `packages/core/src/interfaces/params-options.interface.ts`. Affects only consumers who imported the internal type directly.
-- **BUILD-01 — Node >=22 enforced.** All 7 packages declare `engines.node >=22.0.0`. Listed under [Prerequisites](#prerequisites) above.
+- **`setAuthPersist` validates persist keys.** Optional `entityColumnsHash` + `logger?` params on `setAuthPersist(persist, entityColumnsHash?, logger?)`. Throws `RequestQueryException` on invalid keys. Backward-compatible — pre-existing calls without the new params behave as before. (Source: `packages/request/src/request-query.parser.ts`.)
+- **Mutation methods run inside transactions.** `updateOne`, `replaceOne`, and `deleteOne` now wrap in `READ COMMITTED` transactions across all 3 ORM adapters (TypeORM `QueryRunner`, Drizzle `db.transaction`, MikroORM `RequestContext.create`). Closes the v1 read-modify-write race. Transparent unless you relied on the pre-fix non-atomic semantics.
+- **`relationLoadStrategy: 'query'` opt-in (TypeORM only).** New per-controller and per-request switch. If you opt in, see the [RelationLoadStrategy](https://github.com/kodjunkie/nestjs-crud/wiki/RelationLoadStrategy) wiki page for the alias-select divergence caveat. (Source: `packages/typeorm/src/query/typeorm-query-composer.ts`.)
+- **Inline `SwaggerEnumType`.** The internal `@nestjs/swagger` `SwaggerEnumType` import path was inlined in `packages/core/src/interfaces/params-options.interface.ts`. Affects only consumers who imported the internal type directly.
+- **Node >=22 enforced.** All 7 packages declare `engines.node >=22.0.0`. Listed under [Prerequisites](#prerequisites) above.
 
 ## New features
 
 - **Prisma adapter** — `@nestjs-crud/prisma` ships at v2.0.0. Same conceptual surface as the other 3 adapter services. See [ServicePrisma](https://github.com/kodjunkie/nestjs-crud/wiki/ServicePrisma).
-- **Optional logger hook (OBS-01)** — pass a NestJS `LoggerService` to any adapter service constructor for visibility into auth-persist validation, transaction lifecycle, SQLi-guard rejections, and cache misconfig. See [Logging](https://github.com/kodjunkie/nestjs-crud/wiki/Logging).
-- **TypeORM `relationLoadStrategy` (PERF-01)** — opt-in per-controller or per-request switch between `'join'` (default — JOIN-based eager loads) and `'query'` (split queries — eliminates Cartesian explosion on multi-collection eager loads). See [RelationLoadStrategy](https://github.com/kodjunkie/nestjs-crud/wiki/RelationLoadStrategy).
+- **Optional logger hook** — pass a NestJS `LoggerService` to any adapter service constructor for visibility into auth-persist validation, transaction lifecycle, SQLi-guard rejections, and cache misconfig. See [Logging](https://github.com/kodjunkie/nestjs-crud/wiki/Logging).
+- **TypeORM `relationLoadStrategy`** — opt-in per-controller or per-request switch between `'join'` (default — JOIN-based eager loads) and `'query'` (split queries — eliminates Cartesian explosion on multi-collection eager loads). See [RelationLoadStrategy](https://github.com/kodjunkie/nestjs-crud/wiki/RelationLoadStrategy).
 - **Architectural decomposition** — adapter services are now ~250 lines each (down from a 1023-line monolith), composed of `WhereBuilder` + `QueryComposer` + `FetchHelper` pieces under a `QueryTranslator<Q, W>` facade. No consumer-visible API change. See [CONTRIBUTING.md](https://github.com/kodjunkie/nestjs-crud/blob/master/CONTRIBUTING.md).
 
 ## Removed v1 surfaces
 
-The original v1.0.2 plan was to add `@deprecated` JSDoc annotations on every removed surface. In practice, the ARCH-04 / ARCH-05 refactors restructured the affected surfaces away entirely, so a deprecation-window cycle was moot. The removed surfaces are listed here for completeness:
+The original v1.0.2 plan was to add `@deprecated` JSDoc annotations on every removed surface. In practice, the v2 architectural decomposition restructured the affected surfaces away entirely, so a deprecation-window cycle was moot. The removed surfaces are listed here for completeness:
 
-- `DrizzleCrudService` `db: any` → typed `DrizzleClient` (TYPES-01)
-- `MikroOrmCrudService` `any`-typed public method signatures → typed (TYPES-02)
-- `ParamOption.enum` SwaggerEnumType internal-import-path → inlined (TYPES-05)
-- `strictSanitization` opt-out flag on `@Crud({ query })` → removed (Phase 4 D-04 — security kill-switch was inappropriate for a default-on guard)
-- v1 monolithic `TypeOrmCrudService` internals (`createBuilder`, `getSelect`, `setSearchCondition`, etc., as protected methods) → moved to internal `WhereBuilder` / `QueryComposer` / `FetchHelper` pieces under `QueryTranslator` (ARCH-04 / ARCH-05). Subclasses that overrode these protected methods to customize query building should now compose a custom `QueryTranslator` instead — see [CONTRIBUTING.md](https://github.com/kodjunkie/nestjs-crud/blob/master/CONTRIBUTING.md) for the adapter-shape contract.
+- `DrizzleCrudService` `db: any` → typed `DrizzleClient`
+- `MikroOrmCrudService` `any`-typed public method signatures → typed
+- `ParamOption.enum` SwaggerEnumType internal-import-path → inlined
+- `strictSanitization` opt-out flag on `@Crud({ query })` → removed (security kill-switch was inappropriate for a default-on guard)
+- v1 monolithic `TypeOrmCrudService` internals (`createBuilder`, `getSelect`, `setSearchCondition`, etc., as protected methods) → moved to internal `WhereBuilder` / `QueryComposer` / `FetchHelper` pieces under `QueryTranslator`. Subclasses that overrode these protected methods to customize query building should now compose a custom `QueryTranslator` instead — see [CONTRIBUTING.md](https://github.com/kodjunkie/nestjs-crud/blob/master/CONTRIBUTING.md) for the adapter-shape contract.
 
 ## Forward-looking (v2.x / v3 work)
 

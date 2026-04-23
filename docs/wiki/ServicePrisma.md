@@ -105,9 +105,9 @@ Because Prisma's generated types are TypeScript **interfaces** (not classes), us
 
 ## v2.0.0 notes
 
-- **Transactions (SEC-03).** All mutation methods (`updateOne`, `replaceOne`, `deleteOne`) run inside `prisma.$transaction(..., { isolationLevel: 'ReadCommitted' })`. The translator is cloned for the transaction client (`translator.cloneFor(tx)`), so the read-modify-write window that affected v1 is closed. `createMany` uses Prisma's array-form `$transaction([...])` to return full records (Prisma's native `createMany` returns `{ count }` only).
-- **Joins use `include`, not SQL JOIN.** Prisma's `include` / nested-`select` translates `@Crud({ query: { join } })`, but the semantics are **not identical** to SQL JOINs — Prisma issues separate queries per relation by default. The Phase 9 spike documented the divergences in `.planning/spikes/`. For relation-heavy reads, prefer explicit `include` configuration over `@Crud` join wiring. The `PrismaJoinResolver` enforces D-05b SQLi mitigation for dotted-path sort.
-- **Logger (OBS-01).** Pass an optional `logger` on the config to capture adapter-level errors:
+- **Transactions.** All mutation methods (`updateOne`, `replaceOne`, `deleteOne`) run inside `prisma.$transaction(..., { isolationLevel: 'ReadCommitted' })`. The translator is cloned for the transaction client (`translator.cloneFor(tx)`), so the read-modify-write window that affected v1 is closed. `createMany` uses Prisma's array-form `$transaction([...])` to return full records (Prisma's native `createMany` returns `{ count }` only).
+- **Joins use `include`, not SQL JOIN.** Prisma's `include` / nested-`select` translates `@Crud({ query: { join } })`, but the semantics are **not identical** to SQL JOINs — Prisma issues separate queries per relation by default. For relation-heavy reads, prefer explicit `include` configuration over `@Crud` join wiring. The `PrismaJoinResolver` enforces a SQLi mitigation for dotted-path sort by validating the relation chain against the schema's allowed columns.
+- **Logger.** Pass an optional `logger` on the config to capture adapter-level errors:
   ```typescript
   super(prisma, 'company', {
     /* ...other config... */

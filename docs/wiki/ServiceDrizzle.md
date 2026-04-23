@@ -58,7 +58,7 @@ export class CompaniesController {
 
 ## v2.0.0 notes
 
-- **Typed `DrizzleClient` constructor (TYPES-01 — breaking).** The `db` parameter is now typed against the structural `DrizzleClient` interface instead of `any`. Update your subclass:
+- **Typed `DrizzleClient` constructor (breaking).** The `db` parameter is now typed against the structural `DrizzleClient` interface instead of `any`. Update your subclass:
 
   ```typescript
   import { DrizzleCrudService, DrizzleClient } from '@nestjs-crud/drizzle';
@@ -66,10 +66,10 @@ export class CompaniesController {
   constructor(@Inject('DB') db: DrizzleClient) { super(db, companies); }
   ```
 
-  See [v2 Migration guide § TYPES-01](https://github.com/kodjunkie/nestjs-crud/wiki/v2-Migration#2-types-01--drizzle-drizzleclient-typed-constructor).
-- **Transactions:** `updateOne`, `replaceOne`, `deleteOne` now run inside `db.transaction(...)` with `READ COMMITTED` isolation. Internally, the translator clones for the transaction via `cloneFor(tx)` — service code never calls `tx.update/insert/delete` directly (SEC-03).
+  See [v2 Migration guide](https://github.com/kodjunkie/nestjs-crud/wiki/v2-Migration#2-drizzle-drizzleclient-typed-constructor).
+- **Transactions:** `updateOne`, `replaceOne`, `deleteOne` now run inside `db.transaction(...)` with `READ COMMITTED` isolation. Internally, the translator clones for the transaction via `cloneFor(tx)` — service code never calls `tx.update/insert/delete` directly.
 - **Caching:** the `@Crud({ query: { cache } })` option is currently a no-op for Drizzle. Use a Redis wrapper or HTTP-cache layer above the controller. See [Caching](https://github.com/kodjunkie/nestjs-crud/wiki/Caching).
-- **Logging:** pass an optional `LoggerService` to the constructor's third argument (OBS-01). See [Logging](https://github.com/kodjunkie/nestjs-crud/wiki/Logging).
+- **Logging:** pass an optional `LoggerService` to the constructor's third argument. See [Logging](https://github.com/kodjunkie/nestjs-crud/wiki/Logging).
 
 ## See also
 
