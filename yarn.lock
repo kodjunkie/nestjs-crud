@@ -2907,6 +2907,28 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@prisma/adapter-mariadb@npm:^7.8.0":
+  version: 7.8.0
+  resolution: "@prisma/adapter-mariadb@npm:7.8.0"
+  dependencies:
+    "@prisma/driver-adapter-utils": "npm:7.8.0"
+    mariadb: "npm:3.4.5"
+  checksum: 10c0/9c003b36376cb79cafcc89a50a3d62f8a0d902146d28ea97263b632feffd4a3b4981e7996e7d6c5943da56b0a19ee230caa8a4aeffbc652f4f2ccfc9836db893
+  languageName: node
+  linkType: hard
+
+"@prisma/adapter-pg@npm:^7.8.0":
+  version: 7.8.0
+  resolution: "@prisma/adapter-pg@npm:7.8.0"
+  dependencies:
+    "@prisma/driver-adapter-utils": "npm:7.8.0"
+    "@types/pg": "npm:^8.16.0"
+    pg: "npm:^8.16.3"
+    postgres-array: "npm:3.0.4"
+  checksum: 10c0/5cc759ef634336b1264dcfd1aa34674b57d7e8817efc31a245acc28209ad8df822d5c8694b6693fbab5730b03310af4b1acd02aa1bf8f524e051a72d66d7dde3
+  languageName: node
+  linkType: hard
+
 "@prisma/client-runtime-utils@npm:7.8.0":
   version: 7.8.0
   resolution: "@prisma/client-runtime-utils@npm:7.8.0"
@@ -2979,6 +3001,15 @@ __metadata:
     valibot: "npm:1.2.0"
     zeptomatch: "npm:2.1.0"
   checksum: 10c0/9494f86f02ce820ea959cb20ada0d462940ef212aa32c9e68556fa47271ecca14b71c3cb26a7dc477c1ae8f618156ec16dd5ab42b9d46c627240e152e0076d66
+  languageName: node
+  linkType: hard
+
+"@prisma/driver-adapter-utils@npm:7.8.0":
+  version: 7.8.0
+  resolution: "@prisma/driver-adapter-utils@npm:7.8.0"
+  dependencies:
+    "@prisma/debug": "npm:7.8.0"
+  checksum: 10c0/d8db769e63df3072942b1369641e9eba4a00607dfce66ddce822992d0bbd77507acd6a08b6d7ee32cdab7f27767f8e86afa1016e347f2732362e71337330d1ec
   languageName: node
   linkType: hard
 
@@ -3480,6 +3511,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@types/geojson@npm:^7946.0.16":
+  version: 7946.0.16
+  resolution: "@types/geojson@npm:7946.0.16"
+  checksum: 10c0/1ff24a288bd5860b766b073ead337d31d73bdc715e5b50a2cee5cb0af57a1ed02cc04ef295f5fa68dc40fe3e4f104dd31282b2b818a5ba3231bc1001ba084e3c
+  languageName: node
+  linkType: hard
+
 "@types/istanbul-lib-coverage@npm:*, @types/istanbul-lib-coverage@npm:^2.0.1, @types/istanbul-lib-coverage@npm:^2.0.6":
   version: 2.0.6
   resolution: "@types/istanbul-lib-coverage@npm:2.0.6"
@@ -3570,10 +3608,30 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@types/node@npm:^24.0.13":
+  version: 24.12.2
+  resolution: "@types/node@npm:24.12.2"
+  dependencies:
+    undici-types: "npm:~7.16.0"
+  checksum: 10c0/710050c42f89075c4479e4e1e4c2532486b0c41b1e2a8a13ad88641c88b88cdaea87414e19224f30028719737bd70e327edcaa184d50e86b9418941edd7eb02b
+  languageName: node
+  linkType: hard
+
 "@types/normalize-package-data@npm:^2.4.0, @types/normalize-package-data@npm:^2.4.3":
   version: 2.4.4
   resolution: "@types/normalize-package-data@npm:2.4.4"
   checksum: 10c0/aef7bb9b015883d6f4119c423dd28c4bdc17b0e8a0ccf112c78b4fe0e91fbc4af7c6204b04bba0e199a57d2f3fbbd5b4a14bf8739bf9d2a39b2a0aad545e0f86
+  languageName: node
+  linkType: hard
+
+"@types/pg@npm:^8.16.0":
+  version: 8.20.0
+  resolution: "@types/pg@npm:8.20.0"
+  dependencies:
+    "@types/node": "npm:*"
+    pg-protocol: "npm:*"
+    pg-types: "npm:^2.2.0"
+  checksum: 10c0/c8b5aa794ea074aa20d0c1ef6c721ce0fe16f2c084d0ccc32b7f12909a08ec969e6b01a094ce8e7019cc425381c4b59f261bd0133daf0c6d4aca5c6c492e8312
   languageName: node
   linkType: hard
 
@@ -9346,7 +9404,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"iconv-lite@npm:^0.6.2":
+"iconv-lite@npm:^0.6.2, iconv-lite@npm:^0.6.3":
   version: 0.6.3
   resolution: "iconv-lite@npm:0.6.3"
   dependencies:
@@ -11692,7 +11750,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"lru-cache@npm:^10.0.1, lru-cache@npm:^10.2.0":
+"lru-cache@npm:^10.0.1, lru-cache@npm:^10.2.0, lru-cache@npm:^10.4.3":
   version: 10.4.3
   resolution: "lru-cache@npm:10.4.3"
   checksum: 10c0/ebd04fbca961e6c1d6c0af3799adcc966a1babe798f685bb84e6599266599cd95d94630b10262f5424539bc4640107e8a33aa28585374abf561d30d16f4b39fb
@@ -11860,6 +11918,19 @@ __metadata:
   dependencies:
     object-visit: "npm:^1.0.0"
   checksum: 10c0/fb3475e5311939a6147e339999113db607adc11c7c3cd3103e5e9dbf502898416ecba6b1c7c649c6d4d12941de00cee58b939756bdf20a9efe7d4fa5a5738b73
+  languageName: node
+  linkType: hard
+
+"mariadb@npm:3.4.5":
+  version: 3.4.5
+  resolution: "mariadb@npm:3.4.5"
+  dependencies:
+    "@types/geojson": "npm:^7946.0.16"
+    "@types/node": "npm:^24.0.13"
+    denque: "npm:^2.1.0"
+    iconv-lite: "npm:^0.6.3"
+    lru-cache: "npm:^10.4.3"
+  checksum: 10c0/2b007083f992c1543e73ec9c4113528deeb418502dfee791bb2902c7c2e228d9e46c3ed7415c27f7d03850e34189ee4a8b5c54ef7d262abcfd5eb1848e8ca76e
   languageName: node
   linkType: hard
 
@@ -12520,6 +12591,8 @@ __metadata:
     "@nestjs/swagger": "npm:11.2.6"
     "@nestjs/testing": "npm:^11.1.13"
     "@nestjs/typeorm": "npm:^11.0.0"
+    "@prisma/adapter-mariadb": "npm:^7.8.0"
+    "@prisma/adapter-pg": "npm:^7.8.0"
     "@prisma/client": "npm:^7.0.0"
     "@types/jest": "npm:30.0.0"
     "@types/node": "npm:^22.19.10"
@@ -13913,14 +13986,14 @@ __metadata:
   languageName: node
   linkType: hard
 
-"pg-protocol@npm:^1.11.0, pg-protocol@npm:^1.13.0":
+"pg-protocol@npm:*, pg-protocol@npm:^1.11.0, pg-protocol@npm:^1.13.0":
   version: 1.13.0
   resolution: "pg-protocol@npm:1.13.0"
   checksum: 10c0/a4e851e6bb8ff404ca19d561cf49b6b0caf45163bd3f289889edaf6c4e9fb25b08fb57f50d37a8cc86007efcf2cbb3dd2372c97a353a546f45eb49ddebc84fa9
   languageName: node
   linkType: hard
 
-"pg-types@npm:2.2.0":
+"pg-types@npm:2.2.0, pg-types@npm:^2.2.0":
   version: 2.2.0
   resolution: "pg-types@npm:2.2.0"
   dependencies:
@@ -13955,7 +14028,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"pg@npm:8.20.0":
+"pg@npm:8.20.0, pg@npm:^8.16.3":
   version: 8.20.0
   resolution: "pg@npm:8.20.0"
   dependencies:
@@ -16954,6 +17027,13 @@ __metadata:
   version: 6.21.0
   resolution: "undici-types@npm:6.21.0"
   checksum: 10c0/c01ed51829b10aa72fc3ce64b747f8e74ae9b60eafa19a7b46ef624403508a54c526ffab06a14a26b3120d055e1104d7abe7c9017e83ced038ea5cf52f8d5e04
+  languageName: node
+  linkType: hard
+
+"undici-types@npm:~7.16.0":
+  version: 7.16.0
+  resolution: "undici-types@npm:7.16.0"
+  checksum: 10c0/3033e2f2b5c9f1504bdc5934646cb54e37ecaca0f9249c983f7b1fc2e87c6d18399ebb05dc7fd5419e02b2e915f734d872a65da2e3eeed1813951c427d33cc9a
   languageName: node
   linkType: hard
 

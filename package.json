@@ -86,6 +86,8 @@
     "typeorm": "^0.3.28"
   },
   "devDependencies": {
+    "@prisma/adapter-mariadb": "^7.8.0",
+    "@prisma/adapter-pg": "^7.8.0",
     "@prisma/client": "^7.0.0",
     "@types/jest": "30.0.0",
     "@types/node": "^22.19.10",

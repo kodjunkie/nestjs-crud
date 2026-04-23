@@ -35,11 +35,13 @@ async function main(dialect: 'postgres' | 'mysql'): Promise<void> {
 
   execSync(`npx prisma generate --config=${config} --schema=${schema}`, { stdio: 'inherit' });
 
+  // Prisma v7: PrismaClient ctor rejects `datasources`/`datasourceUrl` entirely
+  // and no longer reads env.DATABASE_URL implicitly. Only driver-adapter (or
+  // Accelerate) paths remain — we use @prisma/adapter-pg / @prisma/adapter-mariadb
+  // here via the shared factory. See D-01 amendment in 18-CONTEXT.md.
   // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const { PrismaClient } = require('../../../../node_modules/.prisma/client-smoke');
-  // Prisma v7: PrismaClient no longer reads env.DATABASE_URL implicitly —
-  // consumers must forward it via datasourceUrl (or a driver adapter).
-  const prisma = new PrismaClient({ datasourceUrl: process.env.DATABASE_URL });
+  const { makePrismaClient } = require('./make-prisma-client');
+  const prisma = makePrismaClient(dialect);
 
   try {
     // Clear Prisma-managed tables before seeding (preserves other adapters' tables)
