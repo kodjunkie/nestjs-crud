@@ -1,0 +1,83 @@
+{
+  "$schema": "https://unpkg.com/knip@5/schema.json",
+  "workspaces": {
+    "packages/util": {
+      "entry": ["src/index.ts"],
+      "project": ["src/**/*.ts"]
+    },
+    "packages/request": {
+      "entry": ["src/index.ts"],
+      "project": ["src/**/*.ts"]
+    },
+    "packages/core": {
+      "entry": [
+        "src/index.ts",
+        "test/**/*.spec.ts",
+        "test/parity/**/*.ts",
+        "test/__stubs__/**/*.ts",
+        "test/__fixture__/**/*.ts"
+      ],
+      "project": ["src/**/*.ts", "test/**/*.ts"]
+    },
+    "packages/typeorm": {
+      "entry": [
+        "src/index.ts",
+        "src/query/index.ts",
+        "jest.config.js",
+        "test/**/*.spec.ts",
+        "test/__fixture__/**/*.ts"
+      ],
+      "project": ["src/**/*.ts", "test/**/*.ts"]
+    },
+    "packages/drizzle": {
+      "entry": [
+        "src/index.ts",
+        "src/query/index.ts",
+        "jest.config.js",
+        "test/**/*.spec.ts",
+        "test/__fixture__/**/*.ts"
+      ],
+      "project": ["src/**/*.ts", "test/**/*.ts"]
+    },
+    "packages/mikro-orm": {
+      "entry": [
+        "src/index.ts",
+        "src/query/index.ts",
+        "jest.config.js",
+        "test/**/*.spec.ts",
+        "test/__fixture__/**/*.ts"
+      ],
+      "project": ["src/**/*.ts", "test/**/*.ts"]
+    },
+    "packages/prisma": {
+      "entry": [
+        "src/index.ts",
+        "src/query/index.ts",
+        "jest.config.js",
+        "test/**/*.spec.ts",
+        "test/__fixture__/**/*.ts"
+      ],
+      "project": ["src/**/*.ts", "test/**/*.ts"]
+    },
+    ".": {
+      "entry": [
+        "jest.config.js",
+        "jest.config.no-swagger.js",
+        "examples/**/*.ts"
+      ],
+      "project": ["*.js", "examples/**/*.ts"]
+    }
+  },
+  "rules": {
+    "duplicates": "off"
+  },
+  "ignore": [
+    "**/lib/**",
+    "**/node_modules/**",
+    "**/.mrepo/**",
+    "**/coverage/**",
+    "**/coverage-no-swagger/**",
+    "examples/*/node_modules/**"
+  ],
+  "ignoreBinaries": []
+}
