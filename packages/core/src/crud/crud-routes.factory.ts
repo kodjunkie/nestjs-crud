@@ -12,6 +12,12 @@ import {
   isNil,
   isUndefined,
 } from '@nestjs-crud/util';
+// ESM-safe callable: pluralize ships CJS-only. Same dual-shape unwrap as deepmerge below.
+import * as pluralizeNs from 'pluralize';
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const pluralize: (word: string) => string =
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  typeof (pluralizeNs as any) === 'function' ? (pluralizeNs as any) : (pluralizeNs as any).default;
 import * as deepmergeNs from 'deepmerge';
 // ESM-safe callable: deepmerge ships CJS-only. Under Jest ESM (--experimental-vm-modules),
 // `import * as` yields a namespace where the function lives at .default. Under ts-jest CJS
@@ -31,6 +37,7 @@ import { BaseRoute, CrudOptions, CrudRequest, MergedCrudOptions } from '../inter
 import { BaseRouteName } from '../types';
 import { CrudActions, CrudValidationGroups } from '../enums';
 import { CrudConfigService } from '../module';
+import { safeRequire } from '../util';
 
 export class CrudRoutesFactory {
   protected options: MergedCrudOptions;
@@ -79,6 +86,7 @@ export class CrudRoutesFactory {
     const routesSchema = this.getRoutesSchema();
     this.mergeOptions();
     this.setResponseModels();
+    this.setSwaggerTags();
     this.createRoutes(routesSchema);
     this.overrideRoutes(routesSchema);
     this.enableRoutes(routesSchema);
@@ -569,11 +577,7 @@ export class CrudRoutesFactory {
     }
     const consumerSynth = this.options.swagger?.synthExample;
     const single = Swagger.synthesizeBodyExample(this.modelType, consumerSynth, name);
-    if (
-      single &&
-      typeof single === 'object' &&
-      Object.keys(single as Record<string, unknown>).length === 0
-    ) {
+    if (single && typeof single === 'object' && Object.keys(single as Record<string, unknown>).length === 0) {
       return;
     }
     // Consumer-fn may return the full bulk wrapper when it inspects route === 'createManyBase'.
@@ -588,6 +592,49 @@ export class CrudRoutesFactory {
     const bodyParam = { in: 'body', name: 'body', required: true, schema: { example } };
     const existing = Swagger.getParams(this.targetProto[name]);
     Swagger.setParams([...existing, bodyParam], this.targetProto[name]);
+  }
+
+  // Auto-assigns @ApiTags once per controller. Skipped when the consumer already
+  // attached @ApiTags(...) at decoration time. Default tag = pluralize(modelName);
+  // overridable via `swagger.tag` (string | string[]). When `swagger.tagWithVersion === true`,
+  // prepends `v{version}/` using VERSION_METADATA read off the controller class.
+  // VERSION_METADATA lives at `@nestjs/common/constants` (not re-exported from the
+  // top-level @nestjs/common); probe both paths via safeRequire so the helper stays
+  // tolerant of future NestJS export-surface changes.
+  protected setSwaggerTags() {
+    if (!swaggerConst) {
+      return;
+    }
+    const existing: string[] = R.get(swaggerConst.DECORATORS.API_TAGS, this.target);
+    if (isArrayFull(existing)) {
+      return;
+    }
+    const configured = this.options.swagger?.tag;
+    let tags: string[] = Array.isArray(configured) ? [...configured] : configured ? [configured] : [pluralize(this.modelName)];
+
+    if (this.options.swagger?.tagWithVersion === true) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const common: any = safeRequire('@nestjs/common/constants') || safeRequire('@nestjs/common');
+      const versionMetaKey = common?.VERSION_METADATA;
+      if (versionMetaKey) {
+        const rawVersion = Reflect.getMetadata(versionMetaKey, this.target);
+        let version: string | undefined;
+        // Null-safe extraction: string → use; array-first-element-string → use;
+        // everything else (null, undefined, VERSION_NEUTRAL symbol, number, object) → skip.
+        // A malformed VERSION_METADATA shape must never emit a malformed tag — preserve
+        // the default non-prefixed tag instead.
+        if (typeof rawVersion === 'string') {
+          version = rawVersion;
+        } else if (Array.isArray(rawVersion) && typeof rawVersion[0] === 'string') {
+          version = rawVersion[0];
+        }
+        if (version) {
+          tags = tags.map((t) => `v${version}/${t}`);
+        }
+      }
+    }
+
+    R.set(swaggerConst.DECORATORS.API_TAGS, tags, this.target);
   }
 
   protected routeNameAction(name: BaseRouteName): string {
