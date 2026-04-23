@@ -94,7 +94,7 @@ export class TypeOrmCrudService<T> extends CrudService<T> {
     const { returnShallow } = req.options.routes.createOneBase;
     const entity = this.prepareEntityBeforeSave(dto, req.parsed);
 
-    /* istanbul ignore if */
+    /* istanbul ignore if -- DB-state edge: prepareEntityBeforeSave returns falsy only when the input dto is structurally empty AND no authPersist exists; this guard is the safety net before save() but is unreachable via normal API request flow (validation pipe rejects empty body upstream) — kept per D-19 (Phase 5 carry-forward) */
     if (!entity) {
       this.throwBadRequestException('Empty data. Nothing to save.');
     }
@@ -111,14 +111,14 @@ export class TypeOrmCrudService<T> extends CrudService<T> {
   }
 
   public async createMany(req: CrudRequest, dto: CreateManyDto<T | Partial<T>>): Promise<T[]> {
-    /* istanbul ignore if */
+    /* istanbul ignore if -- DB-state edge: dto shape validation is normally done by class-validator (BulkDto requires non-empty bulk array); this guard is the in-service safety net for direct programmatic invocation that bypasses the validation pipe — kept per D-19 (Phase 5 carry-forward) */
     if (!isObject(dto) || !isArrayFull(dto.bulk)) {
       this.throwBadRequestException('Empty data. Nothing to save.');
     }
 
     const bulk = dto.bulk.map((one) => this.prepareEntityBeforeSave(one, req.parsed)).filter((d) => !isUndefined(d));
 
-    /* istanbul ignore if */
+    /* istanbul ignore if -- DB-state edge: post-filter empty bulk fires only when EVERY entry of a non-empty input bulk had prepareEntityBeforeSave return undefined (entry-level rejection) — requires programmatic API invocation with all-empty entries, unreachable via HTTP — kept per D-19 (Phase 5 carry-forward) */
     if (!hasLength(bulk)) {
       this.throwBadRequestException('Empty data. Nothing to save.');
     }
@@ -178,7 +178,7 @@ export class TypeOrmCrudService<T> extends CrudService<T> {
       }
 
       const primaryParams = this.getPrimaryParams(req.options);
-      /* istanbul ignore if */
+      /* istanbul ignore if -- DB-state edge: empty primaryParams fires only when consumer disables ALL primary params (params: { id: { disabled: true } } with no replacement primary); this is a misconfiguration that mergeOptions auto-corrects by injecting a default `id` primary — branch defensive against direct option mutation post-merge — kept per D-19 (Phase 5 carry-forward) */
       if (!primaryParams.length) {
         return replaced;
       }
@@ -207,7 +207,7 @@ export class TypeOrmCrudService<T> extends CrudService<T> {
 
   public getParamFilters(parsed: CrudRequest['parsed']): ObjectLiteral {
     const filters = {};
-    /* istanbul ignore else */
+    /* istanbul ignore else -- DB-state edge: empty paramsFilter only occurs for non-parametric endpoints (e.g. POST /resource without :id), but getParamFilters is invoked by updateOne/replaceOne which require :id by route definition — else branch defensive against atypical CrudRequest shapes — kept per D-19 (Phase 5 carry-forward) */
     if (hasLength(parsed.paramsFilter)) {
       for (const filter of parsed.paramsFilter) {
         filters[filter.field] = filter.value;
