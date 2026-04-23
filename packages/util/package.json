@@ -1,7 +1,7 @@
 {
   "name": "@nestjs-crud/util",
   "description": "NestJs CRUD for RESTful APIs - util",
-  "version": "1.0.1",
+  "version": "2.0.0",
   "license": "MIT",
   "main": "lib/index.js",
   "typings": "lib/index.d.ts",
@@ -9,7 +9,8 @@
     "access": "public"
   },
   "files": [
-    "lib"
+    "lib",
+    "CHANGELOG.md"
   ],
   "repository": {
     "type": "git",
@@ -32,6 +33,16 @@
   "author": {
     "name": "Lawrence Onah",
     "email": "paplow01@gmail.com"
+  },
+  "contributors": [
+    {
+      "name": "Michael Yali",
+      "email": "mihon4ik@gmail.com",
+      "url": "https://github.com/nestjsx/crud"
+    }
+  ],
+  "engines": {
+    "node": ">=22.0.0"
   },
   "scripts": {
     "build": "npx tsc -b"

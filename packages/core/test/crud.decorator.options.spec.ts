@@ -18,9 +18,9 @@ describe('#crud', () => {
 
     class CustomSwaggerRoutesFactory extends CrudRoutesFactory {
       protected setSwaggerOperation(name: BaseRouteName) {
-        const summary = Swagger.operationsMap(this.modelName)[name];
+        const { summary, description } = Swagger.operationsMap(this.modelName)[name];
         const operationId = '_' + name + this.modelName;
-        Swagger.setOperation({ summary, operationId }, this.targetProto[name]);
+        Swagger.setOperation({ summary, description, operationId }, this.targetProto[name]);
       }
     }
 

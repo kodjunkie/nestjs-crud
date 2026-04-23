@@ -5,23 +5,22 @@ on:
     branches: [master]
   pull_request:
     branches: [master]
-
   workflow_dispatch:
 
 jobs:
-  test:
+  parity:
     runs-on: ubuntu-latest
-    env:
-      COMPOSE_FILE: ./compose.yml
-
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - name: build docker db
-        run: docker compose up -d
+      - name: Enable Corepack
+        run: corepack enable
 
-      - name: Set Yarn version to stable
-        run: yarn set version stable
+      - name: Pin Yarn version
+        # Pins Yarn to the version that matches yarn.lock (cacheKey 10c0 / lockfile version 8).
+        # "yarn set version stable" previously upgraded to 4.14.x which introduced a lockfile
+        # format bump (version 9) that failed --immutable.
+        run: yarn set version 4.12.0
 
       - name: install
         run: yarn install --immutable
@@ -29,8 +28,123 @@ jobs:
       - name: build
         run: yarn build
 
-      - name: check docker
+      - name: parity piece-level
+        run: yarn test:parity
+
+  test:
+    runs-on: ubuntu-latest
+    needs: parity
+    strategy:
+      fail-fast: false
+      matrix:
+        adapter: [typeorm, drizzle, mikro-orm, prisma]
+        db: [postgres, mysql]
+    env:
+      COMPOSE_FILE: ./compose.yml
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: build docker db
         run: docker compose up -d
 
-      - name: tests
-        run: yarn test:coverage
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Pin Yarn version
+        # Pins Yarn to the version that matches yarn.lock (cacheKey 10c0 / lockfile version 8).
+        # "yarn set version stable" previously upgraded to 4.14.x which introduced a lockfile
+        # format bump (version 9) that failed --immutable.
+        run: yarn set version 4.12.0
+
+      - name: install
+        run: yarn install --immutable
+
+      - name: build
+        run: yarn build
+
+      - name: wait for DB
+        run: |
+          for i in {1..30}; do
+            docker compose exec -T ${{ matrix.db }} sh -c 'exit 0' && break || sleep 2
+          done
+
+      - name: run ${{ matrix.adapter }} x ${{ matrix.db }} tests
+        run: yarn test:${{ matrix.adapter }}:${{ matrix.db }}
+
+  test-no-swagger:
+    name: test (no-swagger)
+    runs-on: ubuntu-latest
+    needs: parity
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Pin Yarn version
+        # Pins Yarn to the version that matches yarn.lock — keeps --immutable working.
+        # CI-03 sentinel mechanism is moduleNameMapper-based (no yarn remove) so
+        # the lockfile is never touched.
+        run: yarn set version 4.12.0
+
+      - name: install
+        run: yarn install --immutable
+
+      - name: build
+        run: yarn build
+
+      - name: run no-swagger sentinel
+        run: npx jest --config jest.config.no-swagger.js --coverage
+
+      - name: upload coverage artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-no-swagger
+          path: coverage-no-swagger/
+
+  knip:
+    name: knip (warn-only)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # Does NOT depend on parity — knip is static analysis, not runtime.
+    # Runs in parallel with parity/test/test-no-swagger.
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Pin Yarn version
+        # CI-wide pin; keeps --immutable working against committed yarn.lock (v8 format).
+        run: yarn set version 4.12.0
+
+      - name: install
+        run: yarn install --immutable
+
+      - name: build
+        # knip needs built .d.ts for type-level reachability in some edge cases;
+        # also catches config drift where knip entries reference non-existent files.
+        run: yarn build
+
+      - name: run knip
+        id: knip
+        # Warn-only posture at launch: findings produce output + artifact but do NOT fail the job.
+        # Tighten to `continue-on-error: false` in a follow-up phase after config stabilizes.
+        continue-on-error: true
+        run: |
+          yarn knip --reporter markdown > knip-report.md 2>&1 || true
+          # Also capture JSON for tooling (dashboards, PR comments) in a follow-up:
+          npx knip --reporter json --no-exit-code > knip-report.json 2>&1 || true
+          echo "--- knip findings ---"
+          cat knip-report.md
+
+      - name: upload knip report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: knip-report
+          path: |
+            knip-report.md
+            knip-report.json

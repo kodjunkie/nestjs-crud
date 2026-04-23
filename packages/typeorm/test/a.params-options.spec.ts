@@ -5,12 +5,12 @@ import { Test } from '@nestjs/testing';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import * as request from 'supertest';
 
-import { Company } from '../../../integration/typeorm/companies';
-import { withCache } from '../../../integration/typeorm/orm.config';
-import { Project } from '../../../integration/typeorm/projects';
-import { User } from '../../../integration/typeorm/users';
-import { UserProfile } from '../../../integration/typeorm/users-profiles';
-import { HttpExceptionFilter } from '../../../integration/shared/https-exception.filter';
+import { Company } from './__fixture__/app/companies';
+import { withCache } from './__fixture__/app/orm.config';
+import { Project } from './__fixture__/app/projects';
+import { User } from './__fixture__/app/users';
+import { UserProfile } from './__fixture__/app/users-profiles';
+import { HttpExceptionFilter } from './__fixture__/shared/https-exception.filter';
 import { Crud } from '../../core/src/decorators/crud.decorator';
 import { UsersService } from './__fixture__/users.service';
 

@@ -55,3 +55,24 @@ export class CompaniesController {
   constructor(public service: CompaniesService) {}
 }
 ```
+
+## v2.0.0 notes
+
+- **Typed `DrizzleClient` constructor (breaking).** The `db` parameter is now typed against the structural `DrizzleClient` interface instead of `any`. Update your subclass:
+
+  ```typescript
+  import { DrizzleCrudService, DrizzleClient } from '@nestjs-crud/drizzle';
+
+  constructor(@Inject('DB') db: DrizzleClient) { super(db, companies); }
+  ```
+
+  See [v2 Migration guide](https://github.com/kodjunkie/nestjs-crud/wiki/v2-Migration#2-drizzle-drizzleclient-typed-constructor).
+- **Transactions:** `updateOne`, `replaceOne`, `deleteOne` now run inside `db.transaction(...)` with `READ COMMITTED` isolation. Internally, the translator clones for the transaction via `cloneFor(tx)` — service code never calls `tx.update/insert/delete` directly.
+- **Caching:** the `@Crud({ query: { cache } })` option is currently a no-op for Drizzle. Use a Redis wrapper or HTTP-cache layer above the controller. See [Caching](https://github.com/kodjunkie/nestjs-crud/wiki/Caching).
+- **Logging:** pass an optional `LoggerService` to the constructor's third argument. See [Logging](https://github.com/kodjunkie/nestjs-crud/wiki/Logging).
+
+## See also
+
+- [v2 Migration guide](https://github.com/kodjunkie/nestjs-crud/wiki/v2-Migration)
+- [Caching](https://github.com/kodjunkie/nestjs-crud/wiki/Caching)
+- [Logging](https://github.com/kodjunkie/nestjs-crud/wiki/Logging)

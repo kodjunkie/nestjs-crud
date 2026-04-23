@@ -46,7 +46,13 @@ export class CrudConfigService {
 
     CrudConfigService.config = deepmerge(
       CrudConfigService.config,
-      { auth, query, routes, params, serialize },
+      {
+        auth,
+        query,
+        routes,
+        params,
+        serialize,
+      },
       { arrayMerge: (a, b, _c) => b },
     );
   }

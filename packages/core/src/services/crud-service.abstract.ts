@@ -3,6 +3,7 @@ import { ParsedRequestParams } from '@nestjs-crud/request';
 import { objKeys } from '@nestjs-crud/util';
 
 import { CreateManyDto, CrudRequest, CrudRequestOptions, GetManyDefaultResponse, QueryOptions } from '../interfaces';
+import { getAllowedColumns as getAllowedColumnsUtil } from '../util/get-allowed-columns';
 
 export abstract class CrudService<T> {
   throwBadRequestException(msg?: unknown): BadRequestException {
@@ -41,7 +42,10 @@ export abstract class CrudService<T> {
     return (
       options.query.alwaysPaginate ||
       ((Number.isFinite(parsed.page) || Number.isFinite(parsed.offset)) &&
-        /* istanbul ignore next */ !!this.getTake(parsed, options.query))
+        /* istanbul ignore next -- truth-coercion of getTake() return: !! is always evaluated, the branch is the falsy-getTake return path which only fires when both query.limit and options.maxLimit are unset (rare config) */ !!this.getTake(
+          parsed,
+          options.query,
+        ))
     );
   }
 
@@ -54,7 +58,7 @@ export abstract class CrudService<T> {
     if (query.limit) {
       return options.maxLimit ? (query.limit <= options.maxLimit ? query.limit : options.maxLimit) : query.limit;
     }
-    /* istanbul ignore if */
+    /* istanbul ignore if -- defensive: options.limit (controller-level default) falls through when query.limit absent; covered indirectly via integration tests with maxLimit-only configs */
     if (options.limit) {
       return options.maxLimit ? (options.limit <= options.maxLimit ? options.limit : options.maxLimit) : options.limit;
     }
@@ -79,6 +83,10 @@ export abstract class CrudService<T> {
     const params = objKeys(options.params).filter((n) => options.params[n] && options.params[n].primary);
 
     return params.map((p) => options.params[p].field);
+  }
+
+  protected getAllowedColumns(columns: string[], options: QueryOptions): string[] {
+    return getAllowedColumnsUtil(columns, options);
   }
 
   abstract getMany(req: CrudRequest): Promise<GetManyDefaultResponse<T> | T[]>;

@@ -1,7 +1,7 @@
 {
   "name": "@nestjs-crud/request",
   "description": "NestJs CRUD for RESTful APIs - request query builder",
-  "version": "1.0.1",
+  "version": "2.0.0",
   "license": "MIT",
   "main": "lib/index.js",
   "typings": "lib/index.d.ts",
@@ -9,7 +9,8 @@
     "access": "public"
   },
   "files": [
-    "lib"
+    "lib",
+    "CHANGELOG.md"
   ],
   "repository": {
     "type": "git",
@@ -43,11 +44,21 @@
     "name": "Lawrence Onah",
     "email": "paplow01@gmail.com"
   },
+  "contributors": [
+    {
+      "name": "Michael Yali",
+      "email": "mihon4ik@gmail.com",
+      "url": "https://github.com/nestjsx/crud"
+    }
+  ],
+  "engines": {
+    "node": ">=22.0.0"
+  },
   "scripts": {
     "build": "npx tsc -b"
   },
   "dependencies": {
-    "@nestjs-crud/util": "^1.0.0",
+    "@nestjs-crud/util": "^2.0.0",
     "qs": "^6.15.0"
   }
 }

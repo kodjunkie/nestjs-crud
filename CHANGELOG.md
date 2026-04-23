@@ -1,0 +1,172 @@
+# Changelog
+
+All notable changes to this project will be documented in this file.
+See the [per-package CHANGELOGs](packages/) for adapter-specific history.
+
+The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
+
+---
+
+## [Unreleased]
+
+_(No unreleased changes.)_
+
+---
+
+## [2.0.0] — 2026-04-23
+
+**Milestone:** Architectural Cleanup & Breaking Fixes — coordinated breaking release across 7 packages (6 existing + new `@nestjs-crud/prisma`).
+**Branch:** `master` · **Previous:** `v1.0.2`
+
+Upgrading from v1.0.2 requires consumer code changes — see the [v2 Migration guide](https://github.com/kodjunkie/nestjs-crud/wiki/v2-Migration). Want to stay on v1? Pin `"@nestjs-crud/<pkg>": "^1.0.2"` in your `package.json` — `npm update` will continue tracking the v1.0.x line.
+
+```
+yarn up @nestjs-crud/util@2.0.0 @nestjs-crud/request@2.0.0 @nestjs-crud/core@2.0.0 \
+        @nestjs-crud/typeorm@2.0.0 @nestjs-crud/drizzle@2.0.0 @nestjs-crud/mikro-orm@2.0.0 \
+        @nestjs-crud/prisma@2.0.0
+```
+
+### Breaking
+
+- **Strict field allowlist on `?sort=`, `?filter=`, `?search=`.** Unknown fields now throw `RequestQueryException` (v1: silently skipped). Audit your consumers' query strings — `@VirtualColumn`, `@Formula`, dotted paths without explicit `join=` all break. No opt-out flag in v2.
+- **`DrizzleCrudService` typed constructor.** `db: any` → `db: DrizzleClient`. Subclasses must update.
+- **`MikroOrmCrudService` typed public method signatures.** Subclasses overriding `getMany`/`getOne`/etc. must conform to typed return values.
+- **`ParamOption.enum` `SwaggerEnumType` inlined.** Affects only consumers who imported the internal type directly.
+- **`CrudCacheNotConfiguredError` fail-fast.** `@Crud({ query: { cache } })` now throws if `DataSource({ cache: ... })` is not configured. Configure your DataSource cache OR remove the `@Crud` cache option.
+- **Node `>=22.0.0` enforced** via `engines.node` in every package.json.
+- **MikroORM v7 required** (peer-deps bumped from `>=6.0.0` to `^7.0.0`).
+- **`strictSanitization` opt-out flag removed** (security kill-switch was inappropriate for a default-on guard).
+
+### Changed
+
+- **`@nestjs-crud/core` peer ranges for `class-transformer` and `class-validator` narrowed from `"*"` to `"^0.5.0"` and `"^0.14.0"` respectively.** Consumers on `class-transformer@0.5.x` or `class-validator@0.14.x` are unaffected. Consumers on older or newer 0.x lines (e.g. `class-validator@0.13.x`) now get a `npm WARN` peer warning at install time — the library has only been tested against the currently-pinned majors.
+- **`@nestjs-crud/prisma` default logger parity.** `PrismaCrudService` now auto-instantiates `new Logger(PrismaCrudService.name)` from `@nestjs/common` when `serviceConfig.logger` is omitted, matching `@nestjs-crud/typeorm`, `@nestjs-crud/drizzle`, and `@nestjs-crud/mikro-orm`. Consumers who previously omitted the logger (or passed `undefined`) now see adapter-level errors logged through NestJS's configured logger by default. Source-compatible — consumer-supplied loggers are preserved unchanged.
+
+### New Features
+
+- **`@nestjs-crud/prisma` adapter** — new Prisma adapter ships at v2.0.0. Same conceptual surface as the other 3 services. See [ServicePrisma](https://github.com/kodjunkie/nestjs-crud/wiki/ServicePrisma).
+- **Optional `LoggerService` ctor parameter** on TypeORM, Drizzle, MikroORM, Prisma services. See [Logging](https://github.com/kodjunkie/nestjs-crud/wiki/Logging).
+- **`relationLoadStrategy: 'join' | 'query'` per-controller and per-request switch** (TypeORM only). Avoids Cartesian explosion on multi-OneToMany reads. See [RelationLoadStrategy](https://github.com/kodjunkie/nestjs-crud/wiki/RelationLoadStrategy) for the alias-select divergence caveat.
+
+### Security
+
+- **`setAuthPersist` validates persist keys** against `entityColumnsHash`; throws `RequestQueryException` on invalid keys; logs key NAMES only (PII guard).
+- **Mutation methods run inside `READ COMMITTED` transactions** across all 3 v1 adapters + Prisma. Closes the v1 read-modify-write race in `updateOne`/`replaceOne`/`deleteOne`.
+- **Pre-ship audit completed** — peer-deps fixed across all 7 packages; 30 Dependabot alerts triaged.
+
+### Performance
+
+- **`relationLoadStrategy` switch** (above) avoids Cartesian explosion under multi-relation reads.
+- **Shared `QueryTranslator.count()`** across all 3 v1 adapters.
+- **Coverage gates** — per-package coverage thresholds enforced: 65% (drizzle) / 75% (mikro-orm, prisma) / 80% (typeorm).
+
+### Swagger / OpenAPI
+
+- **User-facing operation metadata.** `@Crud()`-generated routes now ship with imperative operation summaries (`List users`, `Get user by id`, `Create users in bulk`, ...), per-route markdown descriptions that reference supported query parameters and validation groups, outcome-focused response text (`Paginated list of matching resources`, `Resource created`, `Resource removed`), and realistic query-parameter examples (`?s=`, `?filter=`, `?sort=`, ...).
+- **Consumer customization surface.** New `@Crud({ swagger: { tag, description, examples, operations, errorResponses, synthExample, tagWithVersion } })` option object lets consumers override generated text, opt in to error-response documentation, or swap the body-example synthesizer.
+- **Auto `@ApiTags`.** The factory assigns `@ApiTags` using the pluralized entity name when the controller is not already tagged. Setting `swagger.tag` (string or string array) overrides the default. Setting `swagger.tagWithVersion: true` on a versioned controller (`@Controller({ version })`) prepends a `v{version}/` prefix so auto-tags do not collide across API versions.
+- **Error responses documented.** `400 Bad Request` is now emitted on every generated route. `404 Not Found` is emitted on single-resource routes (`get`/`update`/`replace`/`delete`/`recover`). `401 Unauthorized` is emitted when the controller is decorated with `@CrudAuth()`; consumers who enforce authentication via a globally-registered guard (`APP_GUARD`) can force-emit it via `@Crud({ swagger: { errorResponses: { unauthorized: true } } })`.
+- **Request-body examples.** Create, update, and replace routes now ship an example payload synthesized from the entity's `@ApiProperty` metadata. Set `swagger.examples: false` to opt out, or supply `swagger.synthExample: (entity, route) => payload` to take over example construction (consumer return value ships verbatim; do not include secrets).
+- **Query-parameter documentation links.** Every built-in query parameter description now carries a `Docs` backlink that points at the `Query-Syntax` wiki page.
+- **`Swagger.operationsMap(modelName)` return shape.** The internal helper now returns `{ summary, description }` tuples per route rather than plain summary strings. **Internal API break.** Consumers who imported this class directly (the `CrudRoutesFactory` subclass pattern documented in older wiki pages) must destructure the new shape:
+
+  ```ts
+  // before (v1.x):
+  const summary = Swagger.operationsMap(this.modelName)[name];
+  Swagger.setOperation({ summary, ... }, this.targetProto[name]);
+
+  // after (v2.0.0):
+  const { summary, description } = Swagger.operationsMap(this.modelName)[name];
+  Swagger.setOperation({ summary, description, ... }, this.targetProto[name]);
+  ```
+
+- **`operationId` is computed, not overridable.** `@Crud({ swagger: { operations: { *: { operationId } } } })` is rejected at compile time (type-level `Omit`) and at runtime (the factory re-applies the canonical `{routeName}{ControllerName}{ModelName}` id after consumer-operations merge). OpenAPI requires `operationId` uniqueness across the full document.
+
+### Internal
+
+- **Adapter decomposition.** TypeORM service slimmed from 1023 → 249 lines. Drizzle service −214 lines (−35.8%). MikroORM service −196 lines (−36.6%). Each adapter now composes `WhereBuilder` + `QueryComposer` + `FetchHelper` under a shared `QueryTranslator<Q, W>` facade. See [CONTRIBUTING.md — Adapter shape](https://github.com/kodjunkie/nestjs-crud/blob/master/CONTRIBUTING.md#adapter-shape).
+- **Config-object constructors at every translator/piece boundary** — no service-locator casts, no piece-to-service backrefs.
+- **`integration/typeorm/` deleted**, `examples/typeorm-demo/` is the canonical demo.
+- **Real-DB integration tests** for Drizzle + MikroORM + Prisma cells; CI matrix expanded to 4 adapters × 2 DBs.
+- **Swagger-less CI matrix added** — verifies `safeRequire` correctness when `@nestjs/swagger` is not installed.
+- **Per-package Jest configs** — each adapter package owns its `jest.config.js` (required for MikroORM ESM via `--experimental-vm-modules`).
+
+### Migration
+
+Full breaking-change inventory and step-by-step upgrade guidance: [v2 Migration guide](https://github.com/kodjunkie/nestjs-crud/wiki/v2-Migration).
+
+**Want to stay on v1?** Pin `"@nestjs-crud/<pkg>": "^1.0.2"` in your `package.json`. There is **no `v1-lts` dist-tag** — `latest` flips to `2.0.0` on this release. Consumers who don't pin will pull v2 on their next `npm update`.
+
+### Legal
+
+- (No new attribution changes from v1.0.2 — `LICENSE` + `NOTICE.md` carried forward.)
+
+### Forward-looking (v2.x / v3 work)
+
+The following work is tracked separately and NOT promised by v2.0.0:
+- Unified caching API across all 4 adapters (currently TypeORM-only).
+- Unified `relationLoadStrategy` across all 4 adapters (currently TypeORM-only).
+- `@zmotivat0r/mrepo` evaluation against alternatives (Nx, Turborepo).
+- Drizzle / MikroORM / Prisma coverage threshold uplift to uniform 80%.
+
+---
+
+## [1.0.2] — 2026-04-21
+
+**Milestone:** Security & Release Readiness — lean, strictly non-breaking patch release.
+**Branch:** `v1.0.2` · **Previous:** `v1.0.1`
+
+Upgrading from 1.0.1 requires **no consumer code changes**.
+
+```
+yarn up @nestjs-crud/*
+# or
+npm update @nestjs-crud/util @nestjs-crud/request @nestjs-crud/core \
+           @nestjs-crud/typeorm @nestjs-crud/drizzle @nestjs-crud/mikro-orm
+```
+
+### Legal
+
+- Upstream MIT attribution restored: `LICENSE` now preserves Michael Yali's 2018-Present copyright alongside the fork maintainer's. `NOTICE.md` added documenting fork origin (`@nestjsx/crud` at `5.0.0-alpha.3`). `contributors` arrays added to the four upstream-derived packages (`util`, `request`, `core`, `typeorm`). Sibling-consistency fix to `@nestjs-crud/mikro-orm` package manifest.
+
+### Correctness
+
+- **`@nestjs-crud/util`** — Removed `/g` flag from `isDateString` regex (`packages/util/src/checks.util.ts`). The flag caused stateful `.test()` `lastIndex` alternation: consecutive calls with the same input returned alternating `true`/`false`. Regression test added (three calls with the same literal verifies idempotence).
+
+- **`@nestjs-crud/typeorm`** — Removed `/g` → `/i` flag from all four `sqlInjectionRegEx` entries (`packages/typeorm/src/typeorm-crud.service.ts`). Same `lastIndex` class of bug. The in-test regex seed at `a.typeorm-crud-service.spec.ts:9-14` updated in lockstep so regression tests prove what they claim. Repeat-call regression test added.
+
+- **`@nestjs-crud/mikro-orm`** — Audited `sqlInjectionRegEx` at `packages/mikro-orm/src/mikro-orm-crud.service.ts`: already at parity with the Drizzle adapter (`/i`, not `/gi`). No source change; source-file inspection test added; parity comment added.
+
+### Ergonomics
+
+- Root `tsconfig.json` now excludes `**/lib` and `**/*.tsbuildinfo` from the TypeScript input set. This prevents TS5055 errors on back-to-back `yarn build` runs (composite project outputs were being re-read as inputs). `yarn build && yarn build` now succeeds without `yarn clean` in between. `yarn rebuild` remains documented in `CONTRIBUTING.md` for edge cases.
+
+- `CONTRIBUTING.md` added — covers branch strategy, local setup, build commands, test commands, commit conventions (Conventional Commits → feeds Lerna CHANGELOG generation), and the `/g`-flag-on-`.test()` avoidance rule.
+
+### CI
+
+- `.github/workflows/tests.yml` pinned to Yarn 4.12.0 (previously `yarn set version stable` resolved to 4.14.1 whose lockfile format `version: 9` was incompatible with the repo's `yarn.lock` `version: 8`, causing `--immutable` install failures on every CI run). `packageManager: "yarn@4.12.0"` added to root `package.json` for Corepack users.
+
+### Forward-looking (v2.0 deprecation signals)
+
+The following surfaces carry `@deprecated` JSDoc annotations in v1.0.2, visible in consumer IDEs and in the emitted `.d.ts` declaration files. **No runtime change.** These signals give consumers months of lead time before v2.0 ships its breaking changes.
+
+- `DrizzleCrudService` — constructor's `db: any` parameter will require a typed Drizzle client in v2.
+- `MikroOrmCrudService` — class-level: public method signatures and internal `any` surfaces will tighten in v2. Field-level: `protected metadata: any` will become a typed `EntityMetadata` reference.
+- `@nestjs-crud/core` — `ParamOption.enum` is typed against `@nestjs/swagger`'s internal import path; v2 will switch to the public Swagger type export.
+
+Migration guide (placeholder — will be authored when v2 planning begins):
+https://github.com/kodjunkie/nestjs-crud/wiki/v2-migration
+
+---
+
+## [1.0.1]
+
+See the [v1.0.1 release](https://github.com/kodjunkie/nestjs-crud/releases/tag/v1.0.1).
+
+---
+
+[Unreleased]: https://github.com/kodjunkie/nestjs-crud/compare/v2.0.0...HEAD
+[2.0.0]: https://github.com/kodjunkie/nestjs-crud/compare/v1.0.2...v2.0.0
+[1.0.2]: https://github.com/kodjunkie/nestjs-crud/compare/v1.0.1...v1.0.2
+[1.0.1]: https://github.com/kodjunkie/nestjs-crud/releases/tag/v1.0.1

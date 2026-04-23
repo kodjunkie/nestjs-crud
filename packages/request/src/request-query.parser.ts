@@ -144,12 +144,36 @@ export class RequestQueryParser implements ParsedRequestParams {
     return this;
   }
 
-  setAuthPersist(persist: ObjectLiteral = {}) {
-    this.authPersist = persist || /* istanbul ignore next */ {};
+  setAuthPersist(
+    persist: ObjectLiteral = {},
+    entityColumnsHash?: ObjectLiteral,
+    logger?: { warn?: (msg: string) => void },
+  ) {
+    this.authPersist =
+      persist ||
+      /* istanbul ignore next -- defensive default: `persist` already defaults to `{}` via the parameter signature, so the `||` fallback is structurally unreachable */ {};
+
+    // Runtime key validation — throws on previously-silent typos.
+    if (entityColumnsHash && persist) {
+      const invalidKeys = Object.keys(persist).filter((k) => !(k in entityColumnsHash));
+
+      if (invalidKeys.length > 0) {
+        // logger.warn PII guard: emit KEY NAMES ONLY. Keys come from the
+        // consumer's @CrudAuth decorator (their typos), not end-user request bodies.
+        // DO NOT interpolate the `persist` object — that contains runtime persist
+        // values (tenant IDs, user IDs) supplied by the auth pipeline. Those are PII.
+        logger?.warn?.(`@CrudAuth persist: invalid key(s) "${invalidKeys.join('", "')}"`);
+        throw new RequestQueryException(
+          `@CrudAuth persist: invalid key(s) "${invalidKeys.join('", "')}" — not columns on the target entity`,
+        );
+      }
+    }
   }
 
   setClassTransformOptions(options: ClassTransformOptions = {}) {
-    this.classTransformOptions = options || /* istanbul ignore next */ {};
+    this.classTransformOptions =
+      options ||
+      /* istanbul ignore next -- defensive default: `options` already defaults to `{}` via the parameter signature, so the `||` fallback is structurally unreachable */ {};
   }
 
   convertFilterToSearch(filter: QueryFilter): SFields | SConditionAND {
@@ -164,7 +188,7 @@ export class RequestQueryParser implements ParsedRequestParams {
             [filter.operator]: isEmptyValue[filter.operator] ? isEmptyValue[filter.operator] : filter.value,
           },
         }
-      : /* istanbul ignore next */ {};
+      : /* istanbul ignore next -- defensive default: callers of convertFilterToSearch always pass a parsed QueryFilter (validated upstream); falsy-filter branch unreachable in current call sites */ {};
   }
 
   private getParamNames(type: keyof RequestQueryBuilderOptions['paramNamesMap']): string[] {

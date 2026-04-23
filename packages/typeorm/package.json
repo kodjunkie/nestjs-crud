@@ -1,7 +1,7 @@
 {
   "name": "@nestjs-crud/typeorm",
   "description": "NestJs CRUD for RESTful APIs - TypeORM",
-  "version": "1.0.1",
+  "version": "2.0.0",
   "license": "MIT",
   "main": "lib/index.js",
   "typings": "lib/index.d.ts",
@@ -9,7 +9,8 @@
     "access": "public"
   },
   "files": [
-    "lib"
+    "lib",
+    "CHANGELOG.md"
   ],
   "repository": {
     "type": "git",
@@ -35,7 +36,23 @@
     "name": "Lawrence Onah",
     "email": "paplow01@gmail.com"
   },
+  "contributors": [
+    {
+      "name": "Michael Yali",
+      "email": "mihon4ik@gmail.com",
+      "url": "https://github.com/nestjsx/crud"
+    }
+  ],
+  "engines": {
+    "node": ">=22.0.0"
+  },
   "scripts": {
     "build": "npx tsc -b"
+  },
+  "peerDependencies": {
+    "@nestjs-crud/core": "^2.0.0",
+    "@nestjs/common": "^10.0.0 || ^11.0.0",
+    "@nestjs/typeorm": "^10.0.0 || ^11.0.0",
+    "typeorm": "^0.3.0"
   }
 }

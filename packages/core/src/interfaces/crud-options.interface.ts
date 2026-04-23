@@ -8,6 +8,7 @@ import { RoutesOptions } from './routes-options.interface';
 import { AuthOptions } from './auth-options.interface';
 import { DtoOptions } from './dto-options.interface';
 import { SerializeOptions } from './serialize-options.interface';
+import { CrudSwaggerOptions } from './crud-swagger-options.interface';
 
 export interface CrudRequestOptions {
   query?: QueryOptions;
@@ -24,6 +25,8 @@ export interface CrudOptions {
   routesFactory?: typeof CrudRoutesFactory;
   params?: ParamsOptions;
   validation?: ValidationPipeOptions | false;
+  /** Controller-scoped Swagger/OpenAPI metadata overrides applied to every generated route. */
+  swagger?: CrudSwaggerOptions;
 }
 
 export interface MergedCrudOptions extends CrudOptions {

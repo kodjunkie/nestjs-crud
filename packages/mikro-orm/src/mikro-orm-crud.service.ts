@@ -1,15 +1,30 @@
-import { CrudService, CrudRequest, CreateManyDto, GetManyDefaultResponse, QueryOptions } from '@nestjs-crud/core';
-import { NotFoundException } from '@nestjs/common';
-import { ParsedRequestParams, SCondition, ComparisonOperator } from '@nestjs-crud/request';
-import { hasLength, isArrayFull, isNil, isObject, objKeys, isNull } from '@nestjs-crud/util';
-import { EntityManager, EntityClass, EntityProperty } from '@mikro-orm/core';
-import { MikroOrmAllowedRelation, DbDialect } from './interfaces';
-import { mapOperator } from './operators';
+import {
+  CreateManyDto,
+  CrudRequest,
+  CrudService,
+  GetManyDefaultResponse,
+  InputSanitizer,
+  prepareEntityBeforeSave as prepareEntityBeforeSaveUtil,
+} from '@nestjs-crud/core';
+import { Logger, LoggerService, NotFoundException } from '@nestjs/common';
+import { ClassType, hasLength, isArrayFull, isNil, isObject } from '@nestjs-crud/util';
+import {
+  EntityManager,
+  EntityClass,
+  EntityMetadata,
+  EntityProperty,
+  IsolationLevel,
+  RequestContext,
+} from '@mikro-orm/core';
+
+import { DbDialect } from './interfaces';
+import { MikroOrmJoinResolver } from './mikro-orm-join-resolver';
+import { MikroOrmQueryTranslator } from './mikro-orm-query-translator';
 
 export class MikroOrmCrudService<T extends object> extends CrudService<T> {
   protected dbDialect: DbDialect;
 
-  protected metadata: any;
+  protected metadata: EntityMetadata<T>;
 
   protected entityColumns: string[];
 
@@ -21,56 +36,84 @@ export class MikroOrmCrudService<T extends object> extends CrudService<T> {
 
   protected propertiesMap: Record<string, EntityProperty>;
 
-  protected relationsHash: Map<string, MikroOrmAllowedRelation> = new Map();
+  protected readonly logger: LoggerService;
 
-  protected sqlInjectionRegEx: RegExp[] = [
-    /(%27)|(\')|(--)|(%23)|(#)/i,
-    /((%3D)|(=))[^\n]*((%27)|(\')|(--)|(%3B)|(;))/i,
-    /w*((%27)|(\'))((%6F)|o|(%4F))((%72)|r|(%52))/i,
-    /((%27)|(\'))union/i,
-  ];
+  protected readonly sanitizer: InputSanitizer;
+
+  protected translator: MikroOrmQueryTranslator<T>;
+
+  protected joinResolver: MikroOrmJoinResolver;
 
   constructor(
     protected em: EntityManager,
     protected entityClass: EntityClass<T>,
+    logger?: LoggerService,
   ) {
     super();
-    this.metadata = this.em.getMetadata().get(this.entityClass.name);
+    this.logger = logger ?? new Logger(MikroOrmCrudService.name);
+    this.metadata = this.em.getMetadata().get(this.entityClass);
     this.onInitMapEntityColumns();
     this.detectDialect();
+
+    this.sanitizer = new InputSanitizer({
+      allowedColumns: () => new Set(this.entityColumns),
+      onBadRequest: (msg: string) => this.throwBadRequestException(msg),
+    });
+
+    this.joinResolver = new MikroOrmJoinResolver({
+      metadata: this.metadata,
+      onBadRequest: (msg: string) => this.throwBadRequestException(msg),
+    });
+
+    // di-scope-awareness: pass `() => this.em` thunk, never
+    // a captured `this.em` reference. MikroORM request-scope middleware
+    // returns a fresh per-request em; the translator resolves via the
+    // thunk each call so the identity map never goes stale.
+    this.translator = new MikroOrmQueryTranslator<T>(() => this.em, {
+      entityColumns: this.entityColumns,
+      entityPrimaryColumns: this.entityPrimaryColumns,
+      propertiesMap: this.propertiesMap,
+      entityHasDeleteColumn: this.entityHasDeleteColumn,
+      softDeleteColumn: this.softDeleteColumn,
+      dbDialect: this.dbDialect,
+      onBadRequest: (msg: string) => {
+        this.logger.warn(`SQLi guard rejected field: ${msg}`);
+        this.throwBadRequestException(msg);
+      },
+      joinResolver: this.joinResolver,
+    });
+
+    this.logger.debug?.(`CrudService initialized: ${(this.entityClass as any)?.name ?? 'unknown'}`);
+  }
+
+  /**
+   * Returns the current EntityManager, resolving via MikroORM's ALS-backed
+   * RequestContext when available. Inside `RequestContext.create(txEm, ...)` this
+   * returns `txEm` — the transaction-scoped em — not the outer request em.
+   * Exposed as a method so transaction regression tests can assert identity.
+   *
+   * @internal not part of the public CrudService contract
+   */
+  public getEm(): EntityManager {
+    return this.em;
   }
 
   public async getMany(req: CrudRequest): Promise<GetManyDefaultResponse<T> | T[]> {
     const { parsed, options } = req;
-    const where = this.buildWhereCondition(parsed, options);
-    const fields = this.getSelect(parsed, options.query);
-    const orderBy = this.getSort(parsed, options.query);
+    const qb = (this.em as any).createQueryBuilder(this.entityClass);
+    this.translator.applyToQuery(qb, parsed, options);
 
     if (this.decidePagination(parsed, options)) {
-      const take = this.getTake(parsed, options.query);
-      const skip = this.getSkip(parsed, take);
-
-      const [data, total] = await this.em.findAndCount(this.entityClass, where as any, {
-        fields: fields as any,
-        orderBy: orderBy as any,
-        limit: take && isFinite(take) ? take : undefined,
-        offset: skip && isFinite(skip) ? skip : undefined,
-      });
-
-      return this.createPageInfo(data as unknown as T[], total, take || total, skip || 0);
+      const countQb = (this.em as any).createQueryBuilder(this.entityClass);
+      this.translator.applyToQuery(countQb, parsed, options);
+      const [data, total] = [await qb.getResult(), await this.translator.count(countQb)];
+      const take = this.translator.getTake(parsed, options.query);
+      const skip = this.translator.getSkip(parsed, take as number);
+      return this.createPageInfo(data as T[], total, take || total, skip || 0);
     }
 
-    const take = this.getTake(parsed, options.query);
-    const skip = this.getSkip(parsed, take);
-
-    const data = await this.em.find(this.entityClass, where as any, {
-      fields: fields as any,
-      orderBy: orderBy as any,
-      limit: take && isFinite(take) ? take : undefined,
-      offset: skip && isFinite(skip) ? skip : undefined,
-    });
-
-    return data as unknown as T[];
+    const data = await qb.getResult();
+    return data as T[];
   }
 
   public async getOne(req: CrudRequest): Promise<T> {
@@ -89,7 +132,7 @@ export class MikroOrmCrudService<T extends object> extends CrudService<T> {
     await this.em.flush();
 
     if (options.routes.createOneBase.returnShallow) {
-      return created as unknown as T;
+      return created as T;
     }
 
     const primaryParams = this.getPrimaryParams(options);
@@ -98,7 +141,7 @@ export class MikroOrmCrudService<T extends object> extends CrudService<T> {
       return this.getOneOrFail(req);
     }
 
-    return created as unknown as T;
+    return created as T;
   }
 
   public async createMany(req: CrudRequest, dto: CreateManyDto): Promise<T[]> {
@@ -117,87 +160,139 @@ export class MikroOrmCrudService<T extends object> extends CrudService<T> {
     const entities = bulk.map((data) => this.em.create(this.entityClass, data as any));
     await this.em.flush();
 
-    return entities as unknown as T[];
+    return entities as T[];
   }
 
   public async updateOne(req: CrudRequest, dto: T | Partial<T>): Promise<T> {
-    const { parsed, options } = req;
-    const { allowParamsOverride, returnShallow } = options.routes.updateOneBase;
-    const paramsFilters = this.getParamFilters(parsed);
-    const found = await this.getOneOrFail(req, returnShallow);
+    // Wrap read-modify-write in em.transactional at READ_COMMITTED.
+    // RequestContext.create(txEm, ...) rebinds the ALS-backed em so that
+    // getEm() / this.em inside the callback resolves to txEm — the
+    // FetchHelper thunk (getEm: () => EntityManager) is therefore unchanged
+    // (getEm thunk contract preserved).
+    const em = this.getEm();
+    return em.transactional(
+      async (txEm) => {
+        return RequestContext.create(txEm, async () => {
+          const { parsed, options } = req;
+          const { allowParamsOverride, returnShallow } = options.routes.updateOneBase;
+          const paramsFilters = this.getParamFilters(parsed);
+          const found = await this.getOneOrFail(req, returnShallow);
 
-    const toSave = !allowParamsOverride
-      ? { ...dto, ...paramsFilters, ...parsed.authPersist }
-      : { ...dto, ...parsed.authPersist };
+          const toSave = !allowParamsOverride
+            ? { ...dto, ...paramsFilters, ...parsed.authPersist }
+            : { ...dto, ...parsed.authPersist };
 
-    this.em.assign(found as any, toSave as any);
-    await this.em.flush();
+          try {
+            this.getEm().assign(found as any, toSave as any);
+            await this.getEm().flush();
+          } catch (err) {
+            // PII GUARD: DB drivers surface SQL + bound params in err.message.
+            this.logger.error(
+              `CrudService [updateOne] failed: ${err instanceof Error ? err.name : 'UnknownError'}`,
+              err instanceof Error ? err.stack : String(err),
+            );
+            throw err;
+          }
 
-    if (returnShallow) {
-      return found;
-    }
+          if (returnShallow) {
+            return found;
+          }
 
-    const primaryParams = this.getPrimaryParams(options);
-    if (primaryParams.length) {
-      req.parsed.search = primaryParams.reduce((acc, p) => ({ ...acc, [p]: (found as any)[p] }), {});
-    }
-    return this.getOneOrFail(req);
+          const primaryParams = this.getPrimaryParams(options);
+          if (primaryParams.length) {
+            req.parsed.search = primaryParams.reduce((acc, p) => ({ ...acc, [p]: (found as any)[p] }), {});
+          }
+          return this.getOneOrFail(req);
+        });
+      },
+      { isolationLevel: IsolationLevel.READ_COMMITTED },
+    );
   }
 
   public async replaceOne(req: CrudRequest, dto: T | Partial<T>): Promise<T> {
-    const { parsed, options } = req;
-    const { allowParamsOverride, returnShallow } = options.routes.replaceOneBase;
-    const paramsFilters = this.getParamFilters(parsed);
+    const em = this.getEm();
+    return em.transactional(
+      async (txEm) => {
+        return RequestContext.create(txEm, async () => {
+          const { parsed, options } = req;
+          const { allowParamsOverride, returnShallow } = options.routes.replaceOneBase;
+          const paramsFilters = this.getParamFilters(parsed);
 
-    let toReturn: T;
-    try {
-      const found = await this.getOneOrFail(req, returnShallow);
-      const toSave = !allowParamsOverride
-        ? { ...dto, ...paramsFilters, ...parsed.authPersist }
-        : { ...dto, ...parsed.authPersist };
+          let toReturn: T;
+          try {
+            const found = await this.getOneOrFail(req, returnShallow);
+            const toSave = !allowParamsOverride
+              ? { ...dto, ...paramsFilters, ...parsed.authPersist }
+              : { ...dto, ...parsed.authPersist };
 
-      this.em.assign(found as any, toSave as any);
-      await this.em.flush();
-      toReturn = found;
-    } catch (error) {
-      if (!(error instanceof NotFoundException)) {
-        throw error;
-      }
-      const entity = !allowParamsOverride
-        ? { ...dto, ...paramsFilters, ...parsed.authPersist }
-        : { ...dto, ...parsed.authPersist };
+            this.getEm().assign(found as any, toSave as any);
+            await this.getEm().flush();
+            toReturn = found;
+          } catch (error) {
+            if (!(error instanceof NotFoundException)) {
+              // PII GUARD: DB drivers surface SQL + bound params in err.message.
+              this.logger.error(
+                `CrudService [replaceOne] failed: ${error instanceof Error ? error.name : 'UnknownError'}`,
+                error instanceof Error ? error.stack : String(error),
+              );
+              throw error;
+            }
+            const entity = !allowParamsOverride
+              ? { ...dto, ...paramsFilters, ...parsed.authPersist }
+              : { ...dto, ...parsed.authPersist };
 
-      const created = this.em.create(this.entityClass, entity as any);
-      await this.em.flush();
-      toReturn = created as unknown as T;
-    }
+            const created = this.getEm().create(this.entityClass, entity as any);
+            await this.getEm().flush();
+            toReturn = created as T;
+          }
 
-    if (returnShallow) {
-      return toReturn;
-    }
+          if (returnShallow) {
+            return toReturn;
+          }
 
-    const primaryParams = this.getPrimaryParams(options);
-    if (primaryParams.length) {
-      req.parsed.search = primaryParams.reduce((acc, p) => ({ ...acc, [p]: (toReturn as any)[p] }), {});
-    }
-    return this.getOneOrFail(req);
+          const primaryParams = this.getPrimaryParams(options);
+          if (primaryParams.length) {
+            req.parsed.search = primaryParams.reduce((acc, p) => ({ ...acc, [p]: (toReturn as any)[p] }), {});
+          }
+          return this.getOneOrFail(req);
+        });
+      },
+      { isolationLevel: IsolationLevel.READ_COMMITTED },
+    );
   }
 
   public async deleteOne(req: CrudRequest): Promise<void | T> {
-    const { options } = req;
-    const { returnDeleted } = options.routes.deleteOneBase;
-    const found = await this.getOneOrFail(req, true);
-    const toReturn = returnDeleted ? ({ ...found } as T) : undefined;
+    const em = this.getEm();
+    return em.transactional(
+      async (txEm) => {
+        return RequestContext.create(txEm, async () => {
+          const { options } = req;
+          const { returnDeleted } = options.routes.deleteOneBase;
+          const found = await this.getOneOrFail(req, true);
+          const toReturn = returnDeleted ? ({ ...found } as T) : undefined;
 
-    if (options.query.softDelete && this.entityHasDeleteColumn && this.softDeleteColumn) {
-      this.em.assign(found as any, { [this.softDeleteColumn]: new Date() } as any);
-      await this.em.flush();
-    } else {
-      this.em.remove(found as any);
-      await this.em.flush();
-    }
+          try {
+            if (options.query.softDelete && this.entityHasDeleteColumn && this.softDeleteColumn) {
+              this.getEm().assign(found as any, { [this.softDeleteColumn]: new Date() } as any);
+              await this.getEm().flush();
+            } else {
+              this.getEm().remove(found as any);
+              await this.getEm().flush();
+            }
+          } catch (err) {
+            // PII GUARD: DB drivers surface SQL + bound params in err.message.
+            this.logger.error(
+              `CrudService [deleteOne] failed: ${err instanceof Error ? err.name : 'UnknownError'}`,
+              err instanceof Error ? err.stack : String(err),
+            );
+            throw err;
+          }
 
-    return toReturn;
+          return toReturn;
+        });
+      },
+      { isolationLevel: IsolationLevel.READ_COMMITTED },
+    );
   }
 
   public async recoverOne(req: CrudRequest): Promise<void | T> {
@@ -226,8 +321,13 @@ export class MikroOrmCrudService<T extends object> extends CrudService<T> {
     this.entityHasDeleteColumn = false;
     this.softDeleteColumn = null;
 
+    // Relation kinds to skip: MikroORM v7 uses ReferenceKind enum strings.
+    // Decorator-based entities leave scalar `kind` undefined; EntitySchema-based entities
+    // set it to 'scalar'. We must NOT skip scalars — only skip actual relation/embedded kinds.
+    const RELATION_KINDS = new Set(['m:1', '1:m', 'm:n', '1:1', 'embedded']);
+
     for (const [name, prop] of Object.entries(props)) {
-      if (prop.kind && typeof prop.kind === 'string') {
+      if (prop.kind && RELATION_KINDS.has(prop.kind as string)) {
         continue;
       }
 
@@ -249,56 +349,13 @@ export class MikroOrmCrudService<T extends object> extends CrudService<T> {
         this.entityHasDeleteColumn = true;
         const cond = filters.softDelete.cond;
         if (isObject(cond)) {
-          const filterField = objKeys(cond)[0];
+          const filterField = Object.keys(cond)[0];
           if (filterField) {
             this.softDeleteColumn = filterField;
           }
         }
       }
     }
-  }
-
-  protected getColumn(field: string): EntityProperty | undefined {
-    return this.propertiesMap[field];
-  }
-
-  protected getAllowedColumns(columns: string[], options: QueryOptions): string[] {
-    return (!options.exclude || !options.exclude.length) && (!options.allow || !options.allow.length)
-      ? columns
-      : columns.filter(
-          (column) =>
-            (options.exclude && options.exclude.length ? !options.exclude.some((col) => col === column) : true) &&
-            (options.allow && options.allow.length ? options.allow.some((col) => col === column) : true),
-        );
-  }
-
-  protected getSelect(query: ParsedRequestParams, options: QueryOptions): string[] {
-    const allowed = this.getAllowedColumns(this.entityColumns, options);
-    const columns =
-      query.fields && query.fields.length
-        ? query.fields.filter((field) => allowed.some((col) => field === col))
-        : allowed;
-
-    const allCols = new Set([
-      ...(options.persist && options.persist.length ? options.persist : []),
-      ...columns,
-      ...this.entityPrimaryColumns,
-    ]);
-
-    return [...allCols].filter((col) => this.propertiesMap[col]);
-  }
-
-  protected getSort(query: ParsedRequestParams, options: QueryOptions): Record<string, 'ASC' | 'DESC'> {
-    const sorts =
-      query.sort && query.sort.length ? query.sort : options.sort && options.sort.length ? options.sort : [];
-
-    const orderBy: Record<string, 'ASC' | 'DESC'> = {};
-    for (const s of sorts) {
-      if (!this.getColumn(s.field)) continue;
-      this.checkSqlInjection(s.field);
-      orderBy[s.field] = s.order === 'DESC' ? 'DESC' : 'ASC';
-    }
-    return orderBy;
   }
 
   protected getParamFilters(parsed: CrudRequest['parsed']): Record<string, any> {
@@ -311,170 +368,22 @@ export class MikroOrmCrudService<T extends object> extends CrudService<T> {
     return filters;
   }
 
-  protected async getOneOrFail(req: CrudRequest, shallow = false, withDeleted = false): Promise<T> {
-    const { parsed, options } = req;
-    const where = this.buildWhereCondition(parsed, options, withDeleted);
-    const fields = shallow ? this.entityColumns : this.getSelect(parsed, options.query);
-
-    try {
-      const found = await this.em.findOneOrFail(this.entityClass, where as any, {
-        fields: fields as any,
-      });
-      return found as unknown as T;
-    } catch {
-      this.throwNotFoundException(this.tableName);
-    }
+  protected async getOneOrFail(req: CrudRequest, _shallow = false, withDeleted = false): Promise<T> {
+    // When recovering a soft-deleted entity, override includeDeleted so the
+    // soft-delete WHERE clause is skipped and the deleted row is found.
+    const parsed = withDeleted ? { ...req.parsed, includeDeleted: 1 as const } : req.parsed;
+    return this.translator.findOneOrFail(parsed, req.options, {
+      entityClass: this.entityClass,
+      onNotFound: () => new NotFoundException(`${this.tableName} not found`),
+    });
   }
 
-  protected buildWhereCondition(
-    parsed: ParsedRequestParams,
-    options: CrudRequest['options'],
-    withDeleted = false,
-  ): Record<string, any> {
-    const searchWhere = this.buildSearchCondition(parsed.search);
-    const softDeleteWhere =
-      !withDeleted && options.query.softDelete && this.entityHasDeleteColumn && parsed.includeDeleted !== 1
-        ? this.getSoftDeleteCondition()
-        : undefined;
-
-    if (searchWhere && softDeleteWhere) {
-      return { $and: [searchWhere, softDeleteWhere] };
-    }
-    return searchWhere || softDeleteWhere || {};
-  }
-
-  protected buildSearchCondition(search: SCondition): Record<string, any> | undefined {
-    if (!isObject(search)) return undefined;
-    const keys = objKeys(search);
-    if (!keys.length) return undefined;
-
-    if (isArrayFull((search as any).$and)) {
-      const conditions = (search as any).$and
-        .map((item: SCondition) => this.buildSearchCondition(item))
-        .filter(Boolean);
-      if (!conditions.length) return undefined;
-      return conditions.length === 1 ? conditions[0] : { $and: conditions };
-    }
-
-    if (isArrayFull((search as any).$or)) {
-      const orConditions = (search as any).$or
-        .map((item: SCondition) => this.buildSearchCondition(item))
-        .filter(Boolean);
-
-      const otherKeys = keys.filter((k) => k !== '$or');
-      if (otherKeys.length === 0) {
-        if (!orConditions.length) return undefined;
-        return orConditions.length === 1 ? orConditions[0] : { $or: orConditions };
-      }
-
-      const fieldObj = this.buildFieldsCondition(otherKeys, search);
-      const orPart = orConditions.length === 1 ? orConditions[0] : { $or: orConditions };
-      if (!fieldObj) return orPart;
-      return { $and: [fieldObj, orPart] };
-    }
-
-    return this.buildFieldsCondition(keys, search);
-  }
-
-  protected buildFieldCondition(field: string, value: any): Record<string, any> | undefined {
-    if (!this.getColumn(field)) return undefined;
-    this.checkSqlInjection(field);
-
-    if (!isObject(value)) {
-      return { [field]: isNull(value) ? null : value };
-    }
-
-    const operators = objKeys(value);
-
-    if (operators.length === 1 && operators[0] === '$or' && isObject(value.$or)) {
-      const orOps = objKeys(value.$or);
-      const orConditions = orOps
-        .map((op) => {
-          const mapped = mapOperator(field, op as ComparisonOperator, value.$or[op], this.dbDialect);
-          return { [field]: mapped };
-        })
-        .filter(Boolean);
-      return orConditions.length === 1 ? orConditions[0] : { $or: orConditions };
-    }
-
-    const mapped: Record<string, any> = {};
-    for (const op of operators) {
-      if (op === '$or' && isObject(value.$or)) {
-        continue;
-      }
-      const result = mapOperator(field, op as ComparisonOperator, value[op], this.dbDialect);
-      if (result === null) {
-        return { [field]: null };
-      }
-      if (isObject(result)) {
-        Object.assign(mapped, result);
-      } else {
-        mapped[op] = result;
-      }
-    }
-
-    return hasLength(objKeys(mapped)) ? { [field]: mapped } : undefined;
-  }
-
-  protected getSoftDeleteCondition(): Record<string, any> | undefined {
-    if (this.entityHasDeleteColumn && this.softDeleteColumn) {
-      return { [this.softDeleteColumn]: null };
-    }
-    return undefined;
-  }
-
-  protected buildPrimaryKeyCondition(entity: T): Record<string, any> {
-    const condition: Record<string, any> = {};
-    for (const pkField of this.entityPrimaryColumns) {
-      condition[pkField] = (entity as any)[pkField];
-    }
-    return condition;
-  }
-
-  protected prepareEntityBeforeSave(
-    dto: T | Partial<T>,
-    parsed: CrudRequest['parsed'],
-  ): Record<string, any> | undefined {
-    if (!isObject(dto)) {
-      return undefined;
-    }
-    const entity = { ...dto } as Record<string, any>;
-
-    if (hasLength(parsed.paramsFilter)) {
-      for (const filter of parsed.paramsFilter) {
-        entity[filter.field] = filter.value;
-      }
-    }
-
-    if (parsed.authPersist) {
-      Object.assign(entity, parsed.authPersist);
-    }
-
-    if (!hasLength(objKeys(entity))) {
-      return undefined;
-    }
-    return entity;
+  protected prepareEntityBeforeSave(dto: T | Partial<T>, parsed: CrudRequest['parsed']): T | undefined {
+    return prepareEntityBeforeSaveUtil(dto, parsed, this.entityClass as ClassType<T>);
   }
 
   protected getSoftDeleteColumnName(): string {
     return this.softDeleteColumn || 'deletedAt';
-  }
-
-  private buildFieldsCondition(keys: string[], search: any): Record<string, any> | undefined {
-    if (keys.length === 1) {
-      return this.buildFieldCondition(keys[0], search[keys[0]]);
-    }
-
-    const result: Record<string, any> = {};
-    let hasAny = false;
-    for (const field of keys) {
-      const cond = this.buildFieldCondition(field, search[field]);
-      if (cond) {
-        Object.assign(result, cond);
-        hasAny = true;
-      }
-    }
-    return hasAny ? result : undefined;
   }
 
   private detectDialect() {
@@ -493,14 +402,5 @@ export class MikroOrmCrudService<T extends object> extends CrudService<T> {
       return;
     }
     this.dbDialect = 'postgresql';
-  }
-
-  private checkSqlInjection(field: string): string {
-    for (let i = 0; i < this.sqlInjectionRegEx.length; i++) {
-      if (this.sqlInjectionRegEx[i].test(field)) {
-        this.throwBadRequestException(`SQL injection detected: "${field}"`);
-      }
-    }
-    return field;
   }
 }

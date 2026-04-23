@@ -1,27 +1,59 @@
 {
   "name": "@nestjs-crud/mikro-orm",
-  "version": "1.0.1",
+  "version": "2.0.0",
   "description": "NestJS CRUD MikroORM adapter",
   "main": "lib/index.js",
   "typings": "lib/index.d.ts",
   "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "lib",
+    "CHANGELOG.md"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/kodjunkie/nestjs-crud.git"
+  },
+  "bugs": {
+    "url": "https://github.com/kodjunkie/nestjs-crud/issues"
+  },
+  "keywords": [
+    "typescript",
+    "mikro-orm",
+    "mikroorm",
+    "nest",
+    "nestjs",
+    "rest",
+    "restful",
+    "api",
+    "crud",
+    "crud-generator",
+    "backend",
+    "frameworks"
+  ],
   "author": {
     "name": "Lawrence Onah",
     "email": "paplow01@gmail.com"
   },
-  "publishConfig": {
-    "access": "public"
+  "engines": {
+    "node": ">=22.0.0"
   },
   "scripts": {
     "build": "npx tsc -b"
   },
   "peerDependencies": {
-    "@mikro-orm/core": ">=6.0.0",
-    "@mikro-orm/knex": ">=6.0.0",
-    "@nestjs-crud/core": "^1.0.0",
-    "@nestjs-crud/request": "^1.0.0",
-    "@nestjs-crud/util": "^1.0.0",
-    "@nestjs/common": ">=10.0.0"
+    "@mikro-orm/core": "^7.0.0",
+    "@mikro-orm/knex": "^7.0.0",
+    "@nestjs-crud/core": "^2.0.0",
+    "@nestjs-crud/request": "^2.0.0",
+    "@nestjs-crud/util": "^2.0.0",
+    "@nestjs/common": "^10.0.0 || ^11.0.0"
   },
-  "gitHead": "6f5fb9b83cde621265e4268c904c6ee98ae89142"
+  "gitHead": "6f5fb9b83cde621265e4268c904c6ee98ae89142",
+  "devDependencies": {
+    "@jest/globals": "^30.0.0",
+    "@mikro-orm/nestjs": "^7"
+  }
 }

@@ -23,7 +23,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           fetch-depth: 0
 
@@ -31,13 +31,19 @@ jobs:
         run: docker compose up -d
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: '24'
           registry-url: https://registry.npmjs.org
 
-      - name: Set Yarn version to stable
-        run: yarn set version stable
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Pin Yarn version
+        # Pins Yarn to the version that matches yarn.lock (lockfile version 8).
+        # "yarn set version stable" upgrades to 4.14.x which introduced lockfile
+        # format version 9, breaking --immutable installs.
+        run: yarn set version 4.12.0
 
       - name: Install
         run: yarn install --immutable

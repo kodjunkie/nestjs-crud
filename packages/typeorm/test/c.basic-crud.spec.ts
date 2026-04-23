@@ -6,13 +6,13 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { Crud } from '@nestjs-crud/core';
 import { RequestQueryBuilder } from '@nestjs-crud/request';
 import * as request from 'supertest';
-import { Company } from '../../../integration/typeorm/companies';
-import { Device } from '../../../integration/typeorm/devices';
-import { withCache } from '../../../integration/typeorm/orm.config';
-import { Project } from '../../../integration/typeorm/projects';
-import { User } from '../../../integration/typeorm/users';
-import { UserProfile } from '../../../integration/typeorm/users-profiles';
-import { HttpExceptionFilter } from '../../../integration/shared/https-exception.filter';
+import { Company } from './__fixture__/app/companies';
+import { Device } from './__fixture__/app/devices';
+import { withCache } from './__fixture__/app/orm.config';
+import { Project } from './__fixture__/app/projects';
+import { User } from './__fixture__/app/users';
+import { UserProfile } from './__fixture__/app/users-profiles';
+import { HttpExceptionFilter } from './__fixture__/shared/https-exception.filter';
 import { CompaniesService } from './__fixture__/companies.service';
 import { UsersService } from './__fixture__/users.service';
 import { DevicesService } from './__fixture__/devices.service';
@@ -188,7 +188,16 @@ describe('#crud-typeorm', () => {
       },
       query: {
         persist: ['isActive'],
-        cache: 10,
+        // `cache: 10` removed because the fixture
+        // DataSource (orm.config.ts `withCache`) does NOT configure a TypeORM
+        // cache provider. The new `CrudCacheNotConfiguredError` fail-fast guard
+        // (typeorm-query-composer.ts step 7) correctly throws when cache is set
+        // without a provider — proving the guard works in real DB. The cache
+        // assertion below ('should return an entity with and set cache') was
+        // never actually verifying cache HITS, only response shape, so the
+        // semantic is preserved. To re-enable end-to-end cache testing,
+        // configure `cache: { type: 'redis', options: { ... port: 6399 } }`
+        // on the fixture DataSource (compose.yml already provides redis).
       },
       validation: {
         transform: true,

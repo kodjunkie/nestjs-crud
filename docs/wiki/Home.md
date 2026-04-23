@@ -11,7 +11,10 @@ The project follows monorepository structural practice and contains several pack
 - [**@nestjs-crud/typeorm**](https://www.npmjs.com/package/@nestjs-crud/typeorm) - TypeORM package which provides base `TypeOrmCrudService` with methods for CRUD database operations ([docs](https://github.com/kodjunkie/nestjs-crud/wiki/ServiceTypeorm))
 - [**@nestjs-crud/mikro-orm**](https://www.npmjs.com/package/@nestjs-crud/mikro-orm) - MikroORM package which provides base `MikroOrmCrudService` with methods for CRUD database operations ([docs](https://github.com/kodjunkie/nestjs-crud/wiki/ServiceMikroOrm))
 - [**@nestjs-crud/drizzle**](https://www.npmjs.com/package/@nestjs-crud/drizzle) - Drizzle package which provides base `DrizzleCrudService` with methods for CRUD database operations ([docs](https://github.com/kodjunkie/nestjs-crud/wiki/ServiceDrizzle))
+- [**@nestjs-crud/prisma**](https://www.npmjs.com/package/@nestjs-crud/prisma) - **(new in v2.0.0)** Prisma package which provides base `PrismaCrudService` with methods for CRUD database operations ([docs](https://github.com/kodjunkie/nestjs-crud/wiki/ServicePrisma))
 - [**@nestjs-crud/util**](https://www.npmjs.com/package/@nestjs-crud/util) - utility package with shared helper functions used internally
+
+> Upgrading from v1.0.x? See the [v2 Migration guide](https://github.com/kodjunkie/nestjs-crud/wiki/v2-Migration).
 
 ## Cloning and running tests
 

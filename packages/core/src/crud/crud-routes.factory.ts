@@ -1,4 +1,4 @@
-import { RequestMethod } from '@nestjs/common';
+import { HttpStatus, RequestMethod } from '@nestjs/common';
 import { RouteParamtypes } from '@nestjs/common/enums/route-paramtypes.enum';
 import {
   isFalse,
@@ -12,17 +12,32 @@ import {
   isNil,
   isUndefined,
 } from '@nestjs-crud/util';
-import * as deepmerge from 'deepmerge';
+// ESM-safe callable: pluralize ships CJS-only. Same dual-shape unwrap as deepmerge below.
+import * as pluralizeNs from 'pluralize';
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const pluralize: (word: string) => string =
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  typeof (pluralizeNs as any) === 'function' ? (pluralizeNs as any) : (pluralizeNs as any).default;
+import * as deepmergeNs from 'deepmerge';
+// ESM-safe callable: deepmerge ships CJS-only. Under Jest ESM (--experimental-vm-modules),
+// `import * as` yields a namespace where the function lives at .default. Under ts-jest CJS
+// compilation for the other 5 packages, the namespace IS the callable function directly.
+// Normalise to a callable regardless of how the module loader wrapped the CJS export.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const deepmerge: typeof deepmergeNs = (
+  typeof (deepmergeNs as any).default === 'function' ? (deepmergeNs as any).default : deepmergeNs
+) as typeof deepmergeNs;
 
 import { R } from './reflection.helper';
 import { SerializeHelper } from './serialize.helper';
-import { Swagger } from './swagger.helper';
+import { Swagger, swaggerConst } from './swagger.helper';
 import { Validation } from './validation.helper';
 import { CrudRequestInterceptor, CrudResponseInterceptor } from '../interceptors';
 import { BaseRoute, CrudOptions, CrudRequest, MergedCrudOptions } from '../interfaces';
 import { BaseRouteName } from '../types';
 import { CrudActions, CrudValidationGroups } from '../enums';
 import { CrudConfigService } from '../module';
+import { safeRequire } from '../util';
 
 export class CrudRoutesFactory {
   protected options: MergedCrudOptions;
@@ -37,7 +52,7 @@ export class CrudRoutesFactory {
     this.create();
   }
 
-  /* istanbul ignore next */
+  /* istanbul ignore next -- static factory wrapper: thin alias over `new CrudRoutesFactory(...)` not used by the @Crud decorator (which calls `new` directly); kept as a public helper for consumers that prefer factory style */
   static create(target: any, options: CrudOptions): CrudRoutesFactory {
     return new CrudRoutesFactory(target, options);
   }
@@ -71,6 +86,7 @@ export class CrudRoutesFactory {
     const routesSchema = this.getRoutesSchema();
     this.mergeOptions();
     this.setResponseModels();
+    this.setSwaggerTags();
     this.createRoutes(routesSchema);
     this.overrideRoutes(routesSchema);
     this.enableRoutes(routesSchema);
@@ -131,7 +147,7 @@ export class CrudRoutesFactory {
     } else if (this.options.serialize.getMany) {
       // keep existing value
     } else if (isFalse(this.options.serialize.get)) {
-      /* istanbul ignore next */
+      /* istanbul ignore next -- serialize.get=false AND serialize.getMany undefined: rare config combo (consumers who set serialize.get=false typically also set getMany explicitly) */
       this.options.serialize.getMany = false;
     } else {
       this.options.serialize.getMany = SerializeHelper.createGetManyDto(this.options.serialize.get, this.modelName);
@@ -349,7 +365,14 @@ export class CrudRoutesFactory {
         // set metadata
         R.setInterceptors([...baseInterceptors, ...interceptors], this.targetProto[name]);
         R.setAction(baseAction, this.targetProto[name]);
-        Swagger.setOperation({ ...baseOperation, ...operation }, this.targetProto[name]);
+        // Re-apply the factory-computed operationId LAST so a consumer-placed
+        // @ApiOperation({ operationId }) on an @Override handler cannot collide
+        // with the auto-generated ID emitted across the controller. Matches the
+        // runtime guarantee in setSwaggerOperation().
+        Swagger.setOperation(
+          { ...baseOperation, ...operation, operationId: baseOperation?.operationId },
+          this.targetProto[name],
+        );
         Swagger.setParams([...baseSwaggerParams, ...swaggerParams], this.targetProto[name]);
         Swagger.setResponseOk({ ...baseResponseOk, ...responseOk }, this.targetProto[name]);
         this.overrideParsedBodyDecorator(override, name);
@@ -391,14 +414,18 @@ export class CrudRoutesFactory {
         name,
       );
 
-      /* istanbul ignore else */
+      /* istanbul ignore else -- @Override on non-createManyBase routes: else branch is no-op (intentional skip), not behavioral; defensive guard */
       if (isEqual(override, 'createManyBase')) {
         const paramTypes = R.getRouteArgsTypes(this.targetProto, name);
         const metatype = paramTypes[parsedBody.index];
         const types = [String, Boolean, Number, Array, Object];
-        const toCopy = isIn(metatype, types) || /* istanbul ignore next */ isNil(metatype);
+        const toCopy =
+          isIn(metatype, types) ||
+          /* istanbul ignore next -- isNil fallback: metatype is normally a class constructor; null/undefined occurs only when reflect-metadata is not properly configured (consumer setup error) */ isNil(
+            metatype,
+          );
 
-        /* istanbul ignore else */
+        /* istanbul ignore else -- toCopy=false branch: when consumer's @Override createManyBase has a custom DTO that's not a primitive/Array/Object — we leave their type alone (no-op else, intentional) */
         if (toCopy) {
           const baseParamTypes = R.getRouteArgsTypes(this.targetProto, override);
           const baseMetatype = baseParamTypes[1];
@@ -423,6 +450,7 @@ export class CrudRoutesFactory {
     this.setSwaggerOperation(name);
     this.setSwaggerPathParams(name);
     this.setSwaggerQueryParams(name);
+    this.setSwaggerBodyExamples(name);
     this.setSwaggerResponseOk(name);
     // set decorators after Swagger so metadata can be overwritten
     this.setDecorators(name);
@@ -461,18 +489,14 @@ export class CrudRoutesFactory {
   protected setInterceptors(name: BaseRouteName) {
     const interceptors = this.options.routes[name].interceptors;
     R.setInterceptors(
-      [
-        CrudRequestInterceptor,
-        CrudResponseInterceptor,
-        ...(isArrayFull(interceptors) ? /* istanbul ignore next */ interceptors : []),
-      ],
+      [CrudRequestInterceptor, CrudResponseInterceptor, ...(isArrayFull(interceptors) ? interceptors : [])],
       this.targetProto[name],
     );
   }
 
   protected setDecorators(name: BaseRouteName) {
     const decorators = this.options.routes[name].decorators;
-    R.setDecorators(isArrayFull(decorators) ? /* istanbul ignore next */ decorators : [], this.targetProto, name);
+    R.setDecorators(isArrayFull(decorators) ? decorators : [], this.targetProto, name);
   }
 
   protected setAction(name: BaseRouteName) {
@@ -480,9 +504,16 @@ export class CrudRoutesFactory {
   }
 
   protected setSwaggerOperation(name: BaseRouteName) {
-    const summary = Swagger.operationsMap(this.modelName)[name];
+    const { summary, description } = Swagger.operationsMap(this.modelName)[name];
+    const override = this.options.swagger?.operations?.[name] ?? {};
     const operationId = name + this.targetProto.constructor.name + this.modelName;
-    Swagger.setOperation({ summary, operationId }, this.targetProto[name]);
+    // Spread order is load-bearing: consumer override merges over base, then the
+    // factory-computed operationId is re-applied LAST so consumers cannot smuggle
+    // a duplicate operationId through the override surface. OpenAPI requires
+    // operationId uniqueness across the entire document; the type-level Omit on
+    // CrudSwaggerOperationOptions provides the static guard, this line is the
+    // runtime backstop.
+    Swagger.setOperation({ summary, description, ...override, operationId }, this.targetProto[name]);
   }
 
   protected setSwaggerPathParams(name: BaseRouteName) {
@@ -508,11 +539,136 @@ export class CrudRoutesFactory {
   protected setSwaggerResponseOk(name: BaseRouteName) {
     const metadata = Swagger.getResponseOk(this.targetProto[name]);
     const metadataToAdd =
-      Swagger.createResponseMeta(name, this.options, this.swaggerModels) || /* istanbul ignore next */ {};
+      Swagger.createResponseMeta(name, this.options, this.swaggerModels) ||
+      /* istanbul ignore next -- defensive default: createResponseMeta returns a truthy object for every BaseRouteName + the swagger-absent branch; this `|| {}` covers the impossible falsy path */ {};
+
+    // 401 emission OR-gate: auto-emit when @CrudAuth() is on the controller class,
+    // OR when the consumer explicitly opts in via `swagger.errorResponses.unauthorized`
+    // (global-guard escape hatch for APP_GUARD consumers whose controllers lack
+    // @CrudAuth()). Default (neither set) emits no 401 entry, preserving the
+    // pre-Phase-12 behavior on controllers without auth configured.
+    //
+    // Probe the RAW @CrudAuth metadata on the target class rather than the merged
+    // `this.options.auth` object — mergeOptions() sprays property/groups/
+    // classTransformOptions defaults (even when undefined-valued) onto an empty
+    // auth object, which makes `isObjectFull(this.options.auth)` always return
+    // true and emits a spurious 401 on unauthenticated controllers.
+    const rawAuthOptions = R.getCrudAuthOptions(this.target);
+    const hasCrudAuth = isObjectFull(rawAuthOptions);
+    const errorResponsesUnauthorized = this.options.swagger?.errorResponses?.unauthorized === true;
+    if (hasCrudAuth || errorResponsesUnauthorized) {
+      (metadataToAdd as Record<number, any>)[HttpStatus.UNAUTHORIZED] = {
+        description: 'Missing or invalid authentication',
+      };
+    }
+
     Swagger.setResponseOk({ ...metadata, ...metadataToAdd }, this.targetProto[name]);
   }
 
+  // modeled on crud-routes.factory.ts Swagger.setParams call site (overrideRoutes /
+  // setSwaggerPathParams / setSwaggerQueryParams all emit per-route params through
+  // API_PARAMETERS). Body examples ride the same rail: a single body-param entry
+  // appended to the method's API_PARAMETERS metadata. Do NOT emit via API_OPERATION
+  // requestBody — Swagger UI renders examples from both sites, but only the params
+  // path participates in the existing @Override merge pipeline.
+  protected setSwaggerBodyExamples(name: BaseRouteName) {
+    if (!swaggerConst) {
+      return;
+    }
+    if (this.options.swagger?.examples === false) {
+      return;
+    }
+    const bodyRoutes: BaseRouteName[] = ['createOneBase', 'createManyBase', 'updateOneBase', 'replaceOneBase'];
+    if (!bodyRoutes.includes(name)) {
+      return;
+    }
+    const consumerSynth = this.options.swagger?.synthExample;
+    const single = Swagger.synthesizeBodyExample(this.modelType, consumerSynth, name);
+    if (single && typeof single === 'object' && Object.keys(single as Record<string, unknown>).length === 0) {
+      return;
+    }
+    // Consumer-fn may return the full bulk wrapper when it inspects route === 'createManyBase'.
+    // Detect and pass through without double-wrapping.
+    const alreadyBulk =
+      name === 'createManyBase' &&
+      single &&
+      typeof single === 'object' &&
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      Array.isArray((single as any).bulk);
+    const example = name === 'createManyBase' && !alreadyBulk ? { bulk: [single] } : single;
+    // SwaggerModule's api-parameters explorer removes the reflected body param
+    // whenever an explicit body param is emitted on the same operation; the
+    // explicit entry then flows through getCustomType() which destructures
+    // param.type.prototype and crashes when param.type is undefined (see
+    // node_modules/@nestjs/swagger/dist/services/schema-object-factory.js:124).
+    // Attach the modelType as param.type — its prototype is always present,
+    // schema.example still ships in the emitted OpenAPI, and the schema.type
+    // discriminator keeps the scalar path active for environments where the
+    // model class has no @ApiProperty introspection.
+    const bodyParam = {
+      in: 'body',
+      name: 'body',
+      required: true,
+      type: this.modelType,
+      schema: { type: 'object', example },
+    };
+    const existing = Swagger.getParams(this.targetProto[name]);
+    Swagger.setParams([...existing, bodyParam], this.targetProto[name]);
+  }
+
+  // Auto-assigns @ApiTags once per controller. Skipped when the consumer already
+  // attached @ApiTags(...) at decoration time. Default tag = pluralize(modelName);
+  // overridable via `swagger.tag` (string | string[]). When `swagger.tagWithVersion === true`,
+  // prepends `v{version}/` using VERSION_METADATA read off the controller class.
+  // VERSION_METADATA lives at `@nestjs/common/constants` (not re-exported from the
+  // top-level @nestjs/common); probe both paths via safeRequire so the helper stays
+  // tolerant of future NestJS export-surface changes.
+  protected setSwaggerTags() {
+    if (!swaggerConst) {
+      return;
+    }
+    const existing: string[] = R.get(swaggerConst.DECORATORS.API_TAGS, this.target);
+    if (isArrayFull(existing)) {
+      return;
+    }
+    const configured = this.options.swagger?.tag;
+    let tags: string[] = Array.isArray(configured)
+      ? [...configured]
+      : configured
+        ? [configured]
+        : [pluralize(this.modelName)];
+
+    if (this.options.swagger?.tagWithVersion === true) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const common: any = safeRequire('@nestjs/common/constants') || safeRequire('@nestjs/common');
+      const versionMetaKey = common?.VERSION_METADATA;
+      if (versionMetaKey) {
+        const rawVersion = Reflect.getMetadata(versionMetaKey, this.target);
+        let version: string | undefined;
+        // Null-safe extraction: string → use; array-first-element-string → use;
+        // everything else (null, undefined, VERSION_NEUTRAL symbol, number, object) → skip.
+        // A malformed VERSION_METADATA shape must never emit a malformed tag — preserve
+        // the default non-prefixed tag instead.
+        if (typeof rawVersion === 'string') {
+          version = rawVersion;
+        } else if (Array.isArray(rawVersion) && typeof rawVersion[0] === 'string') {
+          version = rawVersion[0];
+        }
+        if (version) {
+          tags = tags.map((t) => `v${version}/${t}`);
+        }
+      }
+    }
+
+    R.set(swaggerConst.DECORATORS.API_TAGS, tags, this.target);
+  }
+
   protected routeNameAction(name: BaseRouteName): string {
-    return name.split('OneBase')[0] || /* istanbul ignore next */ name.split('ManyBase')[0];
+    return (
+      name.split('OneBase')[0] ||
+      /* istanbul ignore next -- ManyBase fallback: only reachable for createManyBase, but setRouteArgs() filters to *OneBase routes before calling, so this branch is structurally unreachable in current call sites */ name.split(
+        'ManyBase',
+      )[0]
+    );
   }
 }

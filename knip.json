@@ -1,0 +1,100 @@
+{
+  "$schema": "https://unpkg.com/knip@5/schema.json",
+  "workspaces": {
+    "packages/util": {
+      "entry": ["src/index.ts"],
+      "project": ["src/**/*.ts"]
+    },
+    "packages/request": {
+      "entry": ["src/index.ts"],
+      "project": ["src/**/*.ts"]
+    },
+    "packages/core": {
+      "entry": [
+        "src/index.ts",
+        "test/**/*.spec.ts",
+        "test/parity/**/*.ts",
+        "test/__stubs__/**/*.ts",
+        "test/__fixture__/**/*.ts",
+        "test/__shared-fixture__/**/*.ts"
+      ],
+      "project": ["src/**/*.ts", "test/**/*.ts"],
+      "ignore": ["src/crud/swagger.helper.ts"],
+      "ignoreDependencies": ["express"]
+    },
+    "packages/typeorm": {
+      "entry": [
+        "src/index.ts",
+        "src/query/index.ts",
+        "jest.config.js",
+        "test/**/*.spec.ts",
+        "test/__fixture__/**/*.ts"
+      ],
+      "project": ["src/**/*.ts", "test/**/*.ts"]
+    },
+    "packages/drizzle": {
+      "entry": [
+        "src/index.ts",
+        "src/query/index.ts",
+        "jest.config.js",
+        "test/**/*.spec.ts",
+        "test/__fixture__/**/*.ts"
+      ],
+      "project": ["src/**/*.ts", "test/**/*.ts"]
+    },
+    "packages/mikro-orm": {
+      "entry": [
+        "src/index.ts",
+        "src/query/index.ts",
+        "jest.config.js",
+        "test/**/*.spec.ts",
+        "test/__fixture__/**/*.ts"
+      ],
+      "project": ["src/**/*.ts", "test/**/*.ts"]
+    },
+    "packages/prisma": {
+      "entry": [
+        "src/index.ts",
+        "src/query/index.ts",
+        "jest.config.js",
+        "test/**/*.spec.ts",
+        "test/__fixture__/**/*.ts"
+      ],
+      "project": ["src/**/*.ts", "test/**/*.ts"]
+    },
+    ".": {
+      "entry": [
+        "jest.config.js",
+        "jest.config.no-swagger.js",
+        "examples/**/*.ts"
+      ],
+      "project": ["*.js", "examples/**/*.ts"],
+      "ignoreDependencies": [
+        "@mikro-orm/knex",
+        "pluralize",
+        "swagger-ui-express",
+        "@typescript-eslint/eslint-plugin",
+        "@typescript-eslint/parser",
+        "conventional-changelog-cli",
+        "eslint-config-airbnb-base",
+        "eslint-plugin-import",
+        "lerna",
+        "nodemon",
+        "cz-conventional-changelog",
+        "@nestjs-crud/core",
+        "@nestjs-crud/util",
+        "@nestjs-crud/request",
+        "@nestjs-crud/typeorm",
+        "@nestjs-crud/drizzle",
+        "@nestjs-crud/mikro-orm",
+        "@nestjs-crud/prisma"
+      ]
+    }
+  },
+  "rules": {
+    "duplicates": "off",
+    "enumMembers": "off"
+  },
+  "ignoreExportsUsedInFile": true,
+  "ignoreBinaries": []
+}

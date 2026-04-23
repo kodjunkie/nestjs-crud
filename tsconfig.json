@@ -4,7 +4,7 @@
     "declaration": true,
     "noImplicitAny": false,
     "noUnusedLocals": false,
-    "removeComments": true,
+    "removeComments": false,
     "noLib": false,
     "emitDecoratorMetadata": true,
     "experimentalDecorators": true,
@@ -28,7 +28,10 @@
       "@nestjs-crud/drizzle": ["drizzle/src"],
       "@nestjs-crud/drizzle/*": ["drizzle/src/*"],
       "@nestjs-crud/mikro-orm": ["mikro-orm/src"],
-      "@nestjs-crud/mikro-orm/*": ["mikro-orm/src/*"]
+      "@nestjs-crud/mikro-orm/*": ["mikro-orm/src/*"],
+      "@nestjs-crud/prisma": ["prisma/src"],
+      "@nestjs-crud/prisma/*": ["prisma/src/*"]
     }
-  }
+  },
+  "exclude": ["opensrc", "**/lib", "**/*.tsbuildinfo"]
 }

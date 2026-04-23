@@ -1,4 +1,5 @@
 import { Column, Table } from 'drizzle-orm';
+import type { JoinResolver } from '@nestjs-crud/core';
 
 /**
  * Configuration for a single relation that the DrizzleCrudService can join.
@@ -34,4 +35,42 @@ export interface DrizzleAllowedRelation {
   columns: string[];
   primaryColumns: string[];
   allowedColumns: string[];
+}
+
+/**
+ * Configuration for the DrizzleQueryTranslator.
+ * Introduced in v2.0.0. Mirrors `TypeOrmQueryTranslatorConfig` — the
+ * translator receives all entity-shape inputs via this config to avoid
+ * any runtime or type-only import from `drizzle-crud.service.ts`
+ * (arch-avoid-circular-deps).
+ *
+ * @since 2.0.0
+ */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export interface DrizzleQueryTranslatorConfig<_T extends Record<string, unknown>> {
+  entityColumns: string[];
+
+  entityPrimaryColumns: string[];
+
+  columnsMap: Record<string, Column>;
+
+  entityHasDeleteColumn: boolean;
+
+  softDeleteColumn: Column | null;
+
+  dbDialect: 'pg' | 'mysql' | 'sqlite' | string;
+
+  onBadRequest: (msg: string) => void;
+
+  joinResolver: JoinResolver<any>;
+}
+
+/**
+ * Configuration for the DrizzleJoinResolver.
+ * @since 2.0.0
+ */
+export interface DrizzleJoinResolverConfig {
+  relationsConfig: DrizzleRelationsConfig;
+
+  onBadRequest: (msg: string) => void;
 }

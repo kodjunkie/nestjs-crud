@@ -1,0 +1,41 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../../../../node_modules/.prisma/client-smoke"
+  // L1: do NOT enable previewFeatures = ["relationJoins"] — consumer opt-in only
+}
+
+datasource db {
+  provider = env("PRISMA_PROVIDER")
+  url      = env("DATABASE_URL")
+}
+
+model Company {
+  id          Int       @id @default(autoincrement())
+  name        String
+  domain      String
+  description String?
+  users       User[]
+  projects    Project[]
+}
+
+model User {
+  id        Int       @id @default(autoincrement())
+  email     String    @unique
+  password  String
+  nameFirst String
+  nameLast  String
+  isActive  Boolean   @default(true)
+  companyId Int
+  company   Company   @relation(fields: [companyId], references: [id])
+  profileId Int?
+  deletedAt DateTime?
+}
+
+model Project {
+  id          Int      @id @default(autoincrement())
+  name        String
+  description String?
+  companyId   Int
+  company     Company  @relation(fields: [companyId], references: [id])
+  isActive    Boolean  @default(true)
+}

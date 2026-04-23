@@ -19,11 +19,11 @@ export class Validation {
           ...(options.validation || {}),
           groups: group ? [group] : undefined,
         })
-      : /* istanbul ignore next */ undefined;
+      : /* istanbul ignore next -- class-validator absent path: validator is a runtime-required peer-dep (no class-validator-less CI cell exists) */ undefined;
   }
 
   static createBulkDto<T = any>(options: MergedCrudOptions): any {
-    /* istanbul ignore else */
+    /* istanbul ignore else -- class-validator/class-transformer absent path: both are runtime-required peer-deps (no peer-dep-less CI cell exists) */
     if (validator && transformer && !isFalse(options.validation)) {
       const { IsArray, ArrayNotEmpty, ValidateNested } = validator;
       const { Type } = transformer;

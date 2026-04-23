@@ -1,7 +1,7 @@
 {
   "name": "@nestjs-crud/drizzle",
   "description": "NestJs CRUD for RESTful APIs - Drizzle ORM",
-  "version": "1.0.1",
+  "version": "2.0.0",
   "license": "MIT",
   "main": "lib/index.js",
   "typings": "lib/index.d.ts",
@@ -9,7 +9,8 @@
     "access": "public"
   },
   "files": [
-    "lib"
+    "lib",
+    "CHANGELOG.md"
   ],
   "repository": {
     "type": "git",
@@ -36,11 +37,16 @@
     "name": "Lawrence Onah",
     "email": "paplow01@gmail.com"
   },
+  "engines": {
+    "node": ">=22.0.0"
+  },
   "scripts": {
     "build": "npx tsc -b"
   },
   "peerDependencies": {
-    "drizzle-orm": ">=0.36.0"
+    "@nestjs-crud/core": "^2.0.0",
+    "@nestjs/common": "^10.0.0 || ^11.0.0",
+    "drizzle-orm": ">=0.45.2"
   },
   "gitHead": "6f5fb9b83cde621265e4268c904c6ee98ae89142"
 }

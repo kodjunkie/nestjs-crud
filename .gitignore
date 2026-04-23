@@ -11,7 +11,9 @@ npm-debug.log
 /.vscode
 
 # misc
-.DS_Store
+/.agents
+/.planning
+skills-lock.json
 lerna-debug.log
 .npmrc
 .nvmrc
@@ -24,3 +26,4 @@ lerna-debug.log
 packages/**/lib
 packages/**/tsconfig.tsbuildinfo
 .mrepo
+coverage-no-swagger/
