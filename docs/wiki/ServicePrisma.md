@@ -107,7 +107,7 @@ Because Prisma's generated types are TypeScript **interfaces** (not classes), us
 
 - **Transactions.** All mutation methods (`updateOne`, `replaceOne`, `deleteOne`) run inside `prisma.$transaction(..., { isolationLevel: 'ReadCommitted' })`. The translator is cloned for the transaction client (`translator.cloneFor(tx)`), so the read-modify-write window that affected v1 is closed. `createMany` uses Prisma's array-form `$transaction([...])` to return full records (Prisma's native `createMany` returns `{ count }` only).
 - **Joins use `include`, not SQL JOIN.** Prisma's `include` / nested-`select` translates `@Crud({ query: { join } })`, but the semantics are **not identical** to SQL JOINs — Prisma issues separate queries per relation by default. For relation-heavy reads, prefer explicit `include` configuration over `@Crud` join wiring. The `PrismaJoinResolver` enforces a SQLi mitigation for dotted-path sort by validating the relation chain against the schema's allowed columns.
-- **Logger.** Pass an optional `logger` on the config to capture adapter-level errors:
+- **Logger.** When `serviceConfig.logger` is omitted the service defaults to `new Logger(PrismaCrudService.name)` from `@nestjs/common` — matching the other adapters. Pass a custom `logger` on the config to capture adapter-level errors in your own sink:
   ```typescript
   super(prisma, 'company', {
     /* ...other config... */

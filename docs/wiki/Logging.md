@@ -11,7 +11,7 @@ All four adapter services ship the optional logger hook:
 - `MikroOrmCrudService`
 - `PrismaCrudService` (exposed via `serviceConfig.logger`, see "Prisma differences" below)
 
-If you omit the logger, the TypeORM / Drizzle / MikroORM services default to a private `new Logger(<ServiceName>)` instance from `@nestjs/common` — meaning they always log at NestJS's configured level. Pass `new Logger(MyService.name)` (or your custom `LoggerService`) explicitly when you want logs scoped to your service name. The Prisma service treats the logger as fully optional — when omitted, all log calls are no-ops.
+If you omit the logger, all four adapter services default to a private `new Logger(<ServiceName>)` instance from `@nestjs/common` — meaning they always log at NestJS's configured level. Pass `new Logger(MyService.name)` (or your custom `LoggerService`) explicitly when you want logs scoped to your service name.
 
 ## Wiring (TypeORM, Drizzle, MikroORM)
 
@@ -51,7 +51,7 @@ In every case the logger is the **last** constructor parameter and is fully opti
 
 ## Prisma differences
 
-The Prisma adapter exposes the logger through its `serviceConfig` object rather than as a separate ctor argument, and uses a structurally narrower contract (only `error` is required; `warn` and `debug` are optional):
+The Prisma adapter exposes the logger through its `serviceConfig` object rather than as a separate ctor argument, and uses a structurally narrower contract (only `error` is required; `warn` and `debug` are optional). When `serviceConfig.logger` is omitted, the service defaults to `new Logger(PrismaCrudService.name)` — same behavior as the other adapters:
 
 ```typescript
 import { PrismaCrudService } from '@nestjs-crud/prisma';
