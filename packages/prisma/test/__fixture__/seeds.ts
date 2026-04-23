@@ -19,9 +19,12 @@ async function main(dialect: 'postgres' | 'mysql'): Promise<void> {
       : 'packages/prisma/test/__fixture__/schema.mysql.prisma';
 
   // db push creates Prisma-managed tables only — does NOT touch other adapters' tables.
-  // --accept-data-loss allows column changes; --skip-generate avoids double-generate.
+  // --accept-data-loss allows column changes. Note: Prisma v7 removed the
+  // previous flag that suppressed auto-generation; db push now always generates,
+  // so the explicit `prisma generate` below is a no-op but kept for
+  // belt-and-suspenders parity with existing CI expectations.
   // No --force-reset: that wipes the entire DB schema, breaking TypeORM/Drizzle/MikroORM tables.
-  execSync(`npx prisma db push --schema=${schema} --accept-data-loss --skip-generate`, {
+  execSync(`npx prisma db push --schema=${schema} --accept-data-loss`, {
     stdio: 'inherit',
   });
 
