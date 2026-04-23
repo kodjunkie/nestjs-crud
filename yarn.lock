@@ -1636,7 +1636,7 @@ __metadata:
     deepmerge: "npm:^4.3.1"
     pluralize: "npm:^8.0.0"
   peerDependencies:
-    "@nestjs/common": ^10.0.0
+    "@nestjs/common": ^10.0.0 || ^11.0.0
     class-transformer: "*"
     class-validator: "*"
   languageName: unknown
@@ -1647,7 +1647,7 @@ __metadata:
   resolution: "@nestjs-crud/drizzle@workspace:packages/drizzle"
   peerDependencies:
     "@nestjs-crud/core": ^2.0.0
-    "@nestjs/common": ^10.0.0
+    "@nestjs/common": ^10.0.0 || ^11.0.0
     drizzle-orm: ">=0.40.0"
   languageName: unknown
   linkType: soft
@@ -1658,12 +1658,12 @@ __metadata:
   dependencies:
     "@mikro-orm/nestjs": "npm:^7"
   peerDependencies:
-    "@mikro-orm/core": ">=6.0.0"
-    "@mikro-orm/knex": ">=6.0.0"
+    "@mikro-orm/core": ^7.0.0
+    "@mikro-orm/knex": ^7.0.0
     "@nestjs-crud/core": ^2.0.0
-    "@nestjs-crud/request": ^1.0.0
-    "@nestjs-crud/util": ^1.0.0
-    "@nestjs/common": ">=10.0.0"
+    "@nestjs-crud/request": ^2.0.0
+    "@nestjs-crud/util": ^2.0.0
+    "@nestjs/common": ^10.0.0 || ^11.0.0
   languageName: unknown
   linkType: soft
 
@@ -1672,7 +1672,7 @@ __metadata:
   resolution: "@nestjs-crud/prisma@workspace:packages/prisma"
   peerDependencies:
     "@nestjs-crud/core": ^2.0.0
-    "@nestjs/common": ^11.0.0
+    "@nestjs/common": ^10.0.0 || ^11.0.0
     "@prisma/client": ">=5.0.0"
   languageName: unknown
   linkType: soft
@@ -1691,8 +1691,8 @@ __metadata:
   resolution: "@nestjs-crud/typeorm@workspace:packages/typeorm"
   peerDependencies:
     "@nestjs-crud/core": ^2.0.0
-    "@nestjs/common": ^10.0.0
-    "@nestjs/typeorm": ^10.0.0
+    "@nestjs/common": ^10.0.0 || ^11.0.0
+    "@nestjs/typeorm": ^10.0.0 || ^11.0.0
     typeorm: ^0.3.0
   languageName: unknown
   linkType: soft

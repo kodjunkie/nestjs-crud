@@ -56,7 +56,7 @@
     "pluralize": "^8.0.0"
   },
   "peerDependencies": {
-    "@nestjs/common": "^10.0.0",
+    "@nestjs/common": "^10.0.0 || ^11.0.0",
     "class-transformer": "*",
     "class-validator": "*"
   }

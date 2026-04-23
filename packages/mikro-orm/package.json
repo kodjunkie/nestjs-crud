@@ -44,12 +44,12 @@
     "build": "npx tsc -b"
   },
   "peerDependencies": {
-    "@mikro-orm/core": ">=6.0.0",
-    "@mikro-orm/knex": ">=6.0.0",
+    "@mikro-orm/core": "^7.0.0",
+    "@mikro-orm/knex": "^7.0.0",
     "@nestjs-crud/core": "^2.0.0",
-    "@nestjs-crud/request": "^1.0.0",
-    "@nestjs-crud/util": "^1.0.0",
-    "@nestjs/common": ">=10.0.0"
+    "@nestjs-crud/request": "^2.0.0",
+    "@nestjs-crud/util": "^2.0.0",
+    "@nestjs/common": "^10.0.0 || ^11.0.0"
   },
   "gitHead": "6f5fb9b83cde621265e4268c904c6ee98ae89142",
   "devDependencies": {
