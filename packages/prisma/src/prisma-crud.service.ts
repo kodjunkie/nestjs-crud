@@ -1,3 +1,5 @@
+import { Logger } from '@nestjs/common';
+
 import { CrudService } from '@nestjs-crud/core';
 
 import type { CreateManyDto, CrudRequest, GetManyDefaultResponse } from '@nestjs-crud/core';
@@ -24,7 +26,12 @@ export class PrismaCrudService<T extends Record<string, unknown>> extends CrudSe
     protected readonly serviceConfig: PrismaCrudServiceConfig<T>,
   ) {
     super();
-    this.translator = new PrismaQueryTranslator<T>(prisma, modelName, serviceConfig);
+    if (!this.serviceConfig.logger) {
+      // Default to NestJS Logger when omitted — parity with TypeORM/Drizzle/MikroORM adapters.
+      // Logger from '@nestjs/common' structurally satisfies { error, warn?, debug? }.
+      this.serviceConfig.logger = new Logger(PrismaCrudService.name);
+    }
+    this.translator = new PrismaQueryTranslator<T>(prisma, modelName, this.serviceConfig);
   }
 
   // === PUBLIC CRUD VERBS ===
@@ -44,7 +51,7 @@ export class PrismaCrudService<T extends Record<string, unknown>> extends CrudSe
 
       return (await this.getDelegate().findMany(q)) as T[];
     } catch (err: any) {
-      this.serviceConfig.logger?.error(`PrismaCrudService.getMany failed: ${err.name}`, err.stack);
+      this.serviceConfig.logger.error(`PrismaCrudService.getMany failed: ${err.name}`, err.stack);
       throw err;
     }
   }
@@ -58,7 +65,7 @@ export class PrismaCrudService<T extends Record<string, unknown>> extends CrudSe
       const data = this.prepareForSave(dto, req);
       return (await this.getDelegate().create({ data })) as T;
     } catch (err: any) {
-      this.serviceConfig.logger?.error(`PrismaCrudService.createOne failed: ${err.name}`, err.stack);
+      this.serviceConfig.logger.error(`PrismaCrudService.createOne failed: ${err.name}`, err.stack);
       throw err;
     }
   }
@@ -74,7 +81,7 @@ export class PrismaCrudService<T extends Record<string, unknown>> extends CrudSe
         ...bulk.map((d) => this.getDelegate().create({ data: this.prepareForSave(d as T | Partial<T>, req) })),
       ]) as Promise<T[]>;
     } catch (err: any) {
-      this.serviceConfig.logger?.error(`PrismaCrudService.createMany failed: ${err.name}`, err.stack);
+      this.serviceConfig.logger.error(`PrismaCrudService.createMany failed: ${err.name}`, err.stack);
       throw err;
     }
   }
@@ -97,7 +104,7 @@ export class PrismaCrudService<T extends Record<string, unknown>> extends CrudSe
         { isolationLevel: 'ReadCommitted' },
       );
     } catch (err: any) {
-      this.serviceConfig.logger?.error(`PrismaCrudService.updateOne failed: ${err.name}`, err.stack);
+      this.serviceConfig.logger.error(`PrismaCrudService.updateOne failed: ${err.name}`, err.stack);
       throw err;
     }
   }
@@ -120,7 +127,7 @@ export class PrismaCrudService<T extends Record<string, unknown>> extends CrudSe
         { isolationLevel: 'ReadCommitted' },
       );
     } catch (err: any) {
-      this.serviceConfig.logger?.error(`PrismaCrudService.replaceOne failed: ${err.name}`, err.stack);
+      this.serviceConfig.logger.error(`PrismaCrudService.replaceOne failed: ${err.name}`, err.stack);
       throw err;
     }
   }
@@ -148,7 +155,7 @@ export class PrismaCrudService<T extends Record<string, unknown>> extends CrudSe
         { isolationLevel: 'ReadCommitted' },
       );
     } catch (err: any) {
-      this.serviceConfig.logger?.error(`PrismaCrudService.deleteOne failed: ${err.name}`, err.stack);
+      this.serviceConfig.logger.error(`PrismaCrudService.deleteOne failed: ${err.name}`, err.stack);
       throw err;
     }
   }
@@ -165,7 +172,7 @@ export class PrismaCrudService<T extends Record<string, unknown>> extends CrudSe
       const recovered = await this.getDelegate().update({ where, data: { [softDel]: null } });
       return recovered as T;
     } catch (err: any) {
-      this.serviceConfig.logger?.error(`PrismaCrudService.recoverOne failed: ${err.name}`, err.stack);
+      this.serviceConfig.logger.error(`PrismaCrudService.recoverOne failed: ${err.name}`, err.stack);
       throw err;
     }
   }
@@ -222,7 +229,7 @@ export class PrismaCrudService<T extends Record<string, unknown>> extends CrudSe
       }
       return row as T;
     } catch (err: any) {
-      this.serviceConfig.logger?.error(`PrismaCrudService.getOne failed: ${err.name}`, err.stack);
+      this.serviceConfig.logger.error(`PrismaCrudService.getOne failed: ${err.name}`, err.stack);
       throw err;
     }
   }
