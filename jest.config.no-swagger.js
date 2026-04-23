@@ -43,4 +43,10 @@ module.exports = {
     // cells run via per-adapter scripts that don't touch this file either.
     '/packages/core/test/crud-request\\.interceptor\\.spec\\.ts$',
   ],
+  // D-12 / Plan 10-09 Task 5: this sentinel config DISABLES the inherited 80%
+  // coverageThreshold. Rationale: the no-swagger config skips 3 specs and runs
+  // only the swagger-absent subset of core; coverage will always be lower than
+  // the default config — by design. The coverage signal here is consumed by
+  // Plan 09's pragma-deletion arithmetic, not as a PR gate.
+  coverageThreshold: undefined,
 };

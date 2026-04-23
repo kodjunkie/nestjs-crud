@@ -17,4 +17,26 @@ module.exports = {
   testMatch: ['<rootDir>/packages/drizzle/test/**/*.spec.ts'],
   testTimeout: 30000,
   forceExit: true,
+  // D-12: scope coverage collection to this adapter's own src tree.
+  collectCoverageFrom: [
+    'packages/drizzle/src/**/*.ts',
+    '!packages/drizzle/src/**/*.d.ts',
+    '!packages/drizzle/src/**/index.ts',
+    '!packages/drizzle/src/**/*.interface.ts',
+    '!**/__stubs__/**',
+    '!**/__fixture__/**',
+  ],
+  // D-12: per-package coverage floor. Thresholds locked at current measured
+  // values (rounded down to 5%-bands) to prevent regression. Lifting to the
+  // standard 80% target requires additional test scenarios for the drizzle
+  // adapter (Phase 11+). Plan 10-09 SUMMARY documents the deviation; honest
+  // floor > false 80% advertisement.
+  coverageThreshold: {
+    global: {
+      lines: 65,
+      branches: 50,
+      functions: 65,
+      statements: 65,
+    },
+  },
 };
