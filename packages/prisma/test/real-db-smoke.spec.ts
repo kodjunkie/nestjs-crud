@@ -31,11 +31,19 @@ const runSuite = process.env.PRISMA_PROVIDER === 'postgresql' || process.env.PRI
 // ---------------------------------------------------------------------------
 async function reseedDb(prisma: any, db: 'postgres' | 'mysql'): Promise<void> {
   if (db === 'mysql') {
-    await prisma.$executeRawUnsafe('SET FOREIGN_KEY_CHECKS = 0');
-    await prisma.$executeRawUnsafe('TRUNCATE TABLE Project');
-    await prisma.$executeRawUnsafe('TRUNCATE TABLE User');
-    await prisma.$executeRawUnsafe('TRUNCATE TABLE Company');
-    await prisma.$executeRawUnsafe('SET FOREIGN_KEY_CHECKS = 1');
+    // v7 driver-adapter surface B7: @prisma/adapter-mariadb dispatches each
+    // $executeRawUnsafe on a fresh pooled connection, so session-scoped
+    // `SET FOREIGN_KEY_CHECKS = 0` does NOT carry across subsequent TRUNCATE
+    // statements. Under the pre-v7 Rust-engine URL path consecutive raw calls
+    // reused a single engine-pinned connection; driver adapters pool per
+    // statement. Fix: DELETE FROM in child-first order (FK-safe without session
+    // state), then reset AUTO_INCREMENT so canonical IDs stay reproducible.
+    await prisma.$executeRawUnsafe('DELETE FROM Project');
+    await prisma.$executeRawUnsafe('DELETE FROM User');
+    await prisma.$executeRawUnsafe('DELETE FROM Company');
+    await prisma.$executeRawUnsafe('ALTER TABLE `Project` AUTO_INCREMENT = 1');
+    await prisma.$executeRawUnsafe('ALTER TABLE `User` AUTO_INCREMENT = 1');
+    await prisma.$executeRawUnsafe('ALTER TABLE `Company` AUTO_INCREMENT = 1');
   } else {
     await prisma.$executeRawUnsafe('TRUNCATE TABLE "Project", "User", "Company" RESTART IDENTITY CASCADE');
   }
@@ -67,10 +75,12 @@ async function reseedDb(prisma: any, db: 'postgres' | 'mysql'): Promise<void> {
     await app.init();
     server = app.getHttpServer();
 
-    // Standalone Prisma client for seeding — owned by the spec, not NestJS DI
+    // Standalone Prisma client for seeding — owned by the spec, not NestJS DI.
+    // v7: must go through driver-adapter factory (ctor no longer accepts
+    // `datasources`/`datasourceUrl` nor auto-reads env.DATABASE_URL).
     // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const { PrismaClient } = require('../../../node_modules/.prisma/client-smoke');
-    seedPrisma = new PrismaClient();
+    const { makePrismaClient } = require('./__fixture__/make-prisma-client');
+    seedPrisma = makePrismaClient(dialect);
   });
 
   beforeEach(async () => {

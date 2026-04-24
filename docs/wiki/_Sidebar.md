@@ -8,6 +8,7 @@
 ### Getting Started
 
 - [v2 Migration guide](https://github.com/kodjunkie/nestjs-crud/wiki/v2-Migration)
+- [v2.1 Migration guide (Prisma v7)](https://github.com/kodjunkie/nestjs-crud/wiki/v2.1-Migration)
 
 ### Controllers
 
@@ -15,7 +16,7 @@
 - [Install](https://github.com/kodjunkie/nestjs-crud/wiki/Controllers#install)
 - [Getting started](https://github.com/kodjunkie/nestjs-crud/wiki/Controllers#getting-started)
 - [API endpoints](https://github.com/kodjunkie/nestjs-crud/wiki/Controllers#api-endpoints)
-- [Swagger](https://github.com/kodjunkie/nestjs-crud/wiki/Controllers#swagger)
+- [Swagger](https://github.com/kodjunkie/nestjs-crud/wiki/Swagger)
 - [Options](https://github.com/kodjunkie/nestjs-crud/wiki/Controllers#options)
 - [Global options](https://github.com/kodjunkie/nestjs-crud/wiki/Controllers#global-options)
 - [Request authentication](https://github.com/kodjunkie/nestjs-crud/wiki/Controllers#request-authentication)

@@ -13,6 +13,39 @@ _(No unreleased changes.)_
 
 ---
 
+## [2.1.0] — 2026-04-23
+
+**Milestone:** `@nestjs-crud/prisma` peer-range bump to `@prisma/client ^7.0.0`.
+**Branch:** `master` · **Previous:** `v2.0.1`
+
+Coordinated minor release across all seven packages (fixed-mode lerna). Only `@nestjs-crud/prisma` has a semantic change — the other six packages are version-only republishes to keep the monorepo in lockstep. The adapter's runtime API surface (`PrismaCrudService` constructor, method signatures, `$transaction` usage) is unchanged; all migration work happens on the consumer side (schema file, config file, `PrismaClient` construction).
+
+Full walkthrough: [v2.1 Migration guide](https://github.com/kodjunkie/nestjs-crud/wiki/v2.1-Migration).
+
+```
+yarn up @nestjs-crud/util@2.1.0 @nestjs-crud/request@2.1.0 @nestjs-crud/core@2.1.0 \
+        @nestjs-crud/typeorm@2.1.0 @nestjs-crud/drizzle@2.1.0 @nestjs-crud/mikro-orm@2.1.0 \
+        @nestjs-crud/prisma@2.1.0
+```
+
+### Changed
+
+- **`@nestjs-crud/prisma` — `@prisma/client` peer range narrowed from `>=5.0.0` to `^7.0.0`.** Consumers pinned to `@prisma/client@5.x` or `@prisma/client@6.x` will see `npm WARN` peer warnings and must upgrade. Prisma 7 introduces two schema/CLI breakages that propagate to every consumer:
+  - `datasource.url` is rejected in `schema.prisma` — the `url = env("DATABASE_URL")` line must be removed from every datasource block, and the connection URL forwarded either through a new `prisma.config.ts` (for Migrate — `prisma db push`, `prisma migrate`) or through the `PrismaClient` constructor via a driver adapter (for runtime).
+  - `prisma db push --skip-generate` is hard-removed (not deprecated-with-warning). Any `package.json` script, Dockerfile step, or CI invocation that passes this flag now errors with `Unknown argument '--skip-generate'`. Drop the flag — `db push` now always auto-generates.
+
+  The adapter's runtime surface is source-compatible with Prisma 7: `PrismaCrudService` constructor signature, method signatures, and `$transaction` call sites are unchanged.
+
+### Deprecated
+
+- **`@nestjs-crud/prisma@2.0.x` peer range** is deprecated for new installs. Consumers on `@prisma/client@5.x` or `@prisma/client@6.x` must either upgrade to `@prisma/client@^7.0.0` alongside this release, or pin `"@nestjs-crud/prisma": "^2.0.0"` to stay on the v2.0.x line. There is **no `v2.0-lts` dist-tag** — `latest` flips to `2.1.0` on this release. Consumers who don't pin will pull v2.1.0 on their next `npm update`.
+
+### Migration
+
+Full step-by-step walkthrough: [v2.1 Migration guide](https://github.com/kodjunkie/nestjs-crud/wiki/v2.1-Migration).
+
+---
+
 ## [2.0.1] — 2026-04-23
 
 **Milestone:** v2.0.0 post-release hotfix.
@@ -187,7 +220,8 @@ See the [v1.0.1 release](https://github.com/kodjunkie/nestjs-crud/releases/tag/v
 
 ---
 
-[Unreleased]: https://github.com/kodjunkie/nestjs-crud/compare/v2.0.1...HEAD
+[Unreleased]: https://github.com/kodjunkie/nestjs-crud/compare/v2.1.0...HEAD
+[2.1.0]: https://github.com/kodjunkie/nestjs-crud/compare/v2.0.1...v2.1.0
 [2.0.1]: https://github.com/kodjunkie/nestjs-crud/compare/v2.0.0...v2.0.1
 [2.0.0]: https://github.com/kodjunkie/nestjs-crud/compare/v1.0.2...v2.0.0
 [1.0.2]: https://github.com/kodjunkie/nestjs-crud/compare/v1.0.1...v1.0.2

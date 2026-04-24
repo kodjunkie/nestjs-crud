@@ -1,6 +1,7 @@
 ---
 name: nestjs-crud-migration
-description: Use when migrating a NestJS project from @nestjs-crud/* v1.0.x to v2.0, diagnosing v2 upgrade errors (`Field "X" is not allowed`, `setSearchCondition is not a function`, `checkSqlInjection is not a function`, `entityRelationsHash` undefined, `translator.count is not a function`, `findOneOrFail is not a function`, `RequestQueryException: Invalid persist key`, `CrudCacheNotConfiguredError`, Drizzle `Type 'any' is not assignable to type 'DrizzleClient'`, MikroORM `FilterQuery<T>` type errors, MikroORM stale-em identity-map issues, Prisma `Unknown argument 'where'` inside include, `EBADENGINE: Unsupported engine`), Swagger snapshot-test drift (summaries rewritten to imperative form, `operationsMap` return-shape break), opting into the new TypeORM `relationLoadStrategy: 'query'`, adopting `@nestjs-crud/prisma`, or auditing peerDependencies for `@nestjs/common ^10 || ^11`.
+description: >-
+  Use when migrating a NestJS project from @nestjs-crud/* v1.0.x to v2.0 OR from @nestjs-crud/prisma@2.0.x on @prisma/client@^5 / ^6 to @nestjs-crud/prisma@2.1.0 on @prisma/client@^7 (schema `datasource.url` removal, `prisma.config.ts` forwarding, `prisma db push --skip-generate` flag drop, `PrismaClient` driver-adapter wiring, `@prisma/adapter-pg` search_path landmine, `@prisma/adapter-mariadb` session-state landmine), diagnosing v2 upgrade errors (`Field "X" is not allowed`, `setSearchCondition is not a function`, `checkSqlInjection is not a function`, `entityRelationsHash` undefined, `translator.count is not a function`, `findOneOrFail is not a function`, `RequestQueryException: Invalid persist key`, `CrudCacheNotConfiguredError`, Drizzle `Type 'any' is not assignable to type 'DrizzleClient'`, MikroORM `FilterQuery<T>` type errors, MikroORM stale-em identity-map issues, Prisma `Unknown argument 'where'` inside include, `Your Prisma Client was configured with datasourceUrl, but the datasource in schema.prisma does not expose a URL`, `The property url on the datasource block is not allowed`, `Unknown argument '--skip-generate'`, `EBADENGINE: Unsupported engine`), Swagger snapshot-test drift (summaries rewritten to imperative form, `operationsMap` return-shape break), opting into the new TypeORM `relationLoadStrategy: 'query'`, adopting `@nestjs-crud/prisma`, or auditing peerDependencies for `@nestjs/common ^10 || ^11`.
 ---
 
 # @nestjs-crud v1 → v2 Migration
@@ -609,3 +610,54 @@ Run the Pre-Upgrade Audit greps at the top of this skill.
 - Non-zero on (11) with typos in persist keys → expect `RequestQueryException` at runtime (§D)
 - Non-zero on (12) without DataSource cache configured → expect `CrudCacheNotConfiguredError` at runtime (§D)
 - (13) failing → upgrade Node to 22.x or stay on v1.0.x (§E)
+
+---
+
+## v2.0 → v2.1 (Prisma v7)
+
+`@nestjs-crud/prisma@2.1.0` narrows the `@prisma/client` peer range from `>=5.0.0` to `^7.0.0`. Adapter runtime API is **unchanged** — subclasses compile and run against Prisma 7 without code changes. All migration work is in schema files + CLI invocations + the `PrismaClient` constructor call. The other six `@nestjs-crud/*` packages republish at `2.1.0` with no behavior change.
+
+**Canonical walkthrough:** [`docs/wiki/v2.1-Migration.md`](https://github.com/kodjunkie/nestjs-crud/wiki/v2.1-Migration). Use it as the consumer-facing playbook; this skill section is a triage summary for agents.
+
+### Pre-upgrade audit (Prisma consumers only)
+
+```bash
+# 1. schema.prisma still carries `url = env("DATABASE_URL")` — v7 rejects it
+grep -rnE 'url\s*=\s*env\("DATABASE_URL"\)' . --include='*.prisma'
+
+# 2. CI / scripts / Dockerfiles pass the hard-removed --skip-generate flag
+grep -rn "skip-generate" . --include='*.json' --include='*.yml' --include='*.yaml' \
+                           --include='Dockerfile*' --include='*.sh'
+
+# 3. PrismaClient constructor relies on env-auto or datasourceUrl (all three patterns throw on v7)
+grep -rnE "new PrismaClient\(\s*\)|datasourceUrl|datasources:\s*\{\s*db:" src/
+
+# 4. Postgres on a non-public schema — adapter-pg does NOT emit SET search_path
+grep -rn '\?schema=' . --include='*.env*' --include='*.ts' --include='*.js'
+
+# 5. MySQL teardown relies on session-scoped SET persisting across statements
+grep -rnE "FOREIGN_KEY_CHECKS|SET SESSION|SET @" src/ test/
+```
+
+### Triage table
+
+| Symptom | Cause | Fix |
+|---|---|---|
+| `prisma generate`: `The property url on the datasource block is not allowed` | v5-shaped schema on v7 | Drop `url = env("DATABASE_URL")` from every `datasource` block (wiki §1) |
+| `prisma db push`: `The datasource.url property is required in your Prisma config file` | `prisma.config.ts` missing or lacks `datasource.url` | Add `prisma.config.ts` at project root forwarding `DATABASE_URL` into `datasource.url` (wiki §2) |
+| `prisma db push`: `Unknown argument '--skip-generate'` | v7 hard-removed the flag (not documented upstream as removed) | Drop the flag from every `prisma db push` invocation; `db push` auto-generates now (wiki §3) |
+| `new PrismaClient()` throws: `Your Prisma Client was configured with datasourceUrl, but the datasource in schema.prisma does not expose a URL` | v7 rejects `datasourceUrl` / `datasources.db.url` against v7-shaped schemas and no longer reads env implicitly | Wire a driver adapter: `new PrismaClient({ adapter: new PrismaPg({ connectionString }) })` for Postgres, `new PrismaMariaDb(url)` for MySQL (wiki §4) |
+| Postgres: tables land in `public` despite `?schema=custom`; `relation does not exist` on known tables; raw-SQL `ALTER SEQUENCE` fails | `@prisma/adapter-pg` does NOT run `SET search_path` on connect (NOT documented upstream) | Pass libpq `options=-c search_path=<schema>` in pg `PoolConfig` AND pass `schema` as the second `PrismaPg` arg (wiki gotcha 1) |
+| MySQL: `SET FOREIGN_KEY_CHECKS = 0; TRUNCATE ...` fails on FK; `SET @x = 1; SELECT @x` returns `NULL`; sql_mode / time_zone drift | `@prisma/adapter-mariadb` dispatches each call on a fresh pool checkout — session-scoped `SET` does NOT persist (NOT documented upstream) | Refactor to dependency-ordered `DELETE FROM` + `ALTER TABLE ... AUTO_INCREMENT = 1` for teardown; use mariadb pool's `initSql` to replay required `SET SESSION` on connect (wiki gotcha 2) |
+
+### What does NOT change
+
+- `PrismaCrudService<T>` constructor, method signatures, internal composition — identical.
+- `@Crud()` decorator, `@Override()`, `@ParsedRequest()` — identical.
+- Serialization, validation, transaction semantics on `updateOne` / `replaceOne` / `deleteOne` — identical.
+
+If the consumer is not maintaining a `schema.prisma` (generated-only, already on a driver adapter, already on `@prisma/client@^7`), the 2.1.0 bump is a metadata-only peer-range narrowing.
+
+### Stay-on-v2.0 escape
+
+Pin `"@nestjs-crud/prisma": "^2.0.0"` + `"@prisma/client": "^5 || ^6"`. No `v2.0-lts` dist-tag — `latest` flips to `2.1.0`.

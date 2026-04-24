@@ -74,4 +74,4 @@ export class CompaniesController implements CrudController<Company> {
 - [Wiki: ServiceMikroOrm](https://github.com/kodjunkie/nestjs-crud/wiki/ServiceMikroOrm) — full MikroORM adapter API
 - [Wiki: Logging](https://github.com/kodjunkie/nestjs-crud/wiki/Logging) — optional `LoggerService` ctor parameter (v2.0.0)
 - [Wiki: Caching](https://github.com/kodjunkie/nestjs-crud/wiki/Caching) — current state for MikroORM (consumer-owned)
-- [v2 Migration guide](https://github.com/kodjunkie/nestjs-crud/wiki/v2-Migration) — including TYPES-02 typed public method signatures migration
+- [v2 Migration guide](https://github.com/kodjunkie/nestjs-crud/wiki/v2-Migration) — including the typed public method signatures migration
