@@ -1,12 +1,12 @@
 # Caching
 
-`@nestjs-crud` exposes per-controller caching through the `@Crud({ query: { cache: <ttl-ms> } })` option. This page documents how to wire each adapter's cache backend correctly and how the new `CrudCacheNotConfiguredError` (v2.0.0) helps catch misconfiguration early.
+`@nestjs-crud` exposes per-controller caching through `@Crud({ query: { cache: <ttl-ms> } })`. The TypeORM adapter wires it through to TypeORM's own cache. Drizzle, MikroORM, and Prisma ignore the option; cache those at the ORM or service layer.
 
-## TypeORM (full support)
+## TypeORM
 
-The TypeORM adapter forwards `@Crud({ query: { cache } })` to TypeORM's native `query.cache(ttl)` API. For this to work, your `DataSource` MUST be configured with a `cache` provider — otherwise the request fails fast with `CrudCacheNotConfiguredError` (see below).
+The TypeORM adapter forwards `@Crud({ query: { cache } })` to TypeORM's native `query.cache(ttl)` API. Your `DataSource` must declare a `cache` provider, otherwise the first cached read throws `CrudCacheNotConfiguredError` (added in v2.0.0).
 
-### Option 1: Redis (recommended for production)
+### Redis (recommended for production)
 
 ```ts
 new DataSource({
@@ -20,9 +20,9 @@ new DataSource({
 });
 ```
 
-Redis is the recommended production choice because the cache is shared across worker processes and survives application restarts.
+Cache stays shared across worker processes and survives restarts.
 
-### Option 2: Database table
+### Database table
 
 ```ts
 new DataSource({
@@ -31,9 +31,9 @@ new DataSource({
 });
 ```
 
-TypeORM creates a `query-result-cache` table on first run. Useful when you don't want a separate Redis dependency, but inherits the latency and contention characteristics of the underlying database.
+TypeORM creates a `query-result-cache` table on first run. No extra service to operate, but reads inherit the latency and contention of the underlying database.
 
-### Option 3: In-memory
+### In-memory
 
 ```ts
 new DataSource({
@@ -42,7 +42,7 @@ new DataSource({
 });
 ```
 
-Not recommended for production — cache is lost on process restart and is not shared between workers (each process has its own copy, defeating the point of caching for horizontally scaled deployments).
+Skip this in production. Cache dies with the process and each worker keeps its own copy, which defeats the point under horizontal scaling.
 
 ### Per-controller usage
 
@@ -55,37 +55,35 @@ Not recommended for production — cache is lost on process restart and is not s
 export class UsersController { /* ... */ }
 ```
 
-The TTL value is forwarded to TypeORM's `SelectQueryBuilder.cache(milliseconds)` call when the controller's read endpoints (`getManyBase`, `getOneBase`) execute.
+The TTL is forwarded to `SelectQueryBuilder.cache(milliseconds)` on `getManyBase` and `getOneBase`.
 
 ### Per-request opt-out
 
-Consumers can disable caching for a specific request by passing `?cache=0` in the query string — useful for cache-busting after writes, or for admin tooling that needs fresh reads.
+Pass `?cache=0` to bypass the cache for a single request. Useful right after writes, or for admin tools that need a fresh read.
 
 ```
 GET /users?cache=0
 ```
 
-### Fail-fast on misconfiguration (v2.0.0)
+### `CrudCacheNotConfiguredError`
 
-If you set `@Crud({ query: { cache } })` but forgot to configure `DataSource({ cache: ... })`, requests now fail with:
+If `@Crud({ query: { cache } })` is set but `DataSource({ cache })` is not, the next cached read throws:
 
 ```
 CrudCacheNotConfiguredError: @Crud cache option requires a DataSource cache provider. Configure DataSource({ cache: { type: 'redis', ... } }) or remove the cache option from your @Crud() configuration.
 ```
 
-This is a deliberate plain `Error` subclass (not a NestJS `HttpException`) because cache misconfiguration is a developer / deployment error surfaced at first-cached-query time — it should fail loud so the operator fixes the config rather than being silently rendered as a generic 500 response.
+It is a plain `Error` subclass, not an `HttpException`, so the full message lands in your logs instead of being shaped into a generic 500 response by Nest's HTTP filter. Cache misconfiguration is a deployment bug; surfacing it loudly is the point.
 
-**To fix:** either configure your `DataSource` with one of the three options above, or remove the `cache` field from your `@Crud()` decorator.
+To fix: configure `DataSource({ cache })` using one of the three options above, or remove `cache` from `@Crud()`.
 
-## Drizzle, MikroORM, Prisma (consumer-owned)
+## Drizzle, MikroORM, Prisma
 
-Drizzle, MikroORM, and Prisma do not currently honor the `@Crud({ query: { cache } })` option. Use each ORM's native caching primitives at the application layer for now (links to ORM docs preserved):
+These adapters ignore `@Crud({ query: { cache } })`. Setting it is silent: no error, no cache. Reach for the ORM's own primitives instead.
 
-- **Drizzle:** No first-party query cache as of v0.45.x. Use a Redis-backed wrapper at the service layer or an HTTP-cache layer above the controller. See the [Drizzle docs](https://orm.drizzle.team/docs/overview).
-- **MikroORM:** Use [MikroORM's Result Cache](https://mikro-orm.io/docs/caching) — `em.find(User, ..., { cache: 30000 })`. Apply at your service layer above `@nestjs-crud/mikro-orm`.
-- **Prisma:** Use [Prisma Accelerate](https://www.prisma.io/docs/accelerate) for managed caching, or a Redis-backed memoization wrapper. Prisma has no first-party in-process query cache.
-
-Setting `@Crud({ query: { cache } })` on a controller backed by Drizzle / MikroORM / Prisma is currently a no-op (ignored silently — no error). Use the ORM-native primitives above instead.
+- **Drizzle** has no first-party query cache as of v0.45.x. Common patterns are a Redis-backed memoizer at the service layer or an HTTP cache in front of the controller. See the [Drizzle docs](https://orm.drizzle.team/docs/overview).
+- **MikroORM** ships a [Result Cache](https://mikro-orm.io/docs/caching) you can call from a service wrapping `@nestjs-crud/mikro-orm`: `em.find(User, ..., { cache: 30000 })`.
+- **Prisma** has no in-process query cache. [Prisma Accelerate](https://www.prisma.io/docs/accelerate) is the managed option; otherwise a Redis memoizer wrapping the query works.
 
 ## See also
 

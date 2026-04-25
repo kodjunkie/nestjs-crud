@@ -1,8 +1,10 @@
+# Controllers
+
 ## Description
 
-[**@nestjs-crud/core**](https://www.npmjs.com/package/@nestjs-crud/core) - core package which provides `@Crud()` controller decorator for endpoints generation, global configuration, validation, and helper decorators.
+[`@nestjs-crud/core`](https://www.npmjs.com/package/@nestjs-crud/core) provides the `@Crud()` controller decorator, global configuration, validation, and helper decorators.
 
-## Table of Contents
+## Table of contents
 
 - [Install](#install)
 - [Getting started](#getting-started)
@@ -39,9 +41,9 @@ npm i @nestjs-crud/typeorm @nestjs/typeorm typeorm
 
 ## Getting started
 
-Let's take a look at the example of using `@nestjs-crud/core` with TypeORM.
+Walk through `@nestjs-crud/core` with TypeORM.
 
-Assume we have some TypeORM **entity**:
+Start with a TypeORM **entity**:
 
 ```typescript
 import { Entity, PrimaryGeneratedColumn, Column } from 'typeorm';
@@ -54,7 +56,7 @@ export class Company {
 }
 ```
 
-Then we need to create a **service**:
+Create a **service**:
 
 ```typescript
 import { Injectable } from '@nestjs/common';
@@ -71,7 +73,7 @@ export class CompaniesService extends TypeOrmCrudService<Company> {
 }
 ```
 
-We've done with the service so let's create a **controller**:
+Wire the service into a **controller**:
 
 ```typescript
 import { Controller } from '@nestjs/common';
@@ -91,7 +93,7 @@ export class CompaniesController implements CrudController<Company> {
 }
 ```
 
-All we have to do next is to connect our service and controller in the `CompaniesModule` as we usually do:
+Register both in the `CompaniesModule`:
 
 ```typescript
 import { Module } from '@nestjs/common';
@@ -110,44 +112,44 @@ import { CompaniesController } from './companies.controller';
 export class CompaniesModule {}
 ```
 
-That's it.
+That is the whole setup.
 
-## API Endpoints
+## API endpoints
 
-`Crud()` decorator generates the following API endpoints:
+`@Crud()` generates the following endpoints:
 
 ### Get many resources
 
-> `GET /heroes`  
+> `GET /heroes`
 > `GET /heroes/:heroId/perks`
 
-_Result:_ array of resources | pagination object with data  
-_Status Codes:_ 200
+_Result:_ array of resources, or a pagination object with data
+_Status codes:_ 200
 
 ### Get one resource
 
-> `GET /heroes/:id`  
-> `GET /heroes/:heroId/perks:id`
+> `GET /heroes/:id`
+> `GET /heroes/:heroId/perks/:id`
 
-_Request Params:_ `:id` - some resource field (slug)  
-_Result:_ resource object | error object  
-_Status Codes:_ 200 | 404
+_Request params:_ `:id` (some resource field acting as the slug)
+_Result:_ resource object, or error object
+_Status codes:_ 200, 404
 
 ### Create one resource
 
-> `POST /heroes`  
+> `POST /heroes`
 > `POST /heroes/:heroId/perks`
 
-_Request Body:_ resource object | resource object with nested (relational) resources  
-_Result:_ created resource object | error object  
-_Status Codes:_ 201 | 400
+_Request body:_ resource object, or resource object with nested (relational) resources
+_Result:_ created resource object, or error object
+_Status codes:_ 201, 400
 
 ### Create many resources
 
-> `POST /heroes/bulk`  
+> `POST /heroes/bulk`
 > `POST /heroes/:heroId/perks/bulk`
 
-_Request Body:_ array of resources objects | array of resources objects with nested (relational) resources
+_Request body:_ array of resource objects, or array of resource objects with nested (relational) resources
 
 ```json
 {
@@ -155,37 +157,37 @@ _Request Body:_ array of resources objects | array of resources objects with nes
 }
 ```
 
-_Result:_ array of created resources | error object  
-_Status codes:_ 201 | 400
+_Result:_ array of created resources, or error object
+_Status codes:_ 201, 400
 
 ### Update one resource
 
-> `PATCH /heroes/:id`  
+> `PATCH /heroes/:id`
 > `PATCH /heroes/:heroId/perks/:id`
 
-_Request Params:_ `:id` - some resource field (slug)  
-_Request Body:_ resource object (or partial) | resource object with nested (relational) resources (or partial)  
-_Result:_: updated partial resource object | error object  
-_Status codes:_ 200 | 400 | 404
+_Request params:_ `:id` (some resource field acting as the slug)
+_Request body:_ resource object (partial allowed), or with nested (relational) resources
+_Result:_ updated partial resource object, or error object
+_Status codes:_ 200, 400, 404
 
 ### Replace one resource
 
-> `PUT /heroes/:id`  
+> `PUT /heroes/:id`
 > `PUT /heroes/:heroId/perks/:id`
 
-_Request Params:_ `:id` - some resource field (slug)  
-_Request Body:_ resource object | resource object with nested (relational) resources (or partial)  
-_Result:_: replaced resource object | error object  
-_Status codes:_ 200 | 400
+_Request params:_ `:id` (some resource field acting as the slug)
+_Request body:_ resource object, or with nested (relational) resources (partial allowed)
+_Result:_ replaced resource object, or error object
+_Status codes:_ 200, 400
 
 ### Delete one resource
 
-> `DELETE /heroes/:id`  
+> `DELETE /heroes/:id`
 > `DELETE /heroes/:heroId/perks/:id`
 
-_Request Params:_ `:id` - some resource field (slug)  
-_Result:_: empty | resource object | error object  
-_Status codes:_ 200 | 404
+_Request params:_ `:id` (some resource field acting as the slug)
+_Result:_ empty, resource object, or error object
+_Status codes:_ 200, 404
 
 ## Swagger
 
@@ -193,7 +195,7 @@ See [Swagger](Swagger) for setup and the full `@Crud({ swagger: {...} })` custom
 
 ## Options
 
-`Crud()` decorator accepts the following `CrudOptions`:
+`@Crud()` accepts the following `CrudOptions`:
 
 ### model
 
@@ -206,9 +208,9 @@ See [Swagger](Swagger) for setup and the full `@Crud({ swagger: {...} })` custom
 })
 ```
 
-_Required_
+_Required._
 
-`Entity`, `Model` or `DTO` class must be provided here. Everything else described bellow is optional. It's needed for a built in validation based on NestJS `ValidationPipe`.
+The `Entity`, `Model`, or `DTO` class. Everything else is optional. The class is also used for built-in validation via NestJS's `ValidationPipe`.
 
 ### validation
 
@@ -220,9 +222,9 @@ _Required_
 })
 ```
 
-_Optional_
+_Optional._
 
-Accepts `ValidationPipe` options or `false` if you want to use your own validation implementation.
+Accepts `ValidationPipe` options, or `false` to use your own validation.
 
 ### params
 
@@ -239,15 +241,13 @@ Accepts `ValidationPipe` options or `false` if you want to use your own validati
   },
   ...
 })
-
 ```
 
-_Optional_
+_Optional._
 
-By default `@Crud()` decorator will use `id` with the type `number` as a primary slug param.
+By default, `@Crud()` uses `id` of type `number` as the primary slug param.
 
-If you have, for instance, a resorce field called `slug`
-or whatever, it's a UUID and you need it to be a primary slug by which your resource should be fetched, you can set up this params options:
+If your resource uses a UUID `slug` field as the primary identifier:
 
 ```typescript
 @Crud({
@@ -261,10 +261,9 @@ or whatever, it's a UUID and you need it to be a primary slug by which your reso
   },
   ...
 })
-
 ```
 
-If you have a controller path with that looks kinda similar to this `/companies/:companyId/users` you need to add this param option:
+For a controller path like `/companies/:companyId/users`, declare the parent param:
 
 ```typescript
 @Crud({
@@ -280,7 +279,7 @@ If you have a controller path with that looks kinda similar to this `/companies/
 })
 ```
 
-Also, you can disable `id` param if you want to have only few routs without any path params. It's very useful, for creating something like `GET /me` endpoints.
+You can also disable the `id` param when you need a few routes without path params (for example, a `GET /me` endpoint):
 
 ```typescript
 @Crud({
@@ -366,17 +365,17 @@ export class MeController {
 })
 ```
 
-_Optional_
+_Optional._
 
-It's a set of options for each of the generated routes.
+Per-route configuration:
 
-`interceptors` - an array of your custom interceptors  
-`decorators` - an array of your custom decorators  
-`allowParamsOverride` - whether or not to allow body data be overriten by the URL params on PATH request. Default: `false`  
-`returnDeleted` - whether or not an entity object should be returned in the response body on DELETE request. Default: `false`
-`returnShallow` - whether or not to return a shallow entity
+- `interceptors`: an array of custom interceptors
+- `decorators`: an array of custom decorators
+- `allowParamsOverride`: whether body data can be overridden by URL params on `PATCH`. Default `false`.
+- `returnDeleted`: whether to return the entity in the response body on `DELETE`. Default `false`.
+- `returnShallow`: whether to return a shallow entity
 
-Also you can specify what routes should be excluded or what routes whould be used only by providing routes names to the `exclude` or `only` accordingly.
+You can also exclude or restrict routes with `exclude` or `only` and a list of route names.
 
 ### query
 
@@ -399,9 +398,9 @@ Also you can specify what routes should be excluded or what routes whould be use
 })
 ```
 
-_Optional_
+_Optional._
 
-It's a set of query options fro GET request.
+Query options for `GET` requests.
 
 #### allow
 
@@ -411,9 +410,9 @@ It's a set of query options fro GET request.
 }
 ```
 
-_Optional_
+_Optional._
 
-An Array of fields that are allowed to be received in GET requests. If empty or _undefined_ - allow all.
+Fields allowed in `GET` responses. Empty or `undefined` allows all.
 
 #### exclude
 
@@ -423,9 +422,9 @@ An Array of fields that are allowed to be received in GET requests. If empty or 
 }
 ```
 
-_Optional_
+_Optional._
 
-An Array of fields that will be excluded from the GET response (and not queried from the DB).
+Fields excluded from the `GET` response (and not queried from the DB).
 
 #### persist
 
@@ -435,17 +434,17 @@ An Array of fields that will be excluded from the GET response (and not queried 
 }
 ```
 
-_Optional_
+_Optional._
 
-An Array of fields that will be always persisted in GET response.
+Fields always present in `GET` responses.
 
 #### filter
 
-_Optional_
+_Optional._
 
-This option can be used in two scenarios:
+Two scenarios:
 
-1. If you want to add some conditions to the request:
+1. Add conditions to the request:
 
 ```typescript
 {
@@ -457,7 +456,7 @@ This option can be used in two scenarios:
 }
 ```
 
-...which is the same as:
+which is the same as:
 
 ```typescript
 {
@@ -471,9 +470,9 @@ This option can be used in two scenarios:
 }
 ```
 
-2. If you want to transform your query search conditions or event return a completely new one (i.e. persist only one set of conditions and ignore search coming from the request):
+2. Transform incoming search conditions, or replace them entirely (for example, persist a fixed condition and ignore the request's search):
 
-- Totally ignore any query search conditions:
+- Ignore any incoming search conditions:
 
 ```typescript
 {
@@ -481,7 +480,7 @@ This option can be used in two scenarios:
 }
 ```
 
-- Totally ignore any query search conditions and persist some conditions:
+- Ignore incoming search and persist your own:
 
 ```typescript
 {
@@ -493,7 +492,7 @@ This option can be used in two scenarios:
 }
 ```
 
-- Transform query search conditions:
+- Transform the incoming search:
 
 ```typescript
 import { SCondition } from '@nestjs-crud/request'
@@ -512,10 +511,10 @@ import { SCondition } from '@nestjs-crud/request'
 }
 ```
 
-**_Notice:_** First function parameter here, `search`, will always be either `{ $and: [...] }` or `{ $or: [...] }`. It depends on if you're using [`@CrudAuth()`](#request-authentication) decorator:
-
-- if you are not using it, or if you do and it has `filter` function then `search` will contain `$and` type of conditions.
-- if you are using it and it has `or` function then `search` will contain `$or` type of conditions.
+> The first argument, `search`, is always shaped as `{ $and: [...] }` or `{ $or: [...] }`. Which one depends on [`@CrudAuth()`](#request-authentication):
+>
+> - If you do not use `@CrudAuth()`, or use it with a `filter` function, `search` carries `$and` conditions.
+> - If you use `@CrudAuth()` with an `or` function, `search` carries `$or` conditions.
 
 #### join
 
@@ -547,21 +546,21 @@ import { SCondition } from '@nestjs-crud/request'
 }
 ```
 
-_Optional_
+_Optional._
 
-An Object of relations that allowed to be fetched by passing `join` query parameter in GET requests.
+Relations allowed for the `join` query parameter on `GET` requests.
 
-Each key of `join` object must **strongly match** the name of the corresponding resource relation. If particular relation name **is not** present in this option, then user **will not be able** to get this relational objects in GET request.
+Each key must match the resource's relation name exactly. Relations that are not listed here cannot be requested by clients.
 
-Each relation option can have (all below are optional):
+Per-relation options (all optional):
 
-`allow` - an Array of fields that are allowed to be received in GET requests. If empty or _undefined_ - allow all.  
-`exclude` - an Array of fields that will be excluded from the GET response (and not queried from the DB).  
-`persist` - an Array of fields that will be always persisted in GET response.  
-`eager` - type `boolean` - whether or not current relation should persist in every GET response.
-`require` - should a relation be required or not. For RMDBS means use either `INNER` or `LEFT` join. Default: `false`.  
-`alias` - set alias for a relation.  
-`select` - type `boolean` - if `false` then the relation will be joined but not selected and not included in the response.
+- `allow`: array of fields allowed in the response. Empty or `undefined` allows all.
+- `exclude`: array of fields excluded from the response (and not queried).
+- `persist`: array of fields always included in the response.
+- `eager` (`boolean`): whether the relation is included in every `GET` response.
+- `require` (`boolean`): if `true`, generates an `INNER JOIN` instead of `LEFT JOIN` for RDBMS adapters. Default `false`.
+- `alias`: relation alias.
+- `select` (`boolean`): if `false`, the relation is joined but not selected (excluded from the response).
 
 #### sort
 
@@ -576,9 +575,9 @@ Each relation option can have (all below are optional):
 }
 ```
 
-_Optional_
+_Optional._
 
-An Array of `sort` objects that will be merged (combined) with query `sort` if those are passed in GET request. If not - `sort` will be added to the DB query as a stand-alone condition.
+Default `sort` merged with any `sort` passed in the request. Without a request-level `sort`, this default applies on its own.
 
 #### limit
 
@@ -588,9 +587,9 @@ An Array of `sort` objects that will be merged (combined) with query `sort` if t
 }
 ```
 
-_Optional_
+_Optional._
 
-Default `limit` that will be aplied to the DB query.
+Default `LIMIT` applied to the DB query.
 
 #### maxLimit
 
@@ -600,11 +599,11 @@ Default `limit` that will be aplied to the DB query.
 }
 ```
 
-_Optional_
+_Optional._
 
-Max amount of results that can be queried in GET request.
+Maximum number of results a single `GET` request can ask for.
 
-**_Notice:_** **_it's strongly recommended to set up this option. Otherwise DB query will be executed without any LIMIT if no `limit` was passed in the query or if the `limit` option hasn't been set up in crud options_**.
+> Set this in production. Without it, queries without an explicit `limit` (or without a default `limit` configured) execute with no `LIMIT` at all.
 
 #### cache
 
@@ -614,11 +613,11 @@ Max amount of results that can be queried in GET request.
 }
 ```
 
-_Optional_
+_Optional._
 
-If `Caching Results` is implemented on you project, then you can set up default `cache` in milliseconds for GET response data.
+When caching is configured for the project, this is the default cache duration in milliseconds for `GET` responses. See [Caching](https://github.com/kodjunkie/nestjs-crud/wiki/Caching).
 
-Cache can be reseted by using `cache=0` query parameter in your GET requests.
+Bypass with `?cache=0` on the request.
 
 #### alwaysPaginate
 
@@ -628,9 +627,9 @@ Cache can be reseted by using `cache=0` query parameter in your GET requests.
 }
 ```
 
-_Optional_
+_Optional._
 
-Either or not always return an object with paginated data. Can be defined [globally](#global-options) as well.
+If `true`, `GET many` always returns a paginated object (instead of a bare array). Can also be set [globally](#global-options).
 
 ### dto
 
@@ -646,9 +645,9 @@ Either or not always return an object with paginated data. Can be defined [globa
 })
 ```
 
-_Optional_
+_Optional._
 
-Request body validation DTO classes. If no DTO is provided to any of the option, then a [`CrudOptions.model.type`](#model) will be used as described in the [Request validation](#request-validation) section.
+Request-body validation DTO classes. If a route has no DTO declared here, the [`CrudOptions.model.type`](#model) is used. See [Request validation](#request-validation).
 
 ### serialize
 
@@ -668,15 +667,15 @@ Request body validation DTO classes. If no DTO is provided to any of the option,
 })
 ```
 
-_Optional_
+_Optional._
 
-Response serialization DTO classes. Each option also accepts `false` in order to not perform serialization for particular route.
+Response-serialization DTO classes. Pass `false` for any route to skip serialization on that route.
 
-Please see [Response serialization](#response-serialization) section for more details.
+See [Response serialization](#response-serialization).
 
 ## Global options
 
-In order to reduce some repetition in your `CrudOptions` in every controller you can specify some options globally:
+To reduce repetition across controllers, configure some options globally:
 
 ```typescript
 {
@@ -704,17 +703,13 @@ In order to reduce some repetition in your `CrudOptions` in every controller you
 }
 ```
 
-`queryParser` are options for `RequestQueryParser` that is being used in `CrudRequestInterceptor` to parse/validate query and path params. Frontend has similar [customization](https://github.com/kodjunkie/nestjs-crud/wiki/Requests#customize) ability.
+- `queryParser`: options for `RequestQueryParser` (used in `CrudRequestInterceptor` to parse and validate query and path params). The frontend has the same [customization](https://github.com/kodjunkie/nestjs-crud/wiki/Requests#customize) hook.
+- `routes`: same as the per-controller [`routes`](#routes).
+- `params`: same as the per-controller [`params`](#params).
+- `query`: a subset of [`query`](#query). Only `limit`, `maxLimit`, `cache`, and `alwaysPaginate` apply globally.
+- `serialize`: globally disable [serialization](#serialize) per route.
 
-`routes` are the same as [here](#routes).
-
-`params` are the same as [here](#params).
-
-`query` are similar to options described [here](#query) except the fact that `limit`, `maxLimit`, `cache`, `alwaysPaginate` can be applied only.
-
-`serialize` allows you to globally disable [serialization](#serialize) for particular actions.
-
-So in order to apply global options you need load them in your **main.ts (index.ts) file BEFORE you import `AppModule` class**. That's because TypeScript decorators are executed when we declare our class but not when we create new class instance. So in your `main.ts`:
+Load global options in `main.ts` (or `index.ts`) **before** importing `AppModule`. TypeScript decorators run at class declaration time, not at instantiation, so the config has to be in place before any decorated class is loaded:
 
 ```typescript
 import { CrudConfigService } from '@nestjs-crud/core';
@@ -746,11 +741,11 @@ import { AppModule } from './app.module';
 ...
 ```
 
-**_Notice:_** all those options can be overridden in each `CrudController`.
+> Each `CrudController` can override any global option.
 
 ## Request authentication
 
-In order to perform data filtering for authenticated requests, we provide `@CrudAuth()` decorator. It accepts these options:
+For data filtering on authenticated requests, use the `@CrudAuth()` decorator. Options:
 
 ```typescript
 {
@@ -761,17 +756,16 @@ In order to perform data filtering for authenticated requests, we provide `@Crud
 }
 ```
 
-`property` - property on the `Request` object where user's data stored after successful authentication. Can be set [globally](#global-options) as well.
+- `property`: the property on the `Request` object that holds the authenticated user. Can be set [globally](#global-options).
+- `filter`: returns a [search](https://github.com/kodjunkie/nestjs-crud/wiki/Requests#search) condition that AND-combines with query and path params:
 
-`filter` - a function that should return [search](https://github.com/kodjunkie/nestjs-crud/wiki/Requests#search) condition and will be added to the query search params and path params as a `$and` condition:
+  > `{Auth condition} AND {Path params} AND {Search|Filter}`
 
-> `{Auth condition} AND {Path params} AND {Search|Filter}`
+- `or`: returns a [search](https://github.com/kodjunkie/nestjs-crud/wiki/Requests#search) condition that OR-combines with query and path params. When set, `filter` is ignored.
 
-`or` - a function that should return [search](https://github.com/kodjunkie/nestjs-crud/wiki/Requests#search) condition and will be added to the query search params and path params as a `$or` condition. If it's used then `filter` function will be ignored.
+  > `{Auth condition} OR ({Path params} AND {Search|Filter})`
 
-> `{Auth condition} OR ({Path params} AND {Search|Filter})`
-
-`persist` - a function that can return an object that will be added to the DTO on `create`, `update`, `replace` actions. Useful in case if you need to prevent changing some sensitive entity properties even if it's allowed in DTO validation.
+- `persist`: returns an object merged into the DTO on `create`, `update`, and `replace`. Useful when you want to lock down sensitive entity properties even though DTO validation would allow them.
 
 ```typescript
 @Crud({...})
@@ -786,15 +780,13 @@ In order to perform data filtering for authenticated requests, we provide `@Crud
 
 ## Request validation
 
-Query params and path params validation is performed by an interceptor. It parses query and path parameters and then validates them.
+Query and path param validation runs in an interceptor that parses and validates the request.
 
-Body request validation is done by NestJs `ValidationPipe`.
+Body validation runs through NestJS's `ValidationPipe`.
 
-You can provide either `create`, `update`, `replace` DTO in the [`CrudOptions.dto`](#dto) options or use the following approach.
+You can supply `create`, `update`, or `replace` DTOs in [`CrudOptions.dto`](#dto), or use the entity itself as the DTO.
 
-You can use [`CrudOptions.model.type`](#model) as a DTO that describes validation rules. We distinguish body validation on `create` and `update` methods. This was achieved by using [validation groups](https://github.com/typestack/class-validator#validation-groups).
-
-Let's take a look at this example:
+When you use [`CrudOptions.model.type`](#model) as the DTO, body validation uses [validation groups](https://github.com/typestack/class-validator#validation-groups) to distinguish create from update. Example:
 
 ```typescript
 import { Entity, Column, OneToMany } from 'typeorm';
@@ -842,13 +834,13 @@ export class Company extends BaseEntity {
 }
 ```
 
-You can import `CrudValidationGroups` enum and set up validation rules for each field on firing of `POST`, `PATCH` requests or both of them.
+Import `CrudValidationGroups` and apply `CREATE` and `UPDATE` group rules per field, individually or together.
 
 ## Response serialization
 
-Serialization is performed using `class-transformer` package and is already included and turned ON in each route.
+Serialization is on by default for every route, via `class-transformer`.
 
-So in your entity you can use some useful decorators:
+Use the standard `class-transformer` decorators on your entity:
 
 ```typescript
 import { Exclude } from 'class-transformer';
@@ -861,15 +853,15 @@ export class User {
 }
 ```
 
-But there might be situations when you might need to use different serialization in different routes. In that case you can use [`CrudOptions.serialize`](#serialize) options.
+For per-route serialization (different DTO per route), use [`CrudOptions.serialize`](#serialize).
 
 ## IntelliSense
 
-Please, keep in mind that we compose crud controllers by the logic inside our `@Crud()` class decorator. And there are some unpleasant but not very significant side effects of this approach.
+`@Crud()` composes controllers from a class decorator, which has two minor IntelliSense quirks:
 
-First, there is no IntelliSense on composed methods. That's why we need to use `CrudController` interface. This will help to make sure that you're injecting proper `CrudService`.
+First, IntelliSense does not see the composed methods. Use the `CrudController` interface to keep the injected `CrudService` typed correctly.
 
-Second, even after adding `CrudController` interface you still wouldn't see composed methods, accessible from `this` keyword, furthermore, you'll get a TS error. In order to solve this, you can do as follows:
+Second, even with `CrudController`, you cannot call composed methods on `this` without a TS error. The fix is a `base` getter:
 
 ```typescript
 ...
@@ -888,7 +880,7 @@ export class HeroesCrud implements CrudController<Hero> {
 
 ## Routes override
 
-Here is the list of composed base routes methods by `@Crud()` decorator:
+The base methods composed by `@Crud()`:
 
 ```typescript
 {
@@ -926,11 +918,10 @@ Here is the list of composed base routes methods by `@Crud()` decorator:
 }
 ```
 
-Since all composed methods have `Base` ending in their names, overriding those endpoints could be done in two ways:
+Every base method ends in `Base`. Override in one of two ways:
 
-1. Attach `@Override()` decorator without any argument to the newly created method wich name doesn't contain `Base` ending. So if you want to override `getManyBase`, you need to create `getMany` method.
-
-2. Attach `@Override('getManyBase')` decorator with passed base method name as an argument if you want to override base method with a function that has a custom name.
+1. Attach `@Override()` (no argument) to a method whose name drops the `Base` suffix. To override `getManyBase`, name the method `getMany`.
+2. Attach `@Override('getManyBase')` (base method name as argument) to a method with any custom name.
 
 Example:
 
@@ -1014,11 +1005,11 @@ export class HeroesCrud implements CrudController<Hero> {
 }
 ```
 
-**_Notice:_** new custom route decorators were created to simplify process: `@ParsedRequest()` and `@ParsedBody()`. But you still can add your param decorators to any of the methods, e.g. `@Param()`, `@Session()`, etc. Or any of your own cutom route decorators.
+> Two custom param decorators ship for these overrides: `@ParsedRequest()` and `@ParsedBody()`. You can still mix in any built-in NestJS param decorators (`@Param()`, `@Session()`, etc.) and your own custom ones.
 
 ## Adding routes
 
-Sometimes you might need to add a new route and to use `@ParsedRequest()` in it. You need attach `CrudRequestInterceptor` in order to do that:
+To add a fresh route that uses `@ParsedRequest()`, attach `CrudRequestInterceptor`:
 
 ```typescript
 ...
@@ -1033,13 +1024,13 @@ import {
 @UseInterceptors(CrudRequestInterceptor)
 @Get('/export/list.xlsx')
 async exportSome(@ParsedRequest() req: CrudRequest) {
-  // some awesome feature handling
+  // your handler
 }
 ```
 
 ## Additional decorators
 
-There are two additional decorators that come out of the box: `@Feature()` and `@Action()`. You can use them with your [ACL](https://en.wikipedia.org/wiki/Access_control_list) implementation. `@Action()` will be applyed automaticaly on controller compoesd base methods. There is `CrudActions` enum that you can import and use:
+Two additional decorators ship for [ACL](https://en.wikipedia.org/wiki/Access_control_list) integration: `@Feature()` and `@Action()`. `@Action()` is applied automatically on the composed base methods. The `CrudActions` enum names them:
 
 ```typescript
 enum CrudActions {
@@ -1053,7 +1044,7 @@ enum CrudActions {
 }
 ```
 
-`ACLGuard` dummy example with helper functions `getFeature` and `getAction`:
+A minimal `ACLGuard` example using the `getFeature` and `getAction` helpers:
 
 ```typescript
 import { Injectable, CanActivate, ExecutionContext } from '@nestjs/common';
