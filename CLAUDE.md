@@ -128,3 +128,7 @@ HTTP Request
 ## Dependency management
 
 - **Install new deps unversioned.** Use `yarn add <pkg>`, not `yarn add <pkg>@X.Y.Z`. Lockfile handles reproducibility; the `package.json` range lets Dependabot/Renovate surface upgrades. Pinning at install time inherits whatever was "latest" that day — the codebase then carries that stale line until a breaking migration forces an upgrade. Exception: security advisory, pre-release, or compat lock. Existing-range edits (e.g., `^5.22.0` → `^7.8.0`) don't apply.
+
+## Release discipline
+
+- **Preserve PR head ref when CI workflows filter by branch prefix.** `release.yml` triggers on merged PRs where `github.event.pull_request.head.ref` starts with `release/`. GitHub's default squash-merge strips the head ref from the merge event, silently bypassing the trigger — the PR merges green, no release workflow runs, no packages publish, no tag is cut, and no error surfaces until someone notices npm is stale. Use `gh pr merge --merge` (true merge commit) for any PR whose head branch participates in a workflow trigger contract; squash remains fine elsewhere. Same rule applies to any future `head.ref`-filtered workflow. Recovery from a squashed release PR is manual: cut the tag locally, `gh workflow run release.yml`, verify OIDC publish, reconcile `lerna.json` state.
