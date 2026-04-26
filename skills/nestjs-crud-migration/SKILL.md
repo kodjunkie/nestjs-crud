@@ -470,7 +470,7 @@ v2 rewrites default Swagger/OpenAPI metadata for all 8 generated routes: imperat
 
 **Current peer ranges:**
 
-- `@nestjs-crud/core`: `class-validator ^0.14.0`, `class-transformer ^0.5.0`, `@nestjs/common ^10.0.0 || ^11.0.0`
+- `@nestjs-crud/core`: `class-validator ^0.14.0`, `class-transformer ^0.5.0`, `@nestjs/common ^10.0.0 || ^11.0.0`, `@nestjs/swagger ^10.0.0 || ^11.0.0` (optional — declared via `peerDependenciesMeta.optional: true` in v2.1.1; consumers without swagger get no install warning)
 - `@nestjs-crud/typeorm`: `typeorm ^0.3`, `@nestjs/typeorm`, `@nestjs-crud/core ^2.0`, `@nestjs/common ^10.0.0 || ^11.0.0`
 - `@nestjs-crud/drizzle`: `drizzle-orm >=0.45.2`, `@nestjs-crud/core ^2.0`, `@nestjs/common ^10.0.0 || ^11.0.0`
 - `@nestjs-crud/mikro-orm`: `@mikro-orm/core ^7.0.0`, `@mikro-orm/knex ^7.0.0`, `@nestjs-crud/{core,request,util} ^2.0.0`, `@nestjs/common ^10.0.0 || ^11.0.0`
@@ -578,6 +578,8 @@ If your code only uses the public surface (decorator, overrides with `@ParsedReq
 | TS: `Argument of type 'any' is not assignable to parameter of type 'X'` after bump | MikroORM type tightening | Add explicit type annotation (`FilterQuery<T>`, `RequiredEntityData<T>`, `EntityMetadata<T>`, `QueryOrderMap<T>`); most fixes one-line |
 | TS: `Type 'any' is not assignable to type 'DrizzleClient'` on Drizzle subclass field | `protected db: any` → `DrizzleClient` | Remove the `protected db: any` re-declaration in your subclass; inherit the typed field from the base |
 | TS: `Cannot find module '@nestjs/swagger/dist/types/swagger-enum.type'` | `SwaggerEnumType` import removed | Stop importing from the internal path; inline the type locally as `string[] \| number[] \| (string \| number)[] \| Record<number, string>` |
+| `Module '"@nestjs-crud/core"' has no exported member 'getSwaggerVersion'` | Removed in v2.1.1; was an internal `@nestjs/swagger` version-gate helper, never documented in the public API | Delete the import. No replacement — `safeRequire` inside the library handles missing `@nestjs/swagger` gracefully without consumer involvement |
+| `Module '"@nestjs-crud/core"' has no exported member 'swaggerPkgJson'` | Removed in v2.1.1 alongside `getSwaggerVersion` (same v3-gate cleanup) | Delete the import. No replacement |
 | `RequestQueryException: Invalid persist key 'X'` (maps to 400 Bad Request) | `@CrudAuth({ persist: { ... } })` has a typo that doesn't match any entity column | Fix the key name to match the entity column exactly. v1 silently ignored this, leaving auth-filter bypass; v2 fails fast |
 | `CrudCacheNotConfiguredError` thrown on first cached read | `@Crud({ query: { cache } })` set but `DataSource({ cache: ... })` not configured | Configure DataSource cache provider OR remove `@Crud cache` option |
 | `@Crud({ query: { cache } })` silently does nothing on Drizzle/MikroORM/Prisma | Adapter doesn't honor the option — only TypeORM does | Use the ORM's native caching at the application layer; or move the cached read to a TypeORM-backed controller |
@@ -661,3 +663,33 @@ If the consumer is not maintaining a `schema.prisma` (generated-only, already on
 ### Stay-on-v2.0 escape
 
 Pin `"@nestjs-crud/prisma": "^2.0.0"` + `"@prisma/client": "^5 || ^6"`. No `v2.0-lts` dist-tag — `latest` flips to `2.1.0`.
+
+---
+
+## v2.1.0 → v2.1.1
+
+`@nestjs-crud/*@2.1.1` is a security + dead-code patch. **Near-zero consumer impact** for standard usage. All 7 packages republish at 2.1.1.
+
+### What changed
+
+| Change | Surface | Consumer action |
+|---|---|---|
+| `getSwaggerVersion` and `swaggerPkgJson` removed from `@nestjs-crud/core` exports | Public-via-barrel but undocumented (zero references in wiki/skills); used only to gate the dropped `@nestjs/swagger` v3 path | Delete the imports if you had them. No replacement — `safeRequire` inside the library handles missing or older `@nestjs/swagger` gracefully without consumer involvement |
+| `@nestjs/swagger` declared as optional `peerDependency` on `@nestjs-crud/core` | New peer entry: `^10.0.0 \|\| ^11.0.0` with `peerDependenciesMeta.optional: true` | None — additive. Consumers without `@nestjs/swagger` no longer get install warnings; consumers with swagger should be on a version in the declared range |
+| Dropped `swagger.ApiProperty \|\| swagger.ApiModelProperty` fallback in the internal `ApiProperty()` wrapper | Internal | None — `ApiModelProperty` was deprecated in `@nestjs/swagger` v4 (2018); v2.x peer floor is `^10.0.0`, so the fallback was unreachable |
+| 22 dev-tree GHSAs closed via top-level `resolutions` in our root `package.json` | Internal — published packages don't ship `node_modules` or `yarn.lock` | None — your transitive CVE exposure depends on YOUR install graph, not ours |
+
+### Migration
+
+If you imported either of the removed exports:
+
+```ts
+// Remove these — both removed in v2.1.1:
+import { getSwaggerVersion, swaggerPkgJson } from '@nestjs-crud/core';
+```
+
+There's no replacement. The library's internal `safeRequire('@nestjs/swagger')` pattern handles graceful no-swagger and version detection itself; consumers never needed to gate Swagger setup themselves.
+
+### Stay-on-v2.1.0 escape
+
+If you can't remove the imports immediately, pin `"@nestjs-crud/core": "2.1.0"` (or `~2.1.0`). The v2.1.0 line does not receive ongoing patches once v2.2.0 ships; treat the pin as temporary.

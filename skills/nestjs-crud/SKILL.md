@@ -10,8 +10,6 @@ Auto-generates RESTful CRUD endpoints for NestJS controllers from a single `@Cru
 
 ## What's new in v2
 
-Changes span v2.0.0 → v2.1.0. Release where each landed noted in the right column.
-
 | Area | Change | Since |
 |---|---|---|
 | New adapter | `@nestjs-crud/prisma` | v2.0.0 |
@@ -357,6 +355,32 @@ export class UsersController implements CrudController<User> {
 
 Use `@ParsedBody()` not `@Body()` in write overrides — `@Body()` bypasses `class-validator` group selection (CREATE and UPDATE validation become identical).
 
+## IntelliSense — TypeScript errors on generated handlers
+
+`@Crud()` wires the route handlers onto your controller at runtime. TypeScript can't see them. Two consequences.
+
+The injected `CrudService` is untyped unless the controller declares `implements CrudController<T>`. The interface restores the type.
+
+Calling a base method like `this.getManyBase(req)` fails typecheck. The methods are declared optional on the `CrudController<T>` interface, and the class type doesn't include them. Workaround is a `base` getter that returns `this` cast to the interface:
+
+```typescript
+import { Crud, CrudController } from '@nestjs-crud/core';
+
+@Crud({ model: { type: User } })
+@Controller('users')
+export class UsersController implements CrudController<User> {
+  constructor(public service: UsersService) {}
+
+  get base(): CrudController<User> {
+    return this;
+  }
+}
+```
+
+A TypeScript class-decorator limit, not specific to `@nestjs-crud`. Decorators mutate runtime behavior but can't extend the class type.
+
+**Most code shouldn't need `base`.** Calling `this.service.getMany(req)` / `this.service.getOne(req)` from inside an `@Override()` is fully typed and idiomatic — the override examples above use that pattern. Reach for the `base` getter only when you specifically want to invoke a generated handler (e.g., to compose two base routes inside one override).
+
 ## DTOs — Two Supported Patterns
 
 **Pattern A: Entity-as-DTO (easy path, default).** `class-validator` groups on the entity — one class serves as persistence model AND input validation shape.
@@ -404,6 +428,36 @@ export class UsersController implements CrudController<User> { ... }
 With `dto`, the controller validates the body against the DTO class — `CrudValidationGroups` is NOT used. Use Pattern B when strict API boundary matters; Pattern A when the entity is already a clean input shape.
 
 **Output serialization is separate:** `serialize: { getMany, get, create, ... }` transforms responses through a DTO with `class-transformer`. Combine Pattern A entity-in + `serialize` DTO out freely.
+
+### Validation groups: factory vs hand-rolled controllers
+
+`CrudValidationGroups.CREATE` / `UPDATE` only fire when the validator runs with matching `groups`. The `@Crud()` factory wires this automatically — every generated route binds a `new ValidationPipe({ groups: [CREATE | UPDATE], ... })` per route.
+
+Hand-rolled controllers built without `@Crud()` get the **default** `ValidationPipe` (or your global one), where `groups: undefined`. Group-scoped decorators silently skip — required-field validators on entity fields don't fire.
+
+```typescript
+// ✗ Hand-rolled — group-scoped decorators silently skip
+@Controller('special')
+export class SpecialController {
+  @Post('/users')
+  createSpecial(@Body() user: User) { ... }  // CREATE-group validators DO NOT run
+}
+
+// ✓ Hand-rolled — wire the group pipe explicitly
+import { ValidationPipe } from '@nestjs/common';
+import { CrudValidationGroups } from '@nestjs-crud/core';
+
+@Controller('special')
+export class SpecialController {
+  @Post('/users')
+  createSpecial(
+    @Body(new ValidationPipe({ groups: [CrudValidationGroups.CREATE], whitelist: true }))
+    user: User,
+  ) { ... }
+}
+```
+
+Swap to `CrudValidationGroups.UPDATE` for `PATCH`-style. Many such routes? Factor a helper. Alternative: switch to dedicated DTOs (Pattern B above) without group decorators — they validate identically everywhere without the group plumbing.
 
 ## Strict Field Allowlist
 
@@ -593,13 +647,9 @@ If you don't want nesting, call the adapter's read/write primitives directly ins
 
 ## Typed Signatures
 
-v2 tightens adapter-internal types:
-
 - **Drizzle:** `protected db: DrizzleClient` (was `any`). Subclasses that re-declared `protected db: any` get a conflict — delete the re-declaration and inherit the typed field.
 - **MikroORM:** 15 `any` sites on public method signatures replaced with typed generics (`FilterQuery<T>`, `RequiredEntityData<T>`, `EntityMetadata<T>`, `QueryOrderMap<T>`). Callsites passing untyped values may need explicit annotations.
 - **Core:** `SwaggerEnumType` inlined — no more internal `@nestjs/swagger/dist/types/swagger-enum.type` import. If you imported it, inline locally: `string[] | number[] | (string | number)[] | Record<number, string>`.
-
-Standard consumer code (just extending a service and wiring it to NestJS DI) is unaffected.
 
 ## Best Practices
 
