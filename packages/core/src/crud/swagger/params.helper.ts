@@ -10,7 +10,6 @@ import { MergedCrudOptions, ParamsOptions } from '../../interfaces';
 import { BaseRouteName } from '../../types';
 import { safeRequire } from '../../util';
 import { R } from '../reflection.helper';
-import { getSwaggerVersion } from './responses.helper';
 
 const swaggerConst = safeRequire('@nestjs/swagger/dist/constants', () => require('@nestjs/swagger/dist/constants'));
 
@@ -88,7 +87,6 @@ export function createQueryParamsMeta(name: BaseRouteName, options: MergedCrudOp
     cache,
     includeDeleted,
   } = getQueryParamsNames();
-  const oldVersion = getSwaggerVersion() < 4;
 
   const fieldsMetaBase = {
     name: fields,
@@ -97,26 +95,17 @@ export function createQueryParamsMeta(name: BaseRouteName, options: MergedCrudOp
     in: 'query',
     example: 'id,name,email',
   };
-  const fieldsMeta = oldVersion
-    ? {
-        ...fieldsMetaBase,
-        type: 'array',
-        items: {
-          type: 'string',
-        },
-        collectionFormat: 'csv',
-      }
-    : {
-        ...fieldsMetaBase,
-        schema: {
-          type: 'array',
-          items: {
-            type: 'string',
-          },
-        },
-        style: 'form',
-        explode: false,
-      };
+  const fieldsMeta = {
+    ...fieldsMetaBase,
+    schema: {
+      type: 'array',
+      items: {
+        type: 'string',
+      },
+    },
+    style: 'form',
+    explode: false,
+  };
 
   const searchMetaBase = {
     name: search,
@@ -127,9 +116,7 @@ export function createQueryParamsMeta(name: BaseRouteName, options: MergedCrudOp
     // value consumers paste into `?s=...` rather than a parsed object.
     example: '{"name":{"$cont":"ali"}}',
   };
-  const searchMeta = oldVersion
-    ? { ...searchMetaBase, type: 'string' }
-    : { ...searchMetaBase, schema: { type: 'string' } };
+  const searchMeta = { ...searchMetaBase, schema: { type: 'string' } };
 
   const filterMetaBase = {
     name: filter,
@@ -138,26 +125,17 @@ export function createQueryParamsMeta(name: BaseRouteName, options: MergedCrudOp
     in: 'query',
     example: 'age||$gte||18',
   };
-  const filterMeta = oldVersion
-    ? {
-        ...filterMetaBase,
-        items: {
-          type: 'string',
-        },
-        type: 'array',
-        collectionFormat: 'multi',
-      }
-    : {
-        ...filterMetaBase,
-        schema: {
-          type: 'array',
-          items: {
-            type: 'string',
-          },
-        },
-        style: 'form',
-        explode: true,
-      };
+  const filterMeta = {
+    ...filterMetaBase,
+    schema: {
+      type: 'array',
+      items: {
+        type: 'string',
+      },
+    },
+    style: 'form',
+    explode: true,
+  };
 
   const orMetaBase = {
     name: or,
@@ -166,26 +144,17 @@ export function createQueryParamsMeta(name: BaseRouteName, options: MergedCrudOp
     in: 'query',
     example: 'status||$eq||active',
   };
-  const orMeta = oldVersion
-    ? {
-        ...orMetaBase,
-        items: {
-          type: 'string',
-        },
-        type: 'array',
-        collectionFormat: 'multi',
-      }
-    : {
-        ...orMetaBase,
-        schema: {
-          type: 'array',
-          items: {
-            type: 'string',
-          },
-        },
-        style: 'form',
-        explode: true,
-      };
+  const orMeta = {
+    ...orMetaBase,
+    schema: {
+      type: 'array',
+      items: {
+        type: 'string',
+      },
+    },
+    style: 'form',
+    explode: true,
+  };
 
   const sortMetaBase = {
     name: sort,
@@ -194,26 +163,17 @@ export function createQueryParamsMeta(name: BaseRouteName, options: MergedCrudOp
     in: 'query',
     example: 'name,ASC',
   };
-  const sortMeta = oldVersion
-    ? {
-        ...sortMetaBase,
-        items: {
-          type: 'string',
-        },
-        type: 'array',
-        collectionFormat: 'multi',
-      }
-    : {
-        ...sortMetaBase,
-        schema: {
-          type: 'array',
-          items: {
-            type: 'string',
-          },
-        },
-        style: 'form',
-        explode: true,
-      };
+  const sortMeta = {
+    ...sortMetaBase,
+    schema: {
+      type: 'array',
+      items: {
+        type: 'string',
+      },
+    },
+    style: 'form',
+    explode: true,
+  };
 
   const joinMetaBase = {
     name: join,
@@ -222,26 +182,17 @@ export function createQueryParamsMeta(name: BaseRouteName, options: MergedCrudOp
     in: 'query',
     example: 'profile||bio,avatar',
   };
-  const joinMeta = oldVersion
-    ? {
-        ...joinMetaBase,
-        items: {
-          type: 'string',
-        },
-        type: 'array',
-        collectionFormat: 'multi',
-      }
-    : {
-        ...joinMetaBase,
-        schema: {
-          type: 'array',
-          items: {
-            type: 'string',
-          },
-        },
-        style: 'form',
-        explode: true,
-      };
+  const joinMeta = {
+    ...joinMetaBase,
+    schema: {
+      type: 'array',
+      items: {
+        type: 'string',
+      },
+    },
+    style: 'form',
+    explode: true,
+  };
 
   const limitMetaBase = {
     name: limit,
@@ -250,9 +201,7 @@ export function createQueryParamsMeta(name: BaseRouteName, options: MergedCrudOp
     in: 'query',
     example: 25,
   };
-  const limitMeta = oldVersion
-    ? { ...limitMetaBase, type: 'integer' }
-    : { ...limitMetaBase, schema: { type: 'integer' } };
+  const limitMeta = { ...limitMetaBase, schema: { type: 'integer' } };
 
   const offsetMetaBase = {
     name: offset,
@@ -261,9 +210,7 @@ export function createQueryParamsMeta(name: BaseRouteName, options: MergedCrudOp
     in: 'query',
     example: 50,
   };
-  const offsetMeta = oldVersion
-    ? { ...offsetMetaBase, type: 'integer' }
-    : { ...offsetMetaBase, schema: { type: 'integer' } };
+  const offsetMeta = { ...offsetMetaBase, schema: { type: 'integer' } };
 
   const pageMetaBase = {
     name: page,
@@ -272,7 +219,7 @@ export function createQueryParamsMeta(name: BaseRouteName, options: MergedCrudOp
     in: 'query',
     example: 2,
   };
-  const pageMeta = oldVersion ? { ...pageMetaBase, type: 'integer' } : { ...pageMetaBase, schema: { type: 'integer' } };
+  const pageMeta = { ...pageMetaBase, schema: { type: 'integer' } };
 
   const cacheMetaBase = {
     name: cache,
@@ -281,14 +228,7 @@ export function createQueryParamsMeta(name: BaseRouteName, options: MergedCrudOp
     in: 'query',
     example: 0,
   };
-  const cacheMeta = oldVersion
-    ? {
-        ...cacheMetaBase,
-        type: 'integer',
-        minimum: 0,
-        maximum: 1,
-      }
-    : { ...cacheMetaBase, schema: { type: 'integer', minimum: 0, maximum: 1 } };
+  const cacheMeta = { ...cacheMetaBase, schema: { type: 'integer', minimum: 0, maximum: 1 } };
 
   const includeDeletedMetaBase = {
     name: includeDeleted,
@@ -297,17 +237,10 @@ export function createQueryParamsMeta(name: BaseRouteName, options: MergedCrudOp
     in: 'query',
     example: 1,
   };
-  const includeDeletedMeta = oldVersion
-    ? {
-        ...includeDeletedMetaBase,
-        type: 'integer',
-        minimum: 0,
-        maximum: 1,
-      }
-    : {
-        ...includeDeletedMetaBase,
-        schema: { type: 'integer', minimum: 0, maximum: 1 },
-      };
+  const includeDeletedMeta = {
+    ...includeDeletedMetaBase,
+    schema: { type: 'integer', minimum: 0, maximum: 1 },
+  };
 
   switch (name) {
     case 'getManyBase':
