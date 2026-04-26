@@ -125,5 +125,28 @@
   "author": {
     "name": "Lawrence Onah",
     "email": "paplow01@gmail.com"
+  },
+  "resolutions": {
+    "flatted": "^3.4.2",
+    "path-to-regexp@npm:^8": "^8.4.2",
+    "@nestjs/swagger/path-to-regexp": "^8.4.2",
+    "@nestjs/swagger/lodash": "^4.17.24",
+    "commitizen/lodash": "^4.17.24",
+    "lodash@npm:^4": "^4.17.24",
+    "minimatch@npm:^3": "^3.1.5",
+    "minimatch@npm:~3.0.4": "^3.1.5",
+    "minimatch@npm:^5.0.1": "^5.1.9",
+    "minimatch@npm:^9": "^9.0.9",
+    "minimatch@npm:^10": "^10.2.5",
+    "minimatch@npm:10.1.1": "^10.2.5",
+    "lerna/minimatch": "^3.1.5",
+    "@lerna/create/minimatch": "^3.1.5",
+    "lerna/tar": "^7.5.13",
+    "@lerna/create/tar": "^7.5.13",
+    "tar@npm:^7": "^7.5.13",
+    "picomatch@npm:^2.0.4": "^2.3.2",
+    "picomatch@npm:^2.2.1": "^2.3.2",
+    "picomatch@npm:^2.3.1": "^2.3.2",
+    "picomatch@npm:^4": "^4.0.4"
   }
 }
