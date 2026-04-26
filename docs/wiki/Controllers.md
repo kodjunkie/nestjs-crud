@@ -21,6 +21,7 @@
 - [Global options](#global-options)
 - [Request authentication](#request-authentication)
 - [Request validation](#request-validation)
+- [Validation groups: factory vs hand-rolled controllers](#validation-groups-factory-vs-hand-rolled-controllers)
 - [Response serialization](#response-serialization)
 - [IntelliSense](#intellisense)
 - [Routes override](#routes-override)
@@ -835,6 +836,73 @@ export class Company extends BaseEntity {
 ```
 
 Import `CrudValidationGroups` and apply `CREATE` and `UPDATE` group rules per field, individually or together.
+
+## Validation groups: factory vs hand-rolled controllers
+
+`CrudValidationGroups.CREATE` and `CrudValidationGroups.UPDATE` are only dispatched when validation flows through the `@Crud()` factory's generated routes (or `@Override()`-decorated methods, which the factory still wraps). The factory builds a per-route `ValidationPipe` with the right `groups: [...]` set, and that is what tells `class-validator` which group-tagged decorators to honor.
+
+A controller you write by hand — using `@Post()` or `@Patch()` with NestJS's default `ValidationPipe` (whether registered globally or applied per-route) — does **not** get this dispatch. Every payload flows through one pipe configuration with no `groups` set, so any decorator tagged `groups: [CrudValidationGroups.CREATE]` or `groups: [CrudValidationGroups.UPDATE]` silently has no effect. The validator sees no matching group and skips the rule.
+
+If you compose routes manually, wire the group yourself on each handler.
+
+**Without the group — silently skipped:**
+
+```typescript
+// app.module.ts (or main.ts)
+app.useGlobalPipes(new ValidationPipe());
+
+// your.controller.ts
+@Controller('users')
+export class UsersController {
+  constructor(private readonly service: UsersService) {}
+
+  @Post()
+  async create(@Body() dto: User) {
+    // class-validator runs with no `groups` set, so any decorator tagged
+    // `groups: [CrudValidationGroups.CREATE]` on the User entity is skipped.
+    // `@IsNotEmpty({ groups: [CREATE] })` on `name` does NOT fire here.
+    return this.service.create(dto);
+  }
+
+  @Patch(':id')
+  async update(@Param('id') id: number, @Body() dto: User) {
+    // Same problem in reverse: `@IsOptional({ groups: [UPDATE] })` does not fire,
+    // and any `groups: [CREATE]` rule (e.g., `@IsNotEmpty`) runs on every PATCH.
+    return this.service.update(id, dto);
+  }
+}
+```
+
+**With explicit per-route groups — equivalent to what `@Crud()` does for you:**
+
+```typescript
+import { Body, Controller, Param, Patch, Post, ValidationPipe } from '@nestjs/common';
+import { CrudValidationGroups } from '@nestjs-crud/core';
+
+const { CREATE, UPDATE } = CrudValidationGroups;
+
+@Controller('users')
+export class UsersController {
+  constructor(private readonly service: UsersService) {}
+
+  @Post()
+  async create(
+    @Body(new ValidationPipe({ groups: [CREATE] })) dto: User,
+  ) {
+    return this.service.create(dto);
+  }
+
+  @Patch(':id')
+  async update(
+    @Param('id') id: number,
+    @Body(new ValidationPipe({ groups: [UPDATE] })) dto: User,
+  ) {
+    return this.service.update(id, dto);
+  }
+}
+```
+
+Controllers built with `@Crud()` get this dispatch automatically — this caveat only applies if you compose routes manually.
 
 ## Response serialization
 
