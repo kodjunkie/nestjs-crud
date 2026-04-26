@@ -1,6 +1,6 @@
-This package provides a CRUD service for databases using Drizzle ORM.
+A CRUD service for databases using Drizzle ORM.
 
-> The API follows the same patterns as TypeORM. See the [TypeORM service docs](https://github.com/kodjunkie/nestjs-crud/wiki/ServiceTypeorm) for full API details.
+> The API mirrors TypeORM. See [ServiceTypeorm](https://github.com/kodjunkie/nestjs-crud/wiki/ServiceTypeorm) for the full API surface.
 
 ## Install
 
@@ -10,7 +10,7 @@ npm i @nestjs-crud/drizzle drizzle-orm
 
 ## Usage
 
-Assume you have a Drizzle **table** definition:
+Start with a Drizzle **table**:
 
 ```typescript
 import { pgTable, serial, varchar } from 'drizzle-orm/pg-core';
@@ -21,7 +21,7 @@ export const companies = pgTable('companies', {
 });
 ```
 
-Then create a **service**:
+Create a **service**:
 
 ```typescript
 import { Inject, Injectable } from '@nestjs/common';
@@ -37,7 +37,7 @@ export class CompaniesService extends DrizzleCrudService<typeof companies.$infer
 }
 ```
 
-Then provide your service in a **controller**:
+Wire it into a **controller**:
 
 ```typescript
 import { Controller } from '@nestjs/common';
@@ -58,18 +58,29 @@ export class CompaniesController {
 
 ## v2.0.0 notes
 
-- **Typed `DrizzleClient` constructor (breaking).** The `db` parameter is now typed against the structural `DrizzleClient` interface instead of `any`. Update your subclass:
+### Typed `DrizzleClient` constructor (breaking)
 
-  ```typescript
-  import { DrizzleCrudService, DrizzleClient } from '@nestjs-crud/drizzle';
+The `db` parameter is now typed against the structural `DrizzleClient` interface instead of `any`. Update your subclass:
 
-  constructor(@Inject('DB') db: DrizzleClient) { super(db, companies); }
-  ```
+```typescript
+import { DrizzleCrudService, DrizzleClient } from '@nestjs-crud/drizzle';
 
-  See [v2 Migration guide](https://github.com/kodjunkie/nestjs-crud/wiki/v2-Migration#2-drizzle-drizzleclient-typed-constructor).
-- **Transactions:** `updateOne`, `replaceOne`, `deleteOne` now run inside `db.transaction(...)` with `READ COMMITTED` isolation. Internally, the translator clones for the transaction via `cloneFor(tx)` — service code never calls `tx.update/insert/delete` directly.
-- **Caching:** the `@Crud({ query: { cache } })` option is currently a no-op for Drizzle. Use a Redis wrapper or HTTP-cache layer above the controller. See [Caching](https://github.com/kodjunkie/nestjs-crud/wiki/Caching).
-- **Logging:** pass an optional `LoggerService` to the constructor's third argument. See [Logging](https://github.com/kodjunkie/nestjs-crud/wiki/Logging).
+constructor(@Inject('DB') db: DrizzleClient) { super(db, companies); }
+```
+
+See [v2 Migration guide](https://github.com/kodjunkie/nestjs-crud/wiki/v2-Migration#2-drizzle-drizzleclient-typed-constructor).
+
+### Transactions
+
+`updateOne`, `replaceOne`, and `deleteOne` run inside `db.transaction(...)` at `READ COMMITTED` isolation. The translator clones for the transaction via `cloneFor(tx)`; service code never calls `tx.update`, `tx.insert`, or `tx.delete` directly.
+
+### Caching
+
+`@Crud({ query: { cache } })` is a no-op for Drizzle. Cache at the service layer (Redis memoizer) or put an HTTP cache in front of the controller. See [Caching](https://github.com/kodjunkie/nestjs-crud/wiki/Caching).
+
+### Logging
+
+Pass an optional `LoggerService` as the constructor's third argument. See [Logging](https://github.com/kodjunkie/nestjs-crud/wiki/Logging).
 
 ## See also
 

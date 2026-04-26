@@ -1,4 +1,4 @@
-This package provides a CRUD service for relational databases build with TypeORM
+A CRUD service for relational databases built with TypeORM.
 
 ## Install
 
@@ -8,7 +8,7 @@ npm i @nestjs-crud/typeorm @nestjs/typeorm typeorm
 
 ## Usage
 
-Assume you have some TypeORM **enitity**:
+Start with a TypeORM **entity**:
 
 ```typescript
 import { Entity, PrimaryGeneratedColumn, Column } from 'typeorm';
@@ -21,7 +21,7 @@ export class Company {
 }
 ```
 
-Then you need to create a **service**:
+Create a **service**:
 
 ```typescript
 import { Injectable } from '@nestjs/common';
@@ -38,7 +38,7 @@ export class CompaniesService extends TypeOrmCrudService<Company> {
 }
 ```
 
-After that you need to provide your service in a **controller**:
+Wire it into a **controller**:
 
 ```typescript
 import { Controller } from '@nestjs/common';
@@ -60,12 +60,29 @@ export class CompaniesController implements CrudController<Company> {
 
 ## v2.0.0 notes
 
-- **Architecture:** `TypeOrmCrudService` is now a ~250-line orchestrator that delegates query composition to a shared `QueryTranslator<SelectQueryBuilder, Brackets>` facade (composed of `WhereBuilder` + `QueryComposer` + `FetchHelper`). No consumer-visible API change. See [CONTRIBUTING.md — Adapter shape](https://github.com/kodjunkie/nestjs-crud/blob/master/CONTRIBUTING.md#adapter-shape).
-- **Transactions:** `updateOne`, `replaceOne`, `deleteOne` now run inside a `QueryRunner` transaction with `READ COMMITTED` isolation. Closes the v1 read-modify-write race.
-- **Cache wiring:** `@Crud({ query: { cache } })` requires a `DataSource({ cache: ... })` provider; otherwise the request fails with `CrudCacheNotConfiguredError`. See [Caching](https://github.com/kodjunkie/nestjs-crud/wiki/Caching).
-- **Relation loading:** opt into the `'query'` strategy via `@Crud({ query: { relationLoadStrategy: 'query' } })` to avoid Cartesian explosion on multi-OneToMany reads. See [RelationLoadStrategy](https://github.com/kodjunkie/nestjs-crud/wiki/RelationLoadStrategy).
-- **Logging:** pass an optional `LoggerService` instance to the constructor's second argument. See [Logging](https://github.com/kodjunkie/nestjs-crud/wiki/Logging).
-- **Field allowlist:** unknown sort/filter/search fields now throw `RequestQueryException` (see [v2 Migration guide](https://github.com/kodjunkie/nestjs-crud/wiki/v2-Migration#1-strict-field-allowlist-on-sortfiltersearch)).
+### Architecture
+
+`TypeOrmCrudService` is now a ~250-line orchestrator. Query composition lives in a shared `QueryTranslator<SelectQueryBuilder, Brackets>` facade made of `WhereBuilder + QueryComposer + FetchHelper`. There is no consumer-visible API change. Background: [CONTRIBUTING.md — Adapter shape](https://github.com/kodjunkie/nestjs-crud/blob/master/CONTRIBUTING.md#adapter-shape).
+
+### Transactions
+
+`updateOne`, `replaceOne`, and `deleteOne` run inside a `QueryRunner` transaction at `READ COMMITTED` isolation. This closes the v1 read-modify-write race.
+
+### Cache wiring
+
+`@Crud({ query: { cache } })` requires a `DataSource({ cache: ... })` provider. Without one, the first cached read throws `CrudCacheNotConfiguredError`. See [Caching](https://github.com/kodjunkie/nestjs-crud/wiki/Caching).
+
+### Relation loading
+
+Opt into the `'query'` strategy with `@Crud({ query: { relationLoadStrategy: 'query' } })` to avoid Cartesian explosion when you read multiple `OneToMany` relations on the same parent. See [RelationLoadStrategy](https://github.com/kodjunkie/nestjs-crud/wiki/RelationLoadStrategy).
+
+### Logging
+
+Pass an optional `LoggerService` as the constructor's second argument. See [Logging](https://github.com/kodjunkie/nestjs-crud/wiki/Logging).
+
+### Field allowlist
+
+Unknown sort, filter, or search fields throw `RequestQueryException`. See the [v2 Migration guide](https://github.com/kodjunkie/nestjs-crud/wiki/v2-Migration#1-strict-field-allowlist-on-sortfiltersearch).
 
 ## See also
 

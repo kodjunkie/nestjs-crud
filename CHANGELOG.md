@@ -13,6 +13,18 @@ _(No unreleased changes.)_
 
 ---
 
+## [2.1.1]
+
+### Added
+
+- `@nestjs/swagger` is now declared as an optional peerDependency on `@nestjs-crud/core` (`^10.0.0 || ^11.0.0`). Consumers that already use Swagger see no change; consumers without Swagger continue to install cleanly thanks to `peerDependenciesMeta.optional: true`.
+
+### Removed
+
+- Removed undocumented internal helpers `getSwaggerVersion` and `swaggerPkgJson` from `@nestjs-crud/core`. They were used to gate a `@nestjs/swagger` v3 compatibility path that has been unreachable since the package's peer floor moved to v10. The dropped path also included the `ApiModelProperty` fallback in the `ApiProperty` helper.
+
+---
+
 ## [2.1.0] — 2026-04-23
 
 **Milestone:** `@nestjs-crud/prisma` peer-range bump to `@prisma/client ^7.0.0`.

@@ -9,7 +9,6 @@ import * as ex from './swagger/examples.helper';
 
 export const swagger = res.swagger;
 export const swaggerConst = res.swaggerConst;
-export const swaggerPkgJson = res.swaggerPkgJson;
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const Swagger: any = {
@@ -28,6 +27,6 @@ export const Swagger: any = {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function ApiProperty(options?: any): PropertyDecorator {
   return (target: unknown, propertyKey: string | symbol) => {
-    if (swagger) (swagger.ApiProperty || swagger.ApiModelProperty)(options)(target, propertyKey);
+    if (swagger) swagger.ApiProperty(options)(target, propertyKey);
   };
 }

@@ -14,13 +14,6 @@ export const swagger = safeRequire('@nestjs/swagger', () => require('@nestjs/swa
 export const swaggerConst = safeRequire('@nestjs/swagger/dist/constants', () =>
   require('@nestjs/swagger/dist/constants'),
 );
-export const swaggerPkgJson = safeRequire('@nestjs/swagger/package.json', () =>
-  require('@nestjs/swagger/package.json'),
-);
-
-export function getSwaggerVersion(): number {
-  return swaggerPkgJson ? parseInt(swaggerPkgJson.version.split('.')[0], 10) : 3;
-}
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function setResponseOk(metadata: unknown, func: any): void {
@@ -61,7 +54,6 @@ export function createResponseMeta(name: BaseRouteName, options: MergedCrudOptio
   }
 
   const { routes, query } = options;
-  const oldVersion = getSwaggerVersion() < 4;
   const routesWith404 = new Set<BaseRouteName>([
     'getOneBase',
     'updateOneBase',
@@ -75,7 +67,7 @@ export function createResponseMeta(name: BaseRouteName, options: MergedCrudOptio
   // in crud-routes.factory.setResponseModels (GetMany{Model}ResponseDto,
   // {Model}ResponseDto, etc.) so the emitted prose points at the schema shown in
   // Swagger UI's schema tree.
-  const successEntry = buildSuccessEntry(name, options, swaggerModels, oldVersion);
+  const successEntry = buildSuccessEntry(name, options, swaggerModels);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const meta: Record<number, any> = { ...successEntry };
 
@@ -101,7 +93,6 @@ function buildSuccessEntry(
   options: MergedCrudOptions,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   swaggerModels: any,
-  oldVersion: boolean,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
 ): Record<number, any> {
   const { routes, query } = options;
@@ -115,13 +106,6 @@ function buildSuccessEntry(
         },
       };
     case 'getManyBase':
-      if (oldVersion) {
-        return {
-          [HttpStatus.OK]: {
-            type: swaggerModels.getMany,
-          },
-        };
-      }
       return {
         [HttpStatus.OK]: query.alwaysPaginate
           ? {
@@ -142,13 +126,6 @@ function buildSuccessEntry(
             },
       };
     case 'createOneBase':
-      if (oldVersion) {
-        return {
-          [HttpStatus.OK]: {
-            type: swaggerModels.create,
-          },
-        };
-      }
       return {
         [HttpStatus.CREATED]: {
           description: `Resource created (see ${swaggerModels.create.name})`,
@@ -156,14 +133,6 @@ function buildSuccessEntry(
         },
       };
     case 'createManyBase':
-      if (oldVersion) {
-        return {
-          [HttpStatus.OK]: {
-            type: swaggerModels.create,
-            isArray: true,
-          },
-        };
-      }
       return {
         [HttpStatus.CREATED]: swaggerModels.createMany
           ? {
@@ -179,15 +148,6 @@ function buildSuccessEntry(
             },
       };
     case 'deleteOneBase':
-      if (oldVersion) {
-        return {
-          [HttpStatus.OK]: routes.deleteOneBase.returnDeleted
-            ? {
-                type: swaggerModels.delete,
-              }
-            : {},
-        };
-      }
       return {
         [HttpStatus.OK]: routes.deleteOneBase.returnDeleted
           ? {
@@ -199,15 +159,6 @@ function buildSuccessEntry(
             },
       };
     case 'recoverOneBase':
-      if (oldVersion) {
-        return {
-          [HttpStatus.OK]: routes.recoverOneBase.returnRecovered
-            ? {
-                type: swaggerModels.recover,
-              }
-            : {},
-        };
-      }
       return {
         [HttpStatus.OK]: routes.recoverOneBase.returnRecovered
           ? {
@@ -220,14 +171,6 @@ function buildSuccessEntry(
       };
     default: {
       const dto = swaggerModels[name.split('OneBase')[0]];
-
-      if (oldVersion) {
-        return {
-          [HttpStatus.OK]: {
-            type: dto,
-          },
-        };
-      }
 
       return {
         [HttpStatus.OK]: {
