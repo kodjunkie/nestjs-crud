@@ -147,6 +147,10 @@
     "picomatch@npm:^2.0.4": "^2.3.2",
     "picomatch@npm:^2.2.1": "^2.3.2",
     "picomatch@npm:^2.3.1": "^2.3.2",
-    "picomatch@npm:^4": "^4.0.4"
+    "picomatch@npm:^4": "^4.0.4",
+    "@hono/node-server": "^1.19.13",
+    "axios@npm:^1.12.0": "^1.15.2",
+    "follow-redirects": "^1.16.0",
+    "brace-expansion@npm:^1.1.7": "^1.1.13"
   }
 }
