@@ -925,11 +925,11 @@ For per-route serialization (different DTO per route), use [`CrudOptions.seriali
 
 ## IntelliSense
 
-`@Crud()` composes controllers from a class decorator, which has two minor IntelliSense quirks:
+`@Crud()` wires the route handlers onto your controller at runtime. TypeScript doesn't see them. Two consequences.
 
-First, IntelliSense does not see the composed methods. Use the `CrudController` interface to keep the injected `CrudService` typed correctly.
+The injected `CrudService` is untyped unless the controller declares `implements CrudController<T>`. The interface restores the type.
 
-Second, even with `CrudController`, you cannot call composed methods on `this` without a TS error. The fix is a `base` getter:
+Calling a base method like `this.getManyBase(req)` fails typecheck. The methods are declared optional on the interface, and the class type doesn't include them. Workaround is a `base` getter that returns `this` cast to the interface:
 
 ```typescript
 ...
@@ -945,6 +945,8 @@ export class HeroesCrud implements CrudController<Hero> {
   }
 }
 ```
+
+A TypeScript class-decorator limit, not specific to `@nestjs-crud`. Decorators mutate runtime behavior but can't extend the class type.
 
 ## Routes override
 
