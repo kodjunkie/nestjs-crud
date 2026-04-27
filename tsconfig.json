@@ -33,5 +33,15 @@
       "@nestjs-crud/prisma/*": ["prisma/src/*"]
     }
   },
-  "exclude": ["opensrc", "**/lib", "**/*.tsbuildinfo"]
+  "exclude": ["opensrc", "**/lib", "**/*.tsbuildinfo"],
+  "files": [],
+  "references": [
+    { "path": "packages/util" },
+    { "path": "packages/request" },
+    { "path": "packages/core" },
+    { "path": "packages/typeorm" },
+    { "path": "packages/drizzle" },
+    { "path": "packages/mikro-orm" },
+    { "path": "packages/prisma" }
+  ]
 }
