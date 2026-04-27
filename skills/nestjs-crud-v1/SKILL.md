@@ -1,7 +1,7 @@
 ---
 name: nestjs-crud-v1
 description: >-
-  Use when integrating @nestjs-crud v1.0.x (legacy) into a NestJS project — setting up CRUD controllers, configuring query filters and pagination, scoping requests with @CrudAuth, overriding generated endpoints, troubleshooting relations, validation, Swagger, debugging symptoms like `getManyBase returned a flat array`, `@CrudAuth filter not applying` (or filter applies wrong rows due to silently-ignored persist-key typos), `validation always fails on update`, `maxLimit exceeded`, `repo.createQueryBuilder is not a function` after installing the adapter package, MikroORM stale entity returned across requests, `@Crud({ query: { cache } })` silently doing nothing on Drizzle/MikroORM. For current v2.x behavior use the `nestjs-crud` skill; to upgrade v1 → v2 use the `nestjs-crud-migration` skill.
+  Use when integrating @nestjs-crud v1.0.x (legacy) into a NestJS project — setting up CRUD controllers, configuring query filters and pagination, scoping requests with @CrudAuth, overriding generated endpoints, troubleshooting relations, validation, Swagger, debugging symptoms like `getManyBase returned a flat array`, `@CrudAuth filter not applying` (or filter applies wrong rows due to silently-ignored persist-key typos), `validation always fails on update`, `maxLimit exceeded`, `repo.createQueryBuilder is not a function` after installing the adapter package, MikroORM stale entity returned across requests, `@Crud({ query: { cache } })` silently doing nothing on Drizzle/MikroORM.
 ---
 
 # @nestjs-crud
@@ -455,9 +455,9 @@ Or set it globally once via `CrudConfigService.load({ query: { alwaysPaginate: t
 
 **`@Crud({ query: { cache: 5000 } })` does nothing on Drizzle/MikroORM:** Only the TypeORM adapter honors the `cache` option. Drizzle and MikroORM silently no-op it. Use each ORM's native caching primitive at the application layer instead. (v2 fail-fasts on TypeORM when the `DataSource` cache provider is missing; Drizzle/MikroORM behavior unchanged.)
 
-## Staying on v1 vs. Upgrading to v2
+## Pinning v1.0.x
 
-**To stay on v1:** pin `^1.0.2` in your `package.json`:
+Pin `^1.0.2` in your `package.json`:
 
 ```json
 {
@@ -469,5 +469,3 @@ Or set it globally once via `CrudConfigService.load({ query: { alwaysPaginate: t
 ```
 
 `npm update` continues to track the v1.0.x line. The v1.0.x line continues to receive bugfix patches.
-
-**To upgrade to v2:** v2 is a coordinated breaking release. See the `nestjs-crud-migration` skill for the full change list (strict allowlist validation, deleted service internals, new `QueryTranslator<Q, W>` contract, MikroORM `getEm` thunk, write-path transaction wrap, Prisma adapter, `class-validator`/`class-transformer` peer-range pins, etc.). For v2-specific surfaces (Prisma adapter, split-query opt-in, fail-fast cache, `@Crud({ swagger: {...} })` customization with tag/description/examples/operations/errorResponses/synthExample/tagWithVersion, harmonized Prisma default Logger), see the `nestjs-crud` skill.

@@ -1,7 +1,7 @@
 ---
 name: nestjs-crud
 description: >-
-  Use when integrating `@nestjs-crud/*` (v2.x) into a NestJS project — setting up CRUD controllers, wiring one of the 4 adapters (TypeORM, Drizzle, MikroORM, Prisma — v2.1.0+ requires a Prisma 7 driver adapter), configuring query filters and pagination, scoping requests with `@CrudAuth`, overriding generated endpoints with `@Override()` + `@ParsedRequest()`/`@ParsedBody()`, writing DTOs with `CrudValidationGroups`, customizing Swagger/OpenAPI output via `@Crud({ swagger: {...} })`, opting into TypeORM split-query relation loading (`relationLoadStrategy: 'query'`), or debugging symptoms like `RequestQueryException: Invalid field 'X'` (strict allowlist), `RequestQueryException: Invalid persist key`, `CrudCacheNotConfiguredError`, `EBADENGINE: Unsupported engine` (Node <22), Prisma `Unknown argument 'where'` inside include, `getManyBase returned a flat array`, `validation always fails on update`, `maxLimit exceeded`, MikroORM stale-em identity-map issues, or unexpected savepoint semantics on `@Override()`-wrapped updateOne/replaceOne/deleteOne. For v1.0.x (legacy) behavior see the `nestjs-crud-v1` skill. For upgrading v1 → v2 (or v2.0 → v2.1 Prisma-7 migration) see the `nestjs-crud-migration` skill.
+  Use when integrating `@nestjs-crud/*` (v2.x) into a NestJS project — setting up CRUD controllers, wiring one of the 4 adapters (TypeORM, Drizzle, MikroORM, Prisma — v2.1.0+ requires a Prisma 7 driver adapter), configuring query filters and pagination, scoping requests with `@CrudAuth`, overriding generated endpoints with `@Override()` + `@ParsedRequest()`/`@ParsedBody()`, writing DTOs with `CrudValidationGroups`, customizing Swagger/OpenAPI output via `@Crud({ swagger: {...} })`, opting into TypeORM split-query relation loading (`relationLoadStrategy: 'query'`), or debugging symptoms like `RequestQueryException: Invalid field 'X'` (strict allowlist), `RequestQueryException: Invalid persist key`, `CrudCacheNotConfiguredError`, `EBADENGINE: Unsupported engine` (Node <22), Prisma `Unknown argument 'where'` inside include, `getManyBase returned a flat array`, `validation always fails on update`, `maxLimit exceeded`, MikroORM stale-em identity-map issues, or unexpected savepoint semantics on `@Override()`-wrapped updateOne/replaceOne/deleteOne.
 ---
 
 # @nestjs-crud
@@ -757,19 +757,3 @@ RequestQueryBuilder.create().search({
 
 **TS: `Type 'any' is not assignable to type 'DrizzleClient'` on Drizzle subclass field.** Remove the `protected db: any` re-declaration; inherit the typed field from the base.
 
-## Still on v1.0.x?
-
-Pin `^1.0.2` in your `package.json`:
-
-```json
-{
-  "dependencies": {
-    "@nestjs-crud/core": "^1.0.2",
-    "@nestjs-crud/typeorm": "^1.0.2"
-  }
-}
-```
-
-`npm update` continues to track the v1.0.x line. v1.0.x receives bugfix patches on the `v1.0.2` branch.
-
-For v1-specific behavior, see the `nestjs-crud-v1` skill. To upgrade, read the `nestjs-crud-migration` skill for the complete change list, pre-upgrade audit greps, and error-to-fix mapping.
