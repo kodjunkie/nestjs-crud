@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-A NestJS CRUD monorepo (`@nestjs-crud/core`) that auto-generates RESTful CRUD endpoints for NestJS controllers. Supports TypeORM, Drizzle, MikroORM, and Prisma. Managed with Yarn workspaces + Lerna + `@zmotivat0r/mrepo`.
+A NestJS CRUD monorepo (`@nestjs-crud/core`) that auto-generates RESTful CRUD endpoints for NestJS controllers. Supports TypeORM, Drizzle, MikroORM, and Prisma. Managed with Yarn workspaces + Lerna; builds use TypeScript composite project references (`tsc -b`).
 
 ## Packages
 
@@ -28,8 +28,8 @@ util → request → core → typeorm
 ## Build Commands
 
 ```bash
-yarn build          # Build all packages (tsc via mrepo, respects dependency order)
-yarn clean          # Remove lib/ dirs and .mrepo cache
+yarn build          # Build all packages (native tsc -b; composite project references walk dep order)
+yarn clean          # Remove lib/ dirs and *.tsbuildinfo files
 yarn rebuild        # clean + build
 yarn lint           # ESLint with --fix on all package .ts files
 yarn format         # Prettier via pretty-quick
