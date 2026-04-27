@@ -12,7 +12,17 @@ module.exports = {
     prefix: '<rootDir>/packages/',
   }),
   moduleFileExtensions: ['ts', 'js'],
-  testRegex: '\\.spec.ts$',
+  // Root jest is scoped to core/request/util specs only. Adapter packages
+  // (typeorm/drizzle/mikro-orm/prisma) have their own jest configs invoked
+  // via the per-adapter `yarn test:<adapter>:<db>` scripts, which set the
+  // dialect env vars and (for mikro-orm) the `--experimental-vm-modules`
+  // flag. Sweeping adapter specs from root would re-run them without their
+  // setup and break MikroORM's ESM imports.
+  testMatch: [
+    '<rootDir>/packages/core/test/**/*.spec.ts',
+    '<rootDir>/packages/request/test/**/*.spec.ts',
+    '<rootDir>/packages/util/test/**/*.spec.ts',
+  ],
   rootDir: '.',
   transformIgnorePatterns: ['/node_modules/(?!(@mikro-orm)/)'],
   transform: {
@@ -39,10 +49,10 @@ module.exports = {
   coverageReporters: ['json', 'lcov', 'text-summary'],
   coverageDirectory: 'coverage',
   // Scope root coverage to core + request + util (the packages whose tests
-  // run under the root config). Adapter packages (typeorm/drizzle/mikro-orm/prisma)
-  // have their own jest configs + test:coverage paths; collecting their src here
-  // would inflate "uncovered" counts since the root testRegex matches their specs
-  // but those specs need a live DB and adapter-specific setup.
+  // run under the root config per the testMatch above). Adapter packages
+  // (typeorm/drizzle/mikro-orm/prisma) have their own jest configs +
+  // test:coverage paths; collecting their src here would inflate "uncovered"
+  // counts since they're never exercised under the root config.
   collectCoverageFrom: [
     'packages/core/src/**/*.ts',
     'packages/request/src/**/*.ts',
