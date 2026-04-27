@@ -35,6 +35,8 @@ yarn lint           # ESLint with --fix on all package .ts files
 yarn format         # Prettier via pretty-quick
 ```
 
+**`yarn rebuild` shadow note.** Yarn 4 ships a built-in `yarn rebuild` command that shadows the project script; running bare `yarn rebuild` invokes Yarn's rebuild (which runs `npm install`-style postinstall scripts), NOT the `clean + build` chain. To invoke the project script, use `yarn run rebuild` or `yarn clean && yarn build`. The shadow predates the orchestrator migration; it was masked by mrepo's own dispatch and surfaced once the orchestrator dropped.
+
 TypeScript uses composite project references. Each package compiles `src/` → `lib/`. Path aliases (`@nestjs-crud/*` → `packages/*/src`) are configured in root `tsconfig.json`.
 
 ## Testing
