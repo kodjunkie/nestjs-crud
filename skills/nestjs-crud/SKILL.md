@@ -113,16 +113,33 @@ export class UsersService extends DrizzleCrudService<typeof users.$inferSelect> 
 
 ```typescript
 import { MikroOrmCrudService } from '@nestjs-crud/mikro-orm';
+import { EntityManager } from '@mikro-orm/core';
+
+@Injectable()
+export class UsersService extends MikroOrmCrudService<User> {
+  constructor(em: EntityManager) {
+    super(em, User);
+  }
+}
+```
+
+`MikroOrmCrudService` accepts `EntityManager` directly — pass it as the first ctor arg and the entity class as the second. The `MikroOrmModule` middleware forks a per-request em into AsyncLocalStorage; the DI-injected em proxy resolves to that forked em on every call, so request-scope identity-map isolation is preserved without extra effort.
+
+If you prefer `@InjectRepository(User)` style, unwrap the repository's em yourself:
+
+```typescript
 import { InjectRepository } from '@mikro-orm/nestjs';
 import { EntityRepository } from '@mikro-orm/core';
 
 @Injectable()
 export class UsersService extends MikroOrmCrudService<User> {
   constructor(@InjectRepository(User) repo: EntityRepository<User>) {
-    super(repo);
+    super(repo.getEntityManager(), User);
   }
 }
 ```
+
+Repository-style ctor support (accept `EntityManager | EntityRepository<T>` directly without the manual `getEntityManager()` call) is queued for an upcoming release.
 
 ### Prisma service
 

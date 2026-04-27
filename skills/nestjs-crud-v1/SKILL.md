@@ -127,13 +127,28 @@ export class UsersService extends DrizzleCrudService<typeof users.$inferSelect> 
 ```typescript
 // user.service.ts
 import { MikroOrmCrudService } from '@nestjs-crud/mikro-orm';
+import { EntityManager } from '@mikro-orm/core';
+
+@Injectable()
+export class UsersService extends MikroOrmCrudService<User> {
+  constructor(em: EntityManager) {
+    super(em, User);
+  }
+}
+```
+
+`MikroOrmCrudService` accepts `EntityManager` directly — pass it as the first ctor arg and the entity class as the second.
+
+If you prefer `@InjectRepository(User)` style, unwrap the repository's em yourself:
+
+```typescript
 import { InjectRepository } from '@mikro-orm/nestjs';
-import { EntityRepository } from '@mikro-orm/core';
+import { EntityRepository, EntityManager } from '@mikro-orm/core';
 
 @Injectable()
 export class UsersService extends MikroOrmCrudService<User> {
   constructor(@InjectRepository(User) repo: EntityRepository<User>) {
-    super(repo);
+    super(repo.getEntityManager(), User);
   }
 }
 ```
