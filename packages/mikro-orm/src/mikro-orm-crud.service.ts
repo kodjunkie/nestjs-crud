@@ -9,10 +9,11 @@ import {
 import { Logger, LoggerService, NotFoundException } from '@nestjs/common';
 import { ClassType, hasLength, isArrayFull, isNil, isObject } from '@nestjs-crud/util';
 import {
-  EntityManager,
   EntityClass,
+  EntityManager,
   EntityMetadata,
   EntityProperty,
+  EntityRepository,
   IsolationLevel,
   RequestContext,
 } from '@mikro-orm/core';
@@ -22,6 +23,8 @@ import { MikroOrmJoinResolver } from './mikro-orm-join-resolver';
 import { MikroOrmQueryTranslator } from './mikro-orm-query-translator';
 
 export class MikroOrmCrudService<T extends object> extends CrudService<T> {
+  protected em: EntityManager;
+
   protected dbDialect: DbDialect;
 
   protected metadata: EntityMetadata<T>;
@@ -45,11 +48,18 @@ export class MikroOrmCrudService<T extends object> extends CrudService<T> {
   protected joinResolver: MikroOrmJoinResolver;
 
   constructor(
-    protected em: EntityManager,
+    emOrRepo: EntityManager | EntityRepository<T>,
     protected entityClass: EntityClass<T>,
     logger?: LoggerService,
   ) {
     super();
+    // Property-based type guard: 'in' over `instanceof EntityRepository` for ESM
+    // class-identity safety (per @mikro-orm/core v7 ESM-pure migration).
+    // EntityRepository#getEntityManager() returns the same ALS-backed em proxy
+    // MikroORM injects via @InjectRepository, so unwrapping preserves request-scope
+    // identity-map isolation. The translator continues to read `() => this.em`
+    // as a thunk (line below), never a captured reference.
+    this.em = 'getEntityManager' in emOrRepo ? emOrRepo.getEntityManager() : emOrRepo;
     this.logger = logger ?? new Logger(MikroOrmCrudService.name);
     this.metadata = this.em.getMetadata().get(this.entityClass);
     this.onInitMapEntityColumns();
