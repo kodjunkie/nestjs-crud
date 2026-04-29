@@ -26,6 +26,8 @@ Auto-generates RESTful CRUD endpoints for NestJS controllers from a single `@Cru
 | MikroORM signatures | `any` → typed generics on public surface | v2.0.0 |
 | MikroORM peer cleanup | `@mikro-orm/knex` peer dropped (was install-broken — no stable 7.x on npm; adapter uses `import type` only). Transitive via your driver package. | v2.0.1 |
 | Prisma peer narrowed | `@prisma/client` peer: `>=5.0.0` → `^7.0.0`. Driver adapter required; see §Prisma (v7) setup. | v2.1.0 |
+| `serviceProperty` | `@Crud({ serviceProperty })` — name the controller field that holds the CrudService (default `'service'`). Enables domain-specific field names without breaking `CrudController<T>`. | v2.2.0 |
+| MikroORM repo ctor | `MikroOrmCrudService<T>` constructor now accepts `EntityManager \| EntityRepository<T>` — pass `@InjectRepository` repos directly (MikroORM-only). | v2.2.0 |
 
 ## Install
 
@@ -125,7 +127,7 @@ export class UsersService extends MikroOrmCrudService<User> {
 
 `MikroOrmCrudService` accepts `EntityManager` directly — pass it as the first ctor arg and the entity class as the second. The `MikroOrmModule` middleware forks a per-request em into AsyncLocalStorage; the DI-injected em proxy resolves to that forked em on every call, so request-scope identity-map isolation is preserved without extra effort.
 
-If you prefer `@InjectRepository(User)` style, unwrap the repository's em yourself:
+If you prefer `@InjectRepository(User)` style, pass the repository directly — no manual unwrapping needed:
 
 ```typescript
 import { InjectRepository } from '@mikro-orm/nestjs';
@@ -133,13 +135,15 @@ import { EntityRepository } from '@mikro-orm/core';
 
 @Injectable()
 export class UsersService extends MikroOrmCrudService<User> {
-  constructor(@InjectRepository(User) repo: EntityRepository<User>) {
-    super(repo.getEntityManager(), User);
+  constructor(@InjectRepository(User) usersRepo: EntityRepository<User>) {
+    super(usersRepo, User);
   }
 }
 ```
 
-Repository-style ctor support (accept `EntityManager | EntityRepository<T>` directly without the manual `getEntityManager()` call) is queued for an upcoming release.
+The constructor accepts `EntityManager | EntityRepository<T>`. When a repository is passed, the library unwraps it via `repo.getEntityManager()` internally — the resulting em is the same ALS-backed proxy, so request-scope identity-map isolation is preserved.
+
+> **MikroORM-only:** This constructor union is specific to the MikroORM adapter. TypeORM/Drizzle/Prisma adapter constructors retain their respective `Repository<T>` / `DrizzleClient` / `PrismaClient` signatures unchanged.
 
 ### Prisma service
 
@@ -305,6 +309,7 @@ fetch(`/users?${qb.query()}`);
   },
 
   validation: { whitelist: true },  // optional — ValidationPipeOptions, or `false` to disable
+  serviceProperty: 'usersService', // optional — controller field that holds the CrudService (default: 'service')
   routesFactory: MyCustomFactory,   // optional — subclass of CrudRoutesFactory for advanced cases
 })
 ```

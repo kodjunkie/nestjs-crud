@@ -674,6 +674,35 @@ Response-serialization DTO classes. Pass `false` for any route to skip serializa
 
 See [Response serialization](#response-serialization).
 
+### Custom service property name
+
+By default, `@Crud()` expects the controller to expose its CrudService on a field named `service`. When a controller injects multiple services or prefers a domain-specific name, set `serviceProperty` to point to the desired field:
+
+```typescript
+import { Controller } from '@nestjs/common';
+import { Crud } from '@nestjs-crud/core';
+
+import { User } from './entities/user.entity';
+import { UsersService } from './users.service';
+import { MailService } from './mail.service';
+
+@Crud({
+  model: { type: User },
+  serviceProperty: 'usersService',
+})
+@Controller('users')
+export class UsersController {
+  constructor(
+    public usersService: UsersService,
+    public mailService: MailService,
+  ) {}
+}
+```
+
+The default `'service'` is unchanged — existing controllers continue to work without setting this option. Reserved keys (`'__proto__'`, `'constructor'`, `'prototype'`) are rejected at decoration time to prevent prototype-pollution shapes. The library throws a clear error at request time if the configured property is undefined on the controller instance.
+
+Consumers implementing `CrudController<T>` directly will note that the `service` field is now optional on the interface — the runtime contract (which field holds the service) is enforced by `serviceProperty`, not by the type itself.
+
 ## Global options
 
 To reduce repetition across controllers, configure some options globally:
