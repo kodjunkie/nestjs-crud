@@ -27,6 +27,14 @@ export interface CrudOptions {
   validation?: ValidationPipeOptions | false;
   /** Controller-scoped Swagger/OpenAPI metadata overrides applied to every generated route. */
   swagger?: CrudSwaggerOptions;
+
+  /**
+   * Name of the controller property that holds the CrudService instance.
+   * Default: `'service'`. Set this when your controller injects the service
+   * under a domain-specific name (e.g., `usersService`, `usersRepo`).
+   * Reserved keys (`'__proto__'`, `'constructor'`, `'prototype'`) are rejected at decoration time.
+   */
+  serviceProperty?: string;
 }
 
 export interface MergedCrudOptions extends CrudOptions {
