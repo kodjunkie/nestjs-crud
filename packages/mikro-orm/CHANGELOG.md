@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [Unreleased]
+
+### Added
+
+- `MikroOrmCrudService<T>` constructor now accepts `EntityManager | EntityRepository<T>`. Consumers using `@InjectRepository(User)` from `@mikro-orm/nestjs` can pass the repository directly to `super()` instead of unwrapping with `repo.getEntityManager()`. The library performs the unwrap internally via a property-based type guard, preserving the ALS-backed em proxy so request-scope identity-map isolation is unchanged.
+
 ## [2.0.1](https://github.com/kodjunkie/nestjs-crud/compare/v2.0.0...v2.0.1) (2026-04-23)
 
 

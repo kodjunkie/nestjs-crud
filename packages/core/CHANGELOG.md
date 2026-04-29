@@ -5,6 +5,11 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 ## [Unreleased]
 
+### Added
+
+- `@Crud({ serviceProperty })` decorator option to configure the controller field that holds the CrudService. Default `'service'` preserves existing behavior; consumers can name their field `usersService`, `customerService`, etc., without violating the `CrudController<T>` contract. Reserved keys (`'__proto__'`, `'constructor'`, `'prototype'`) are rejected at decoration time to prevent prototype-pollution shapes. A clear error is thrown at request time if the configured property is undefined on the controller instance.
+- `CrudController<T>.service` is now optional. Consumers using `serviceProperty` to declare a custom field name no longer need to provide a `service` field to satisfy the interface contract. Existing `implements CrudController<T>` consumers continue to compile unchanged.
+
 ### Changed
 
 - Peer-dependency ranges for `class-transformer` and `class-validator` narrowed from `"*"` to `"^0.5.0"` and `"^0.14.0"` respectively. Tested versions are `class-transformer@0.5.1` and `class-validator@0.14.3`. Consumers pinned within `^0.5.x` / `^0.14.x` are unaffected.

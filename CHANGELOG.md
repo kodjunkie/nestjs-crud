@@ -9,6 +9,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+
+- `@Crud({ serviceProperty })` decorator option to configure the controller field that holds the CrudService. Default `'service'` preserves existing behavior; consumers can name their field `usersService`, `customerService`, etc., without violating the `CrudController<T>` contract. Reserved keys (`'__proto__'`, `'constructor'`, `'prototype'`) are rejected at decoration time to prevent prototype-pollution shapes. A clear error is thrown at request time if the configured property is undefined on the controller instance.
+- `MikroOrmCrudService<T>` constructor now accepts `EntityManager | EntityRepository<T>`. Consumers using `@InjectRepository(User)` from `@mikro-orm/nestjs` can pass the repository directly to `super()` instead of unwrapping with `repo.getEntityManager()`. The library performs the unwrap internally via a property-based type guard, preserving the ALS-backed em proxy so request-scope identity-map isolation is unchanged.
+
 ### Changed
 
 - Replaced the `@zmotivat0r/mrepo` build orchestrator with native `lerna` + TypeScript composite project references (`tsc -b`). `yarn build` now invokes `tsc -b tsconfig.json` directly; `yarn test` chains the 4 per-adapter Postgres scripts plus the root jest run for `core`/`request`/`util`; `yarn release` invokes `lerna publish` directly. Dev-tooling change only — no consumer API change. Local incremental rebuilds now use `*.tsbuildinfo` files (gitignored).
