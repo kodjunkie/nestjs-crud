@@ -89,10 +89,32 @@ export class MikroOrmQueryTranslator<T extends object> implements QueryTranslato
   ): Promise<T> {
     const qb = this.fetchHelper.createQueryBuilder(opts.entityClass);
     this.composer.applyToQuery(qb, parsed, options);
-    (qb as any).limit(1);
-    const result = await (qb as any).getSingleResult();
+
+    // Route through FetchHelper so the cache wrap path is honoured for getOne.
+    // The extended `findOneOrFail(qb, opts, parsed, options)` signature triggers
+    // the cache-aware `wrapRead` path when a strategy is wired.
+    const result = await (this.fetchHelper as any).findOneOrFail(
+      qb,
+      { onNotFound: () => undefined },
+      parsed,
+      options,
+    ) as T | null | undefined;
     if (!result) throw opts.onNotFound();
-    return result as T;
+    return result;
+  }
+
+  /**
+   * Execute the composed query through the FetchHelper cache wrap path.
+   * When a `cacheStrategy` is wired (via ctor config or CrudConfigService global),
+   * the result is wrapped in the strategy — cache-hit returns early, cache-miss
+   * executes the QB and sets the result. Bypassed when `?cache=0` or no strategy.
+   */
+  public async executeMany<R = T>(
+    qb: QueryBuilder<T>,
+    parsed: ParsedRequestParams,
+    options: CrudRequestOptions,
+  ): Promise<R[]> {
+    return this.fetchHelper.executeMany<R>(qb, parsed, options);
   }
 
   public getSelect(parsed: ParsedRequestParams, options: CrudRequestOptions['query']): string[] {

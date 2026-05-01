@@ -2,6 +2,7 @@ import { DynamicModule, Module } from '@nestjs/common';
 import { MikroOrmModule } from '@mikro-orm/nestjs';
 
 import { UserSchema, CompanySchema, ProjectSchema } from '../entities';
+import { UsersCachedController } from './users-cached.controller';
 import { UsersController } from './users.controller';
 import { UsersRepoController } from './users-repo.controller';
 import { UsersService } from './users.service';
@@ -16,7 +17,7 @@ export class AppModule {
     return {
       module: AppModule,
       imports: [MikroOrmModule.forRoot(config), MikroOrmModule.forFeature([UserSchema, CompanySchema, ProjectSchema])],
-      controllers: [UsersController, UsersRepoController],
+      controllers: [UsersController, UsersRepoController, UsersCachedController],
       providers: [UsersService, UsersRepoService],
       exports: [UsersService, UsersRepoService],
     };

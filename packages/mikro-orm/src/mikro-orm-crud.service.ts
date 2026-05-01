@@ -1,11 +1,13 @@
 import {
   CreateManyDto,
+  CrudConfigService,
   CrudRequest,
   CrudService,
   GetManyDefaultResponse,
   InputSanitizer,
   prepareEntityBeforeSave as prepareEntityBeforeSaveUtil,
 } from '@nestjs-crud/core';
+import type { CacheStrategy } from '@nestjs-crud/core/cache';
 import { Logger, LoggerService, NotFoundException } from '@nestjs/common';
 import { ClassType, hasLength, isArrayFull, isNil, isObject } from '@nestjs-crud/util';
 import {
@@ -47,10 +49,13 @@ export class MikroOrmCrudService<T extends object> extends CrudService<T> {
 
   protected joinResolver: MikroOrmJoinResolver;
 
+  protected readonly cacheStrategyOverride?: CacheStrategy;
+
   constructor(
     emOrRepo: EntityManager | EntityRepository<T>,
     protected entityClass: EntityClass<T>,
     logger?: LoggerService,
+    cacheStrategy?: CacheStrategy,
   ) {
     super();
     // Property-based type guard: 'in' over `instanceof EntityRepository` for ESM
@@ -61,6 +66,7 @@ export class MikroOrmCrudService<T extends object> extends CrudService<T> {
     // as a thunk (line below), never a captured reference.
     this.em = 'getEntityManager' in emOrRepo ? emOrRepo.getEntityManager() : emOrRepo;
     this.logger = logger ?? new Logger(MikroOrmCrudService.name);
+    this.cacheStrategyOverride = cacheStrategy;
     this.metadata = this.em.getMetadata().get(this.entityClass);
     this.onInitMapEntityColumns();
     this.detectDialect();
@@ -91,6 +97,9 @@ export class MikroOrmCrudService<T extends object> extends CrudService<T> {
         this.throwBadRequestException(msg);
       },
       joinResolver: this.joinResolver,
+      cacheStrategy: this._resolveCacheStrategy(),
+      entityName: this.entityClass.name,
+      logger: this.logger,
     });
 
     this.logger.debug?.(`CrudService initialized: ${(this.entityClass as any)?.name ?? 'unknown'}`);
@@ -116,14 +125,16 @@ export class MikroOrmCrudService<T extends object> extends CrudService<T> {
     if (this.decidePagination(parsed, options)) {
       const countQb = (this.em as any).createQueryBuilder(this.entityClass);
       this.translator.applyToQuery(countQb, parsed, options);
+      // Pagination bypasses the cache wrap (count + data would need separate keys;
+      // correctness trade-off: only non-paginated getMany benefits from cache).
       const [data, total] = [await qb.getResult(), await this.translator.count(countQb)];
       const take = this.translator.getTake(parsed, options.query);
       const skip = this.translator.getSkip(parsed, take as number);
       return this.createPageInfo(data as T[], total, take || total, skip || 0);
     }
 
-    const data = await qb.getResult();
-    return data as T[];
+    // Non-paginated: route through the FetchHelper cache wrap path.
+    return (this.translator as any).executeMany(qb, parsed, options) as Promise<T[]>;
   }
 
   public async getOne(req: CrudRequest): Promise<T> {
@@ -140,6 +151,7 @@ export class MikroOrmCrudService<T extends object> extends CrudService<T> {
 
     const created = this.em.create(this.entityClass, entity as any);
     await this.em.flush();
+    await this._invalidateCache();
 
     if (options.routes.createOneBase.returnShallow) {
       return created as T;
@@ -169,6 +181,7 @@ export class MikroOrmCrudService<T extends object> extends CrudService<T> {
 
     const entities = bulk.map((data) => this.em.create(this.entityClass, data as any));
     await this.em.flush();
+    await this._invalidateCache();
 
     return entities as T[];
   }
@@ -180,7 +193,7 @@ export class MikroOrmCrudService<T extends object> extends CrudService<T> {
     // FetchHelper thunk (getEm: () => EntityManager) is therefore unchanged
     // (getEm thunk contract preserved).
     const em = this.getEm();
-    return em.transactional(
+    const result = await em.transactional(
       async (txEm) => {
         return RequestContext.create(txEm, async () => {
           const { parsed, options } = req;
@@ -217,11 +230,13 @@ export class MikroOrmCrudService<T extends object> extends CrudService<T> {
       },
       { isolationLevel: IsolationLevel.READ_COMMITTED },
     );
+    await this._invalidateCache();
+    return result;
   }
 
   public async replaceOne(req: CrudRequest, dto: T | Partial<T>): Promise<T> {
     const em = this.getEm();
-    return em.transactional(
+    const result = await em.transactional(
       async (txEm) => {
         return RequestContext.create(txEm, async () => {
           const { parsed, options } = req;
@@ -269,11 +284,13 @@ export class MikroOrmCrudService<T extends object> extends CrudService<T> {
       },
       { isolationLevel: IsolationLevel.READ_COMMITTED },
     );
+    await this._invalidateCache();
+    return result;
   }
 
   public async deleteOne(req: CrudRequest): Promise<void | T> {
     const em = this.getEm();
-    return em.transactional(
+    const result = await em.transactional(
       async (txEm) => {
         return RequestContext.create(txEm, async () => {
           const { options } = req;
@@ -303,6 +320,8 @@ export class MikroOrmCrudService<T extends object> extends CrudService<T> {
       },
       { isolationLevel: IsolationLevel.READ_COMMITTED },
     );
+    await this._invalidateCache();
+    return result;
   }
 
   public async recoverOne(req: CrudRequest): Promise<void | T> {
@@ -314,6 +333,7 @@ export class MikroOrmCrudService<T extends object> extends CrudService<T> {
 
     this.em.assign(found as any, { [this.softDeleteColumn!]: null } as any);
     await this.em.flush();
+    await this._invalidateCache();
 
     req.parsed.search = this.entityPrimaryColumns.reduce((acc, p) => ({ ...acc, [p]: (found as any)[p] }), {});
     return this.getOneOrFail(req);
@@ -394,6 +414,32 @@ export class MikroOrmCrudService<T extends object> extends CrudService<T> {
 
   protected getSoftDeleteColumnName(): string {
     return this.softDeleteColumn || 'deletedAt';
+  }
+
+  /**
+   * Resolves the effective cache strategy: ctor override takes precedence,
+   * falling back to the global strategy registered via CrudConfigService.
+   * Called lazily at request time so CrudConfigService.load() after app bootstrap works.
+   */
+  protected _resolveCacheStrategy(): CacheStrategy | undefined {
+    return this.cacheStrategyOverride ?? CrudConfigService.config.query?.cacheStrategy;
+  }
+
+  /**
+   * Invalidates all cache entries prefixed with `<entityClass.name>:`.
+   * Called automatically after every successful write. Errors are swallowed
+   * with a warning so a Redis outage does not break write paths.
+   */
+  protected async _invalidateCache(): Promise<void> {
+    const strategy = this._resolveCacheStrategy();
+    if (!strategy) return;
+    try {
+      await strategy.invalidate(`${this.entityClass.name}:`);
+    } catch (err) {
+      this.logger.warn?.(
+        `CacheStrategy.invalidate failed for ${this.entityClass.name}: ${err instanceof Error ? err.name : 'UnknownError'}`,
+      );
+    }
   }
 
   private detectDialect() {
