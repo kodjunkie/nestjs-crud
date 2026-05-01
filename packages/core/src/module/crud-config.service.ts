@@ -4,34 +4,37 @@ import * as deepmerge from 'deepmerge';
 
 import { CrudGlobalConfig } from '../interfaces';
 
+const DEFAULT_CONFIG: CrudGlobalConfig = {
+  auth: {},
+  query: {
+    alwaysPaginate: false,
+    cacheErrorPolicy: 'fail-fast', // preserves current fail-loud behavior by default
+  },
+  routes: {
+    getManyBase: { interceptors: [], decorators: [] },
+    getOneBase: { interceptors: [], decorators: [] },
+    createOneBase: { interceptors: [], decorators: [], returnShallow: false },
+    createManyBase: { interceptors: [], decorators: [] },
+    updateOneBase: {
+      interceptors: [],
+      decorators: [],
+      allowParamsOverride: false,
+      returnShallow: false,
+    },
+    replaceOneBase: {
+      interceptors: [],
+      decorators: [],
+      allowParamsOverride: false,
+      returnShallow: false,
+    },
+    deleteOneBase: { interceptors: [], decorators: [], returnDeleted: false },
+    recoverOneBase: { interceptors: [], decorators: [], returnRecovered: false },
+  },
+  params: {},
+};
+
 export class CrudConfigService {
-  static config: CrudGlobalConfig = {
-    auth: {},
-    query: {
-      alwaysPaginate: false,
-    },
-    routes: {
-      getManyBase: { interceptors: [], decorators: [] },
-      getOneBase: { interceptors: [], decorators: [] },
-      createOneBase: { interceptors: [], decorators: [], returnShallow: false },
-      createManyBase: { interceptors: [], decorators: [] },
-      updateOneBase: {
-        interceptors: [],
-        decorators: [],
-        allowParamsOverride: false,
-        returnShallow: false,
-      },
-      replaceOneBase: {
-        interceptors: [],
-        decorators: [],
-        allowParamsOverride: false,
-        returnShallow: false,
-      },
-      deleteOneBase: { interceptors: [], decorators: [], returnDeleted: false },
-      recoverOneBase: { interceptors: [], decorators: [], returnRecovered: false },
-    },
-    params: {},
-  };
+  static config: CrudGlobalConfig = deepmerge({}, DEFAULT_CONFIG);
 
   static load(config: CrudGlobalConfig = {}) {
     if (isObjectFull(config.queryParser)) {
@@ -55,5 +58,16 @@ export class CrudConfigService {
       },
       { arrayMerge: (a, b, _c) => b },
     );
+  }
+
+  /**
+   * Restore the global config to its initial defaults. Required by integration
+   * test suites that call `load({ query: { cacheStrategy } })` so subsequent
+   * suites do not inherit the previous strategy. NOT for production use.
+   *
+   * @since 2.2.0
+   */
+  static reset(): void {
+    CrudConfigService.config = deepmerge({}, DEFAULT_CONFIG);
   }
 }

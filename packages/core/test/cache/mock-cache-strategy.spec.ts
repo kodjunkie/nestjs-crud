@@ -88,4 +88,23 @@ describe('MockCacheStrategy', () => {
     expect(second).toBe('v');
     expect(flakyFn).toHaveBeenCalledTimes(2);
   });
+
+  // FIX 2 — cacheErrorPolicy is consumed by adapter FetchHelpers (Wave 2), not by MockCacheStrategy
+  // itself. This unit test asserts the SHAPE only; behavior tests live in adapter integration specs.
+  describe('cacheErrorPolicy contract (consumed by adapter FetchHelpers)', () => {
+    it('CrudConfigService.config.query.cacheErrorPolicy defaults to "fail-fast"', () => {
+      const { CrudConfigService } = require('@nestjs-crud/core');
+      CrudConfigService.reset();
+      expect(CrudConfigService.config.query?.cacheErrorPolicy).toBe('fail-fast');
+    });
+
+    it('CrudConfigService.load accepts cacheErrorPolicy: "fallback-to-source"', () => {
+      const { CrudConfigService } = require('@nestjs-crud/core');
+      CrudConfigService.reset();
+      CrudConfigService.load({ query: { cacheErrorPolicy: 'fallback-to-source' } });
+      expect(CrudConfigService.config.query?.cacheErrorPolicy).toBe('fallback-to-source');
+      CrudConfigService.reset();
+      expect(CrudConfigService.config.query?.cacheErrorPolicy).toBe('fail-fast');
+    });
+  });
 });
