@@ -1,4 +1,4 @@
-import { CrudCacheNotConfiguredError, getAllowedColumns, JoinResolver } from '@nestjs-crud/core';
+import { CrudCacheNotConfiguredError, CrudConfigService, getAllowedColumns, JoinResolver } from '@nestjs-crud/core';
 import type { CacheStrategy } from '@nestjs-crud/core/cache';
 import type { QueryComposer, WhereBuilder } from '@nestjs-crud/core/query';
 import { ParsedRequestParams, QuerySort } from '@nestjs-crud/request';
@@ -145,7 +145,8 @@ export class TypeOrmQueryComposer<T extends ObjectLiteral> implements QueryCompo
      * constructor. The native `query.cache(ttl)` pass-through is on a removal
      * track for v3.x; new consumers should wire a `CacheStrategy` from day one.
      */
-    if (queryOptions.cache && parsed.cache !== 0 && !this.config.cacheStrategy) {
+    const resolvedStrategy = this.config.cacheStrategy ?? CrudConfigService.config.query?.cacheStrategy;
+    if (queryOptions.cache && parsed.cache !== 0 && !resolvedStrategy) {
       const cacheProvider = this.repo.manager.connection?.queryResultCache;
       if (!cacheProvider) {
         throw new CrudCacheNotConfiguredError();

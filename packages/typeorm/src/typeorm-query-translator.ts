@@ -96,6 +96,14 @@ export class TypeOrmQueryTranslator<T extends ObjectLiteral> implements QueryTra
     return this.fetchHelper.count(query);
   }
 
+  public executeMany<R = T>(
+    query: SelectQueryBuilder<T>,
+    parsed: ParsedRequestParams,
+    options: CrudRequestOptions,
+  ): Promise<R[]> {
+    return this.fetchHelper.executeMany<R>(query, parsed, options);
+  }
+
   public async findOneOrFail(
     parsed: ParsedRequestParams,
     options: CrudRequestOptions,
@@ -112,7 +120,12 @@ export class TypeOrmQueryTranslator<T extends ObjectLiteral> implements QueryTra
       if (where) builder.andWhere(where);
     }
 
-    return this.fetchHelper.findOneOrFail<T>(builder, { withDeleted, onNotFound: () => onNotFound() });
+    return this.fetchHelper.findOneOrFail<T>(
+      builder,
+      { withDeleted, onNotFound: () => onNotFound() },
+      parsed,
+      options,
+    );
   }
 
   private get alias(): string {

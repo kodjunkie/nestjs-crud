@@ -48,8 +48,7 @@ export class TypeOrmFetchHelper<T extends ObjectLiteral> implements FetchHelper<
     options?: CrudRequestOptions,
   ): Promise<R> {
     const { withDeleted = false, onNotFound } = opts;
-    const fetchFn = (): Promise<T | null> =>
-      withDeleted ? qb.withDeleted().getOne() : qb.getOne();
+    const fetchFn = (): Promise<T | null> => (withDeleted ? qb.withDeleted().getOne() : qb.getOne());
 
     const found = await this.wrapRead(fetchFn, parsed, options);
     if (!found) {
@@ -65,13 +64,14 @@ export class TypeOrmFetchHelper<T extends ObjectLiteral> implements FetchHelper<
     options: CrudRequestOptions,
   ): Promise<R[]> {
     const fetchFn = (): Promise<T[]> => qb.getMany();
-    if (!this.shouldCache(parsed, options)) {
+    const strategy = this.resolveStrategy();
+    if (!strategy || !this.shouldCache(parsed, options, strategy)) {
       return (await fetchFn()) as unknown as R[];
     }
     const ttl = this.getEffectiveTtl(options)!;
     const key = buildCacheKey(this.config.entityName!, parsed);
     return (await this.withCacheErrorPolicy(
-      () => this.config.cacheStrategy!.wrap(key, fetchFn, ttl),
+      () => strategy.wrap(key, fetchFn, ttl),
       fetchFn,
     )) as unknown as R[];
   }
@@ -91,13 +91,21 @@ export class TypeOrmFetchHelper<T extends ObjectLiteral> implements FetchHelper<
     options?: CrudRequestOptions,
   ): Promise<R> {
     if (!parsed || !options) return fetchFn();
-    if (!this.shouldCache(parsed, options)) return fetchFn();
+    const strategy = this.resolveStrategy();
+    if (!strategy || !this.shouldCache(parsed, options, strategy)) return fetchFn();
     const ttl = this.getEffectiveTtl(options)!;
     const key = buildCacheKey(this.config.entityName!, parsed);
-    return this.withCacheErrorPolicy(
-      () => this.config.cacheStrategy!.wrap(key, fetchFn, ttl),
-      fetchFn,
-    );
+    return this.withCacheErrorPolicy(() => strategy.wrap(key, fetchFn, ttl), fetchFn);
+  }
+
+  /**
+   * Resolve cache strategy at request time (lazy).
+   * Priority: ctor-injected config field > CrudConfigService global > undefined.
+   * Lazy resolution allows test `beforeEach` to wire a strategy via
+   * `CrudConfigService.load({ query: { cacheStrategy } })` after app bootstrap.
+   */
+  private resolveStrategy(): CacheStrategy | undefined {
+    return this.config.cacheStrategy ?? CrudConfigService.config.query?.cacheStrategy;
   }
 
   /**
@@ -109,10 +117,7 @@ export class TypeOrmFetchHelper<T extends ObjectLiteral> implements FetchHelper<
    * Pattern shared verbatim across all 4 adapter FetchHelpers (TypeORM/MikroORM/
    * Drizzle/Prisma) — keep the implementation in lock-step.
    */
-  private async withCacheErrorPolicy<R>(
-    wrapped: () => Promise<R>,
-    fetchFn: () => Promise<R>,
-  ): Promise<R> {
+  private async withCacheErrorPolicy<R>(wrapped: () => Promise<R>, fetchFn: () => Promise<R>): Promise<R> {
     try {
       return await wrapped();
     } catch (err) {
@@ -143,8 +148,8 @@ export class TypeOrmFetchHelper<T extends ObjectLiteral> implements FetchHelper<
    * The legacy numeric `parsed.cache === 0` check is preserved as a fallback
    * for clients that haven't migrated to the new `parsed.options.cache` boolean.
    */
-  private shouldCache(parsed: ParsedRequestParams, options: CrudRequestOptions): boolean {
-    if (!this.config.cacheStrategy || !this.config.entityName) return false;
+  private shouldCache(parsed: ParsedRequestParams, options: CrudRequestOptions, strategy: CacheStrategy): boolean {
+    if (!strategy || !this.config.entityName) return false;
     if (this.getEffectiveTtl(options) === undefined) return false;
     if (parsed.options?.cache === false) return false; // D-13 bypass-read
     if (parsed.cache === 0) return false; // legacy numeric bypass
