@@ -14,7 +14,7 @@ import {
 import { ClassTransformOptions } from 'class-transformer';
 
 import { RequestQueryException } from './exceptions';
-import { ParamsOptions, ParsedRequestParams, RequestQueryBuilderOptions } from './interfaces';
+import { ParamsOptions, ParsedRequestOptions, ParsedRequestParams, RequestQueryBuilderOptions } from './interfaces';
 import { RequestQueryBuilder } from './request-query.builder';
 import {
   validateCondition,
@@ -65,6 +65,8 @@ export class RequestQueryParser implements ParsedRequestParams {
 
   public includeDeleted: number;
 
+  public options: ParsedRequestOptions = {};
+
   private _params: any;
 
   private _query: any;
@@ -97,6 +99,7 @@ export class RequestQueryParser implements ParsedRequestParams {
       page: this.page,
       cache: this.cache,
       includeDeleted: this.includeDeleted,
+      options: this.options,
     };
   }
 
@@ -119,7 +122,41 @@ export class RequestQueryParser implements ParsedRequestParams {
         this.limit = this.parseQueryParam('limit', this.numericParser.bind(this, 'limit'))[0];
         this.offset = this.parseQueryParam('offset', this.numericParser.bind(this, 'offset'))[0];
         this.page = this.parseQueryParam('page', this.numericParser.bind(this, 'page'))[0];
-        this.cache = this.parseQueryParam('cache', this.numericParser.bind(this, 'cache'))[0];
+        // Parse `?cache` into two distinct surfaces:
+        //   1. `this.cache: number` — TTL override (numeric values like ?cache=300000)
+        //   2. `this.options.cache: boolean` — bypass-read flag (?cache=0|1|false|true)
+        //
+        // Strict-known + silent-ignore semantics for single-string values:
+        //   - Recognized bypass strings ('0','1','false','true'): set options.cache, skip
+        //     numeric parse (it would throw on these).
+        //   - Pure numeric strings: set this.cache via numericParser.
+        //   - Any other single string (e.g. 'evil'): silently ignore both surfaces
+        //     (no 400 — preserves backward-compat for clients sending varied ?cache strings).
+        //   - Array values (e.g. ['a']): numericParser throws as before (existing behavior).
+        const cacheParamNames = this.getParamNames('cache');
+        if (isArrayFull(cacheParamNames)) {
+          const rawCacheValue = this._query[cacheParamNames[0]];
+          const cacheBypass = this.parseQueryParam('cache', this.cacheBypassParser.bind(this))[0];
+          if (typeof cacheBypass === 'boolean') {
+            // Recognized bypass string: set options.cache; skip numeric parse.
+            this.options = { ...this.options, cache: cacheBypass };
+          } else if (isArrayFull(rawCacheValue) || isStringFull(rawCacheValue)) {
+            // Array: always run numericParser (preserves existing throw behavior for arrays).
+            // Single full string: run numericParser; if it's non-numeric but not a bypass
+            // value, silently ignore (only throw for arrays, not single strings).
+            if (isArrayFull(rawCacheValue)) {
+              this.cache = this.parseQueryParam('cache', this.numericParser.bind(this, 'cache'))[0];
+            } else {
+              // Single string that wasn't a recognized bypass — try numeric parse; catch
+              // only the 'Invalid cache' error to implement silent-ignore for 'evil'-style values.
+              try {
+                this.cache = this.parseQueryParam('cache', this.numericParser.bind(this, 'cache'))[0];
+              } catch (_e) {
+                // Silent-ignore: unrecognized single string; this.cache stays undefined.
+              }
+            }
+          }
+        }
         this.includeDeleted = this.parseQueryParam(
           'includeDeleted',
           this.numericParser.bind(this, 'includeDeleted'),
@@ -343,6 +380,19 @@ export class RequestQueryParser implements ParsedRequestParams {
     validateNumeric(val, num);
 
     return val;
+  }
+
+  /**
+   * Coerce `?cache=0|1|false|true` into `boolean | undefined`. Returns
+   * `undefined` for any other input — including numeric TTL values like `300000`
+   * (handled by `parsed.cache: number`), empty strings, and any unrecognized value
+   * such as `?cache=evil`. Silent-ignore by design: do NOT 400 on unknown values —
+   * preserves backward-compat for existing clients that send varied `?cache` query strings.
+   */
+  private cacheBypassParser(data: string): boolean | undefined {
+    if (data === '0' || data === 'false') return false;
+    if (data === '1' || data === 'true') return true;
+    return undefined;
   }
 
   private paramParser(name: string): QueryFilter {
