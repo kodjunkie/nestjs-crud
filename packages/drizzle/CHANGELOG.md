@@ -7,7 +7,8 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 ### Added
 
-- `DrizzleCacheStrategy` — bring-your-own Redis-backed `CacheStrategy` implementation. Constructor takes a config object (`{ redisClient }`), matching the rest of the Drizzle adapter's config-object constructor convention. Provides single-flight de-duplication. Uses `{ PX: ttl }` (milliseconds).
+- `DrizzleCacheStrategy` — bring-your-own Redis-backed `CacheStrategy` implementation. Constructor takes a config object (`{ redisClient }`); `redisClient` accepts node-redis v5, ioredis, or any custom `RedisLike` client; auto-connects on first cache operation. Provides single-flight de-duplication.
+- `ioredis: ^5.0.0` declared as an optional `peerDependency` (joining the existing `redis: ^5.0.0` optional peer). Consumers using neither do not need either installed.
 - `DrizzleCrudService` constructor accepts an optional fifth `cacheStrategy` argument. Existing constructor signatures continue to work unchanged.
 - The strategy is independent of Drizzle's first-party `Cache` abstract class (which is SQL-hash-keyed and incompatible with our entity-prefix invalidation).
 - All six write methods auto-invalidate the entity-prefix cache after a successful commit.
@@ -16,7 +17,7 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 ### Changed
 
-- `redis` is now declared as an optional `peerDependency` (`^5.0.0`) on `@nestjs-crud/drizzle` (modeled on `@nestjs-crud/core`'s `@nestjs/swagger` optional-peer pattern). Consumers without Redis install cleanly.
+- `redis` is declared as an optional `peerDependency` (`^5.0.0`) on `@nestjs-crud/drizzle`. `ioredis` is now also declared as an optional `peerDependency` (`^5.0.0`). Consumers using neither do not need either installed.
 
 
 ## [2.0.0](https://github.com/kodjunkie/nestjs-crud/compare/v1.0.2...v2.0.0) (2026-04-23)

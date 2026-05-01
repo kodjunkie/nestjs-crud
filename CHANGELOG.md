@@ -19,6 +19,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- Cache strategies now accept both `redis` (node-redis v5) and `ioredis` clients via a narrow `RedisLike` interface exported from `@nestjs-crud/core/cache`. Auto-detection chooses the correct adapter; clients auto-connect on the first cache operation so explicit `await redis.connect()` before passing the client is no longer required. Custom backends are supported by implementing the four `RedisLike` methods (`set`, `get`, `del`, `scanPrefix`). `ioredis: ^5.0.0` is now declared as an optional `peerDependency` on all four adapter packages.
 - Replaced the `@zmotivat0r/mrepo` build orchestrator with native `lerna` + TypeScript composite project references (`tsc -b`). `yarn build` now invokes `tsc -b tsconfig.json` directly; `yarn test` chains the 4 per-adapter Postgres scripts plus the root jest run for `core`/`request`/`util`; `yarn release` invokes `lerna publish` directly. Dev-tooling change only — no consumer API change. Local incremental rebuilds now use `*.tsbuildinfo` files (gitignored).
 - Moved `@nestjs/swagger` and `swagger-ui-express` from root `dependencies` to root `devDependencies`. They were dev-tooling-only (test fixtures + Swagger generation in dev workflows). Consumers continue to install Swagger tooling in their own `dependencies` per the optional peerDependency declaration on `@nestjs-crud/core` shipped in 2.1.1.
 

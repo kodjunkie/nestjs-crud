@@ -23,17 +23,31 @@ interface CacheStrategy {
 
 Wire one strategy globally via `CrudConfigService.load`. All controllers using `@Crud({ query: { cache } })` will use it.
 
+Strategies accept both `redis` (node-redis v5) and `ioredis` clients. Auto-connect on first op — no explicit `await redis.connect()` needed.
+
 ```ts
+// Option A — node-redis (v5)
 import { createClient } from 'redis';
 import { CrudConfigService } from '@nestjs-crud/core';
 import { TypeOrmCacheStrategy } from '@nestjs-crud/typeorm';
 
 const redis = createClient({ url: 'redis://localhost:6379' });
-await redis.connect();
-
+// No explicit connect() needed — strategy auto-connects on first cache op
 CrudConfigService.load({
   query: {
     cache: 5000, // default TTL in ms
+    cacheStrategy: new TypeOrmCacheStrategy(redis),
+  },
+});
+
+// Option B — ioredis
+import Redis from 'ioredis';
+import { TypeOrmCacheStrategy } from '@nestjs-crud/typeorm';
+
+const redis = new Redis({ host: 'localhost', port: 6379 });
+CrudConfigService.load({
+  query: {
+    cache: 5000,
     cacheStrategy: new TypeOrmCacheStrategy(redis),
   },
 });
@@ -45,17 +59,25 @@ Resolution order at the FetchHelper level: per-service constructor argument over
 
 ### TypeORM
 
-Bring your own `redis@5+` client:
+Pass either a `redis@5+` (node-redis) or `ioredis` client. No explicit `connect()` needed — the strategy auto-connects on the first cache operation.
 
 ```ts
+// Option A — node-redis (v5)
 import { createClient } from 'redis';
 import { TypeOrmCacheStrategy } from '@nestjs-crud/typeorm';
 
 const redis = createClient({ url: 'redis://localhost:6379' });
-await redis.connect();
+const cacheStrategy = new TypeOrmCacheStrategy(redis);
+
+// Option B — ioredis
+import Redis from 'ioredis';
+import { TypeOrmCacheStrategy } from '@nestjs-crud/typeorm';
+
+const redis = new Redis({ host: 'localhost', port: 6379 });
+const cacheStrategy = new TypeOrmCacheStrategy(redis);
 
 CrudConfigService.load({
-  query: { cache: 5000, cacheStrategy: new TypeOrmCacheStrategy(redis) },
+  query: { cache: 5000, cacheStrategy },
 });
 ```
 
@@ -63,17 +85,25 @@ When a `CacheStrategy` is wired, the adapter skips TypeORM's native `query.cache
 
 ### MikroORM
 
-Bring your own `redis@5+` client. The strategy bypasses MikroORM's Result Cache because `em.clearCache(key)` is exact-key only — entity-prefix invalidation is not possible through it.
+The strategy bypasses MikroORM's Result Cache because `em.clearCache(key)` is exact-key only — entity-prefix invalidation is not possible through it.
 
 ```ts
+// Option A — node-redis (v5)
 import { createClient } from 'redis';
 import { MikroOrmCacheStrategy } from '@nestjs-crud/mikro-orm';
 
 const redis = createClient({ url: 'redis://localhost:6379' });
-await redis.connect();
+const cacheStrategy = new MikroOrmCacheStrategy(redis);
+
+// Option B — ioredis
+import Redis from 'ioredis';
+import { MikroOrmCacheStrategy } from '@nestjs-crud/mikro-orm';
+
+const redis = new Redis({ host: 'localhost', port: 6379 });
+const cacheStrategy = new MikroOrmCacheStrategy(redis);
 
 CrudConfigService.load({
-  query: { cache: 5000, cacheStrategy: new MikroOrmCacheStrategy(redis) },
+  query: { cache: 5000, cacheStrategy },
 });
 ```
 
@@ -81,36 +111,47 @@ The MikroORM `EntityManager` thunk is preserved — the cache wrap goes around `
 
 ### Drizzle
 
-Bring your own `redis@5+` client. The strategy is independent of Drizzle's first-party `Cache` abstract class (which is SQL-hash-keyed and incompatible with our entity-prefix invalidation).
+The strategy is independent of Drizzle's first-party `Cache` abstract class (which is SQL-hash-keyed and incompatible with our entity-prefix invalidation). Takes a config object (`{ redisClient }`) matching the Drizzle adapter's config-object constructor convention.
 
 ```ts
+// Option A — node-redis (v5)
 import { createClient } from 'redis';
 import { DrizzleCacheStrategy } from '@nestjs-crud/drizzle';
 
 const redis = createClient({ url: 'redis://localhost:6379' });
-await redis.connect();
+const cacheStrategy = new DrizzleCacheStrategy({ redisClient: redis });
+
+// Option B — ioredis
+import Redis from 'ioredis';
+import { DrizzleCacheStrategy } from '@nestjs-crud/drizzle';
+
+const redis = new Redis({ host: 'localhost', port: 6379 });
+const cacheStrategy = new DrizzleCacheStrategy({ redisClient: redis });
 
 CrudConfigService.load({
-  query: {
-    cache: 5000,
-    cacheStrategy: new DrizzleCacheStrategy({ redisClient: redis }),
-  },
+  query: { cache: 5000, cacheStrategy },
 });
 ```
-
-`DrizzleCacheStrategy` takes a config object (`{ redisClient }`) — matches the rest of the Drizzle adapter's config-object constructor convention.
 
 ### Prisma — Redis
 
 ```ts
+// Option A — node-redis (v5)
 import { createClient } from 'redis';
 import { PrismaRedisCacheStrategy } from '@nestjs-crud/prisma';
 
 const redis = createClient({ url: 'redis://localhost:6379' });
-await redis.connect();
+const cacheStrategy = new PrismaRedisCacheStrategy(redis);
+
+// Option B — ioredis
+import Redis from 'ioredis';
+import { PrismaRedisCacheStrategy } from '@nestjs-crud/prisma';
+
+const redis = new Redis({ host: 'localhost', port: 6379 });
+const cacheStrategy = new PrismaRedisCacheStrategy(redis);
 
 CrudConfigService.load({
-  query: { cache: 5000, cacheStrategy: new PrismaRedisCacheStrategy(redis) },
+  query: { cache: 5000, cacheStrategy },
 });
 ```
 
@@ -253,6 +294,42 @@ By default the cache key is a deterministic SHA-1 hash of the entity name plus t
 export class UsersController { /* ... */ }
 ```
 
+### Custom Redis client via `RedisLike`
+
+The four shipped Redis strategies accept any object that implements the `RedisLike` interface from `@nestjs-crud/core/cache`. This lets you adapt any cache backend — Memcached, an in-process `Map`, a hybrid store — without wrapping it in a full strategy class:
+
+```ts
+import type { RedisLike } from '@nestjs-crud/core/cache';
+import { TypeOrmCacheStrategy } from '@nestjs-crud/typeorm';
+
+const myBackend: RedisLike = {
+  async set(key, value, ttlMs) { /* your impl */ },
+  async get(key) { /* your impl */ },
+  async del(keys) { /* your impl */ },
+  async *scanPrefix(prefix, count = 100) { /* yield string[] batches */ },
+};
+
+const cacheStrategy = new TypeOrmCacheStrategy(myBackend);
+```
+
+The same `RedisLike` object can be passed to any of the four strategy ctors — `TypeOrmCacheStrategy`, `MikroOrmCacheStrategy`, `DrizzleCacheStrategy({ redisClient })`, `PrismaRedisCacheStrategy`.
+
+### Disconnect on shutdown
+
+Call your client's disconnect method from `OnApplicationShutdown` to close the connection cleanly:
+
+```ts
+// node-redis
+async onApplicationShutdown() {
+  await redisClient.disconnect();
+}
+
+// ioredis
+async onApplicationShutdown() {
+  await redisClient.quit();
+}
+```
+
 ### Implementing a custom `CacheStrategy`
 
 The interface is four methods. Any in-process `Map`, Redis cluster, Memcached pool, or external service can back it:
@@ -270,7 +347,7 @@ class MyCacheStrategy implements CacheStrategy {
 
 Implementation guidance:
 
-- `invalidate(prefix)` should be a non-blocking prefix scan. For Redis, use `client.scanIterator({ MATCH: prefix + '*', COUNT: 100 })` plus batch `del` — never `client.keys()`, which blocks Redis's single-threaded event loop.
+- `invalidate(prefix)` should be a non-blocking prefix scan. For Redis-backed custom backends, use `client.scanIterator({ MATCH: prefix + '*', COUNT: 100 })` (node-redis) or `client.scanStream({ match: prefix + '*', count: 100 })` (ioredis) plus batch `del` — never `client.keys()`, which blocks Redis's single-threaded event loop.
 - `wrap()` SHOULD provide single-flight de-duplication keyed on `key` (an in-flight `Map<string, Promise<T>>` with `try/finally` cleanup) to prevent thundering-herd amplification on cold caches. All shipped adapter strategies follow this pattern.
 - All `ttl` arguments are MILLISECONDS uniformly across the contract. If your backend takes seconds, convert at the strategy boundary (the way `PrismaAccelerateCacheStrategy` does via `Math.ceil(ttl/1000)`).
 

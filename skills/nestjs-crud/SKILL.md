@@ -575,22 +575,30 @@ Under `'join'`, `JoinOption.allow: ['name', 'domain']` constrains which relation
 
 ### Setup pattern
 
-Wire a strategy globally via `CrudConfigService.load`:
+Wire a strategy globally via `CrudConfigService.load`. Strategies accept both `redis` (node-redis v5) and `ioredis` clients — auto-detection chooses the adapter; no explicit `connect()` needed (lazy-once auto-connect on first cache op).
 
 ```ts
+// Option A — node-redis (v5)
 import { createClient } from 'redis';
 import { CrudConfigService } from '@nestjs-crud/core';
 import { TypeOrmCacheStrategy } from '@nestjs-crud/typeorm';
 
 const redis = createClient({ url: 'redis://localhost:6379' });
-await redis.connect();
+CrudConfigService.load({
+  query: { cache: 5000, cacheStrategy: new TypeOrmCacheStrategy(redis) },
+});
 
+// Option B — ioredis
+import Redis from 'ioredis';
+const redis = new Redis({ host: 'localhost', port: 6379 });
 CrudConfigService.load({
   query: { cache: 5000, cacheStrategy: new TypeOrmCacheStrategy(redis) },
 });
 ```
 
 Per-service override is also supported: pass the strategy as the optional last constructor argument when extending the CrudService class.
+
+Custom backends are supported by implementing the `RedisLike` interface (`set`, `get`, `del`, `scanPrefix`) from `@nestjs-crud/core/cache` and passing it directly to any strategy constructor.
 
 ### Per-adapter strategies
 

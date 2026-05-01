@@ -7,7 +7,8 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 ### Added
 
-- `TypeOrmCacheStrategy` — bring-your-own Redis-backed `CacheStrategy` implementation. Uses non-blocking `scanIterator` + `del` for entity-prefix invalidation (never `client.keys`). Provides single-flight de-duplication (concurrent cold-cache reads invoke the underlying query once). Uses `{ PX: ttl }` (milliseconds) for Redis SETs.
+- `TypeOrmCacheStrategy` — bring-your-own Redis-backed `CacheStrategy` implementation. Accepts node-redis v5, ioredis, or any custom `RedisLike` client; auto-connects on first cache operation. Uses non-blocking `scanPrefix` for entity-prefix invalidation. Provides single-flight de-duplication.
+- `ioredis: ^5.0.0` declared as an optional `peerDependency`. Install either `redis@^5` or `ioredis@^5` depending on which client you bring; consumers using neither do not need either installed.
 - `TypeOrmCrudService` constructor accepts an optional third `cacheStrategy` argument. Existing `super(repo)` and `super(repo, logger)` calls continue to work unchanged.
 - When a `CacheStrategy` is wired, the adapter skips its native `query.cache(ttl)` step in `QueryComposer` to prevent double-caching. The legacy `DataSource.cache` provider continues to work as a fallback when no `CacheStrategy` is configured. The legacy native pass-through is marked `@deprecated` (since 2.2.0) and is on a v3 removal track.
 - All six write methods auto-invalidate the entity-prefix cache after a successful commit.
