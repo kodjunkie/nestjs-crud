@@ -1,5 +1,6 @@
 import { DynamicModule, Module } from '@nestjs/common';
 
+import { UsersCachedController } from './users-cached.controller';
 import { UsersController } from './users.controller';
 import { UsersService, PRISMA_CLIENT } from './users.service';
 
@@ -23,7 +24,7 @@ export class AppModule {
 
     return {
       module: AppModule,
-      controllers: [UsersController],
+      controllers: [UsersController, UsersCachedController],
       providers: [{ provide: PRISMA_CLIENT, useValue: prismaClient }, UsersService],
       exports: [UsersService],
     };
