@@ -271,7 +271,7 @@ fetch(`/users?${qb.query()}`);
   query: {
     limit: 25,                       // default page size
     maxLimit: 100,                   // hard cap
-    cache: 2000,                     // ms — TypeORM only; fail-fasts if DataSource cache absent
+    cache: 2000,                     // ms — honored by all 4 adapters when a CacheStrategy is wired; throws CrudCacheNotConfiguredError if set without one
     alwaysPaginate: false,           // force pagination
     softDelete: false,               // enables recoverOneBase + hides soft-deleted rows from reads
     relationLoadStrategy: 'join',    // TypeORM only — 'join' (default) or 'query'. See §Split-Query
@@ -569,14 +569,83 @@ Under `'join'`, `JoinOption.allow: ['name', 'domain']` constrains which relation
 
 **Other adapters** (Drizzle, MikroORM, Prisma) use split queries natively — this opt-in is TypeORM-only and a no-op elsewhere.
 
-## Cache Fail-Fast
+## Caching
 
-If you set `@Crud({ query: { cache: 5000 } })` but forget to configure `DataSource({ cache: ... })`, v2 throws a typed error at the first cached query:
+`@nestjs-crud` ships a `CacheStrategy` interface in `@nestjs-crud/core/cache` and per-adapter implementations for all four ORMs. `@Crud({ query: { cache: <ttl-ms> } })` is honored end-to-end when a strategy is wired. All `ttl` arguments are MILLISECONDS uniformly across the contract.
+
+### Setup pattern
+
+Wire a strategy globally via `CrudConfigService.load`:
+
+```ts
+import { createClient } from 'redis';
+import { CrudConfigService } from '@nestjs-crud/core';
+import { TypeOrmCacheStrategy } from '@nestjs-crud/typeorm';
+
+const redis = createClient({ url: 'redis://localhost:6379' });
+await redis.connect();
+
+CrudConfigService.load({
+  query: { cache: 5000, cacheStrategy: new TypeOrmCacheStrategy(redis) },
+});
+```
+
+Per-service override is also supported: pass the strategy as the optional last constructor argument when extending the CrudService class.
+
+### Per-adapter strategies
+
+| Adapter | Strategy class | Backend |
+|---|---|---|
+| TypeORM | `TypeOrmCacheStrategy` | BYO Redis |
+| MikroORM | `MikroOrmCacheStrategy` | BYO Redis (bypasses MikroORM Result Cache) |
+| Drizzle | `DrizzleCacheStrategy` | BYO Redis (config-object ctor) |
+| Prisma | `PrismaRedisCacheStrategy` | BYO Redis |
+| Prisma | `PrismaAccelerateCacheStrategy` | Prisma Accelerate gateway |
+
+### Auto-invalidation
+
+Every write method (`createOne`, `createMany`, `updateOne`, `replaceOne`, `deleteOne`, `recoverOne`) calls `cacheStrategy.invalidate('<entityName>:')` after a successful commit. Consumers do not need to manually evict. TTL acts as a safety net for any out-of-band invalidation.
+
+### Per-request opt-out
+
+`GET /users?cache=0` bypasses the cache for that request only — the cached entry is not invalidated, the TTL keeps running. Recognized values: `0`, `1`, `true`, `false`. Unrecognized values silent-ignore (treated as if absent).
+
+### Production knobs
+
+- **`cacheErrorPolicy: 'fail-fast' | 'fallback-to-source'`** — controls behavior on cache backend errors. Default `'fail-fast'`; opt into `'fallback-to-source'` for graceful degradation when Redis/Accelerate is down.
+- **Redis `maxmemory-policy allkeys-lru`** — recommended for Redis-backed strategies; cache key cardinality is unbounded due to full request fingerprinting.
+- **Single-flight** — all shipped strategies de-dup concurrent cold-cache requests for the same key (only one DB fetch under stampede).
+
+### Security
+
+`authPersist` is included in the cache-key fingerprint via SHA-1 hash — multi-tenant isolation preserved AND plaintext auth context never appears in cache keys (mitigates PII leakage and timing attacks via cache-key inspection).
+
+### `CrudCacheNotConfiguredError`
+
+If `@Crud({ query: { cache } })` is set but no `CacheStrategy` is wired (and, for TypeORM, no `DataSource.cache` fallback either), the next cached read throws:
 
 ```
-CrudCacheNotConfiguredError: @Crud cache option requires a DataSource cache provider.
-Configure DataSource({ cache: { type: 'redis', ... } }) or remove the cache option from
-your @Crud() configuration.
+CrudCacheNotConfiguredError: @Crud cache option requires a CacheStrategy. Configure via
+CrudConfigService.load({ query: { cacheStrategy } }) or pass a strategy to the CrudService
+constructor. For TypeORM, the legacy DataSource.cache provider is also accepted as a fallback.
+```
+
+### Mock strategy for tests
+
+`MockCacheStrategy` (a `Map`-backed in-memory implementation with single-flight de-dup) ships from `@nestjs-crud/core` for use in test fixtures.
+
+### See also
+
+Full setup details, decision criteria for Prisma backends, and custom-strategy implementation guide: [Caching wiki page](https://github.com/kodjunkie/nestjs-crud/wiki/Caching).
+
+## Cache Fail-Fast
+
+If `@Crud({ query: { cache } })` is set but no `CacheStrategy` is wired (and, for TypeORM, no `DataSource.cache` fallback either), the next cached read throws:
+
+```
+CrudCacheNotConfiguredError: @Crud cache option requires a CacheStrategy. Configure via
+CrudConfigService.load({ query: { cacheStrategy } }) or pass a strategy to the CrudService
+constructor. For TypeORM, the legacy DataSource.cache provider is also accepted as a fallback.
 ```
 
 Exported from `@nestjs-crud/core` as a plain `Error` subclass (NOT `HttpException`):
@@ -585,9 +654,9 @@ Exported from `@nestjs-crud/core` as a plain `Error` subclass (NOT `HttpExceptio
 import { CrudCacheNotConfiguredError } from '@nestjs-crud/core';
 ```
 
-**Fix:** configure `DataSource({ cache: { type: 'redis' | 'database' | true, ... } })` OR remove `cache` from `@Crud()`.
+**Fix:** wire a `CacheStrategy` via `CrudConfigService.load({ query: { cacheStrategy } })` or pass it to the CrudService constructor. For TypeORM, `DataSource({ cache: { type: 'redis' | 'database' | true, ... } })` is also accepted as a legacy fallback. OR remove `cache` from `@Crud()`.
 
-**Adapter coverage:** TypeORM only. Drizzle, MikroORM, Prisma silently no-op the `cache` option — use each ORM's native caching at the application layer.
+**Adapter coverage:** all four adapters via the unified `CacheStrategy` interface. See §Caching.
 
 ## Optional Logger
 

@@ -437,7 +437,7 @@ import { CrudCacheNotConfiguredError } from '@nestjs-crud/core';
 
 **Fix:** either configure `DataSource({ cache: { type: 'redis' | 'database' | true, ... } })` or remove the `cache` field from your `@Crud()` decorator.
 
-**Adapter coverage:** TypeORM only honors `@Crud({ query: { cache } })`. Drizzle, MikroORM, and Prisma do not currently honor this option — use each ORM's native caching primitives at the application layer.
+**Adapter coverage:** all four adapters via the unified `CacheStrategy` interface (as of v2.2.0 — see §v2.1.1 → v2.2.0 — Caching). Wire a strategy via `CrudConfigService.load({ query: { cacheStrategy } })` or the CrudService constructor to enable caching.
 
 ### Swagger default text rewrite
 
@@ -582,7 +582,7 @@ If your code only uses the public surface (decorator, overrides with `@ParsedReq
 | `Module '"@nestjs-crud/core"' has no exported member 'swaggerPkgJson'` | Removed in v2.1.1 alongside `getSwaggerVersion` (same v3-gate cleanup) | Delete the import. No replacement |
 | `RequestQueryException: Invalid persist key 'X'` (maps to 400 Bad Request) | `@CrudAuth({ persist: { ... } })` has a typo that doesn't match any entity column | Fix the key name to match the entity column exactly. v1 silently ignored this, leaving auth-filter bypass; v2 fails fast |
 | `CrudCacheNotConfiguredError` thrown on first cached read | `@Crud({ query: { cache } })` set but `DataSource({ cache: ... })` not configured | Configure DataSource cache provider OR remove `@Crud cache` option |
-| `@Crud({ query: { cache } })` silently does nothing on Drizzle/MikroORM/Prisma | Adapter doesn't honor the option — only TypeORM does | Use the ORM's native caching at the application layer; or move the cached read to a TypeORM-backed controller |
+| `CrudCacheNotConfiguredError` thrown on first cached read with `@Crud({ query: { cache } })` | No `CacheStrategy` wired and (for TypeORM) no `DataSource.cache` fallback | Wire a strategy via `CrudConfigService.load({ query: { cacheStrategy } })` or the CrudService constructor. See §v2.1.1 → v2.2.0 — Caching |
 | Relation columns under `'query'` strategy include columns NOT in `JoinOption.allow` | Documented divergence — `setFindOptions` doesn't expose alias-level select control | Either keep `'join'` strategy on those controllers, or audit every relation explicitly. See §D — TypeORM split-query relation loading |
 | Prisma service now emits logs when it didn't before | Phase 15 unified Prisma's default with the other 3 adapters — omitting `serviceConfig.logger` now auto-instantiates `new Logger(PrismaCrudService.name)`, not silent no-op | If you relied on silent behavior: pass an explicit no-op logger (`{ error: () => {}, warn: () => {}, debug: () => {} }`) via `serviceConfig.logger`. See §D — Optional logger Prisma |
 | `Property 'summary' does not exist on type 'string'` on `Swagger.operationsMap(...)` | Internal API shape changed — `string` → `{ summary, description }` tuples | Destructure, or switch to the stable `@Crud({ swagger: { operations: {...} } })` override surface (see `nestjs-crud` skill §Swagger Customization) |
