@@ -123,15 +123,22 @@ export class MikroOrmFetchHelper<T extends object> implements FetchHelper<QueryB
       this.assertStrategyOrPassThrough(parsed, options);
       return (await fetchFn()) as unknown as R[];
     }
+    const strategy = this.getResolvedStrategy()!;
     const ttl = this.getEffectiveTtl(options)!;
     const key = buildCacheKey(this.config.entityName!, parsed);
-    return (await this.withCacheErrorPolicy(
-      () => this.config.cacheStrategy!.wrap(key, fetchFn, ttl),
-      fetchFn,
-    )) as unknown as R[];
+    return (await this.withCacheErrorPolicy(() => strategy.wrap(key, fetchFn, ttl), fetchFn)) as unknown as R[];
   }
 
   // ----- private cache helpers -----
+
+  /**
+   * Lazily resolve the effective cache strategy.
+   * Priority: ctor-injected config field > CrudConfigService global > undefined.
+   * Called at request time so `CrudConfigService.load(...)` after app bootstrap works.
+   */
+  private getResolvedStrategy(): CacheStrategy | undefined {
+    return this.config.cacheStrategy ?? CrudConfigService.config.query?.cacheStrategy;
+  }
 
   /**
    * Internal cache wrapper used by `findOneOrFail`. Both `executeMany` and
@@ -152,22 +159,17 @@ export class MikroOrmFetchHelper<T extends object> implements FetchHelper<QueryB
       this.assertStrategyOrPassThrough(parsed, options);
       return fetchFn();
     }
+    const strategy = this.getResolvedStrategy()!;
     const ttl = this.getEffectiveTtl(options)!;
     const key = buildCacheKey(this.config.entityName!, parsed);
-    return this.withCacheErrorPolicy(
-      () => this.config.cacheStrategy!.wrap(key, fetchFn, ttl),
-      fetchFn,
-    );
+    return this.withCacheErrorPolicy(() => strategy.wrap(key, fetchFn, ttl), fetchFn);
   }
 
   /**
    * FIX 2 — apply `cacheErrorPolicy` from CrudConfigService.config.query.cacheErrorPolicy.
    * Mirrors the TypeORM/Drizzle/Prisma helpers exactly.
    */
-  private async withCacheErrorPolicy<R>(
-    wrapped: () => Promise<R>,
-    fetchFn: () => Promise<R>,
-  ): Promise<R> {
+  private async withCacheErrorPolicy<R>(wrapped: () => Promise<R>, fetchFn: () => Promise<R>): Promise<R> {
     try {
       return await wrapped();
     } catch (err) {
@@ -193,10 +195,10 @@ export class MikroOrmFetchHelper<T extends object> implements FetchHelper<QueryB
   }
 
   /**
-   * Cache predicate. Requires strategy + entityName + positive TTL + bypass NOT explicitly false.
+   * Cache predicate. Requires resolved strategy + entityName + positive TTL + bypass NOT explicitly false.
    */
   private shouldCache(parsed: ParsedRequestParams, options: CrudRequestOptions): boolean {
-    if (!this.config.cacheStrategy || !this.config.entityName) return false;
+    if (!this.getResolvedStrategy() || !this.config.entityName) return false;
     if (this.getEffectiveTtl(options) === undefined) return false;
     if (parsed.options?.cache === false) return false; // D-13 bypass-read
     if (parsed.cache === 0) return false; // legacy numeric bypass
@@ -212,6 +214,6 @@ export class MikroOrmFetchHelper<T extends object> implements FetchHelper<QueryB
     const ttl = this.getEffectiveTtl(options);
     if (!ttl) return; // no @Crud cache option set; pass-through silently
     if (parsed.options?.cache === false || parsed.cache === 0) return; // bypass requested
-    if (!this.config.cacheStrategy) throw new CrudCacheNotConfiguredError();
+    if (!this.getResolvedStrategy()) throw new CrudCacheNotConfiguredError();
   }
 }

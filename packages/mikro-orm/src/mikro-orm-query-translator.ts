@@ -93,12 +93,12 @@ export class MikroOrmQueryTranslator<T extends object> implements QueryTranslato
     // Route through FetchHelper so the cache wrap path is honoured for getOne.
     // The extended `findOneOrFail(qb, opts, parsed, options)` signature triggers
     // the cache-aware `wrapRead` path when a strategy is wired.
-    const result = await (this.fetchHelper as any).findOneOrFail(
+    const result = (await (this.fetchHelper as any).findOneOrFail(
       qb,
       { onNotFound: () => undefined },
       parsed,
       options,
-    ) as T | null | undefined;
+    )) as T | null | undefined;
     if (!result) throw opts.onNotFound();
     return result;
   }
