@@ -63,9 +63,7 @@ export class CrudConfigService {
         // leaf values and assigned directly — deepmerge would otherwise strip
         // their prototype methods by copying only own enumerable properties.
         isMergeableObject: (val: unknown) =>
-          val !== null &&
-          typeof val === 'object' &&
-          Object.getPrototypeOf(val) === Object.prototype,
+          val !== null && typeof val === 'object' && Object.getPrototypeOf(val) === Object.prototype,
       },
     );
   }
