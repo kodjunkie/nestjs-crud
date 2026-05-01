@@ -1,4 +1,5 @@
-import { CrudService, CrudRequest, CreateManyDto, GetManyDefaultResponse } from '@nestjs-crud/core';
+import { CrudConfigService, CrudService, CrudRequest, CreateManyDto, GetManyDefaultResponse } from '@nestjs-crud/core';
+import type { CacheStrategy } from '@nestjs-crud/core/cache';
 import { Logger, LoggerService, NotFoundException } from '@nestjs/common';
 import { hasLength, isArrayFull, isNil, isObject, objKeys } from '@nestjs-crud/util';
 import { Table, Column, SQL, and, eq, sql, getTableColumns, getTableName } from 'drizzle-orm';
@@ -27,14 +28,18 @@ export class DrizzleCrudService<T extends Record<string, unknown>> extends CrudS
 
   protected readonly joinResolver: DrizzleJoinResolver;
 
+  protected readonly cacheStrategyOverride?: CacheStrategy;
+
   constructor(
     protected db: DrizzleClient,
     protected table: Table,
     protected relationsConfig: DrizzleRelationsConfig = {},
     logger?: LoggerService,
+    cacheStrategy?: CacheStrategy,
   ) {
     super();
     this.logger = logger ?? new Logger(DrizzleCrudService.name);
+    this.cacheStrategyOverride = cacheStrategy;
     this.onInitMapEntityColumns();
     this.detectDialect();
 
@@ -54,6 +59,9 @@ export class DrizzleCrudService<T extends Record<string, unknown>> extends CrudS
         this.throwBadRequestException(msg);
       },
       joinResolver: this.joinResolver,
+      cacheStrategy: this._resolveCacheStrategy(),
+      entityName: this.tableName,
+      logger: this.logger,
     });
 
     this.logger.debug?.(`CrudService initialized: ${this.tableName}`);
@@ -76,7 +84,8 @@ export class DrizzleCrudService<T extends Record<string, unknown>> extends CrudS
       return this.createPageInfo(data, total, take || total, skip || 0);
     }
 
-    return (await query) as T[];
+    // Non-paginated: route through the FetchHelper cache wrap path.
+    return this.translator.executeMany<T>(query, parsed, options);
   }
 
   public async getOne(req: CrudRequest): Promise<T> {
@@ -92,6 +101,7 @@ export class DrizzleCrudService<T extends Record<string, unknown>> extends CrudS
     }
 
     const saved = await this.insertReturning(entity);
+    await this._invalidateCache();
 
     if (options.routes.createOneBase.returnShallow) {
       return saved;
@@ -135,6 +145,7 @@ export class DrizzleCrudService<T extends Record<string, unknown>> extends CrudS
       return inserted;
     });
 
+    await this._invalidateCache();
     return results;
   }
 
@@ -142,33 +153,39 @@ export class DrizzleCrudService<T extends Record<string, unknown>> extends CrudS
     // Wrap read-modify-write in db.transaction at READ COMMITTED.
     // All reads + writes go through scopedTranslator — service never calls
     // tx.update/insert/delete directly (SQLi guard stays in QueryComposer).
-    return this.db.transaction(
+    const result = await this.db.transaction(
       async (tx: DrizzleClient) => {
         const scopedTranslator = this.translator.cloneFor(tx);
         return this.doUpdateOneInternal(req, dto, scopedTranslator);
       },
       { isolationLevel: 'read committed' },
     );
+    await this._invalidateCache();
+    return result;
   }
 
   public async replaceOne(req: CrudRequest, dto: T | Partial<T>): Promise<T> {
-    return this.db.transaction(
+    const result = await this.db.transaction(
       async (tx: DrizzleClient) => {
         const scopedTranslator = this.translator.cloneFor(tx);
         return this.doReplaceOneInternal(req, dto, scopedTranslator);
       },
       { isolationLevel: 'read committed' },
     );
+    await this._invalidateCache();
+    return result;
   }
 
   public async deleteOne(req: CrudRequest): Promise<void | T> {
-    return this.db.transaction(
+    const result = await this.db.transaction(
       async (tx: DrizzleClient) => {
         const scopedTranslator = this.translator.cloneFor(tx);
         return this.doDeleteOneInternal(req, scopedTranslator);
       },
       { isolationLevel: 'read committed' },
     );
+    await this._invalidateCache();
+    return result;
   }
 
   public async recoverOne(req: CrudRequest): Promise<void | T> {
@@ -184,6 +201,7 @@ export class DrizzleCrudService<T extends Record<string, unknown>> extends CrudS
       .set({ [this.getSoftDeleteColumnName()]: null })
       .where(pkCondition);
 
+    await this._invalidateCache();
     req.parsed.search = this.entityPrimaryColumns.reduce((acc, p) => ({ ...acc, [p]: (found as any)[p] }), {});
     return this.getOneOrFail(req);
   }
@@ -192,6 +210,32 @@ export class DrizzleCrudService<T extends Record<string, unknown>> extends CrudS
 
   protected get tableName(): string {
     return getTableName(this.table);
+  }
+
+  /**
+   * Resolves the effective cache strategy: ctor override takes precedence,
+   * falling back to the global strategy registered via CrudConfigService.
+   * Called lazily at request time so CrudConfigService.load() after app bootstrap works.
+   */
+  protected _resolveCacheStrategy(): CacheStrategy | undefined {
+    return this.cacheStrategyOverride ?? CrudConfigService.config.query?.cacheStrategy;
+  }
+
+  /**
+   * Invalidates all cache entries prefixed with `<tableName>:`.
+   * Called automatically after every successful write. Errors are swallowed
+   * with a warning so a Redis outage does not break write paths.
+   */
+  protected async _invalidateCache(): Promise<void> {
+    const strategy = this._resolveCacheStrategy();
+    if (!strategy) return;
+    try {
+      await strategy.invalidate(`${this.tableName}:`);
+    } catch (err) {
+      this.logger.warn?.(
+        `CacheStrategy.invalidate failed for ${this.tableName}: ${err instanceof Error ? err.name : 'UnknownError'}`,
+      );
+    }
   }
 
   protected onInitMapEntityColumns() {

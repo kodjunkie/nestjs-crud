@@ -37,7 +37,6 @@ export class DrizzleQueryTranslator<T extends Record<string, unknown>> implement
 
   private readonly queryComposer: DrizzleQueryComposer;
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   private readonly fetchHelper: DrizzleFetchHelper;
 
   /** Stored for `cloneFor(tx)` — allows creating a tx-scoped copy. */
@@ -131,5 +130,21 @@ export class DrizzleQueryTranslator<T extends Record<string, unknown>> implement
 
   public getSkip(query: ParsedRequestParams, take: number): number | null {
     return this.queryComposer.getSkip(query, take);
+  }
+
+  /**
+   * Execute a prepared query through the FetchHelper, applying the cache-wrap
+   * (when `cacheStrategy` is wired and the request opts have a positive TTL).
+   *
+   * Called by `DrizzleCrudService.getMany` for the non-paginated path so that
+   * the cache wrap fires on the same request-context objects that carry the
+   * TTL from `@Crud({ query: { cache } })`.
+   */
+  public executeMany<R = unknown>(
+    qb: AnyDrizzleSelect,
+    parsed: ParsedRequestParams,
+    options: CrudRequestOptions,
+  ): Promise<R[]> {
+    return this.fetchHelper.executeMany<R>(qb, parsed, options);
   }
 }

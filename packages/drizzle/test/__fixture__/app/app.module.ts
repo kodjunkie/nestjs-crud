@@ -5,6 +5,7 @@ import { createMysqlClient } from '../db.mysql';
 import * as pgSchema from '../schema.postgres';
 import * as mysqlSchema from '../schema.mysql';
 
+import { UsersCachedController } from './users-cached.controller';
 import { UsersController } from './users.controller';
 import { UsersService, DRIZZLE_DB, DRIZZLE_TABLE } from './users.service';
 
@@ -16,7 +17,7 @@ export class AppModule {
 
     return {
       module: AppModule,
-      controllers: [UsersController],
+      controllers: [UsersController, UsersCachedController],
       providers: [{ provide: DRIZZLE_DB, useValue: db }, { provide: DRIZZLE_TABLE, useValue: table }, UsersService],
       exports: [UsersService],
     };
