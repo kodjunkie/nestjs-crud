@@ -1,4 +1,5 @@
 import { CrudCacheNotConfiguredError, getAllowedColumns, JoinResolver } from '@nestjs-crud/core';
+import type { CacheStrategy } from '@nestjs-crud/core/cache';
 import type { QueryComposer, WhereBuilder } from '@nestjs-crud/core/query';
 import { ParsedRequestParams, QuerySort } from '@nestjs-crud/request';
 import { objKeys } from '@nestjs-crud/util';
@@ -13,6 +14,15 @@ export interface TypeOrmQueryComposerConfig<T extends ObjectLiteral> {
   onBadRequest: (msg: string) => void;
   joinResolver: JoinResolver<SelectQueryBuilder<T>>;
   whereBuilder: WhereBuilder<SelectQueryBuilder<T>, Brackets>;
+  /**
+   * When set, step 7 (TypeORM-native `query.cache(ttl)`) is skipped.
+   * The cache wrap happens in `TypeOrmFetchHelper` instead — preventing
+   * double-caching where stale entries in `DataSource.cache` survive
+   * prefix-invalidate.
+   *
+   * @since 2.2.0
+   */
+  cacheStrategy?: CacheStrategy;
 }
 
 /**
@@ -43,7 +53,10 @@ export class TypeOrmQueryComposer<T extends ObjectLiteral> implements QueryCompo
 
   private readonly whereBuilder: WhereBuilder<SelectQueryBuilder<T>, Brackets>;
 
+  private readonly config: TypeOrmQueryComposerConfig<T>;
+
   constructor(config: TypeOrmQueryComposerConfig<T>) {
+    this.config = config;
     this.repo = config.repo;
     this.entityColumnsHash = config.entityColumnsHash;
     this.entityHasDeleteColumn = config.entityHasDeleteColumn;
@@ -120,13 +133,24 @@ export class TypeOrmQueryComposer<T extends ObjectLiteral> implements QueryCompo
       query.skip(skip as number);
     }
 
-    // 7. Cache (fail-fast on missing DataSource cache provider)
-    if (queryOptions.cache && parsed.cache !== 0) {
+    /**
+     * 7. Cache (legacy TypeORM-native pass-through).
+     *
+     * Skipped when `CacheStrategy` is wired (FetchHelper handles caching). The
+     * fail-fast throw still runs for legacy `DataSource.cache` consumers who have
+     * NOT migrated to the unified `CacheStrategy` interface.
+     *
+     * @deprecated since 2.2.0 — prefer `CacheStrategy` via
+     * `CrudConfigService.load({ query: { cacheStrategy } })` or the CrudService
+     * constructor. The native `query.cache(ttl)` pass-through is on a removal
+     * track for v3.x; new consumers should wire a `CacheStrategy` from day one.
+     */
+    if (queryOptions.cache && parsed.cache !== 0 && !this.config.cacheStrategy) {
       const cacheProvider = this.repo.manager.connection?.queryResultCache;
       if (!cacheProvider) {
         throw new CrudCacheNotConfiguredError();
       }
-      query.cache(queryOptions.cache);
+      query.cache(queryOptions.cache); // queryOptions.cache is already milliseconds
     }
 
     return query;

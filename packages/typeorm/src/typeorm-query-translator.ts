@@ -1,6 +1,8 @@
 import { CrudRequestOptions, JoinResolver, QueryTranslator } from '@nestjs-crud/core';
+import type { CacheStrategy } from '@nestjs-crud/core/cache';
 import { ParsedRequestParams, SCondition } from '@nestjs-crud/request';
 import { Brackets, ObjectLiteral, Repository, SelectQueryBuilder } from 'typeorm';
+import type { LoggerService } from '@nestjs/common';
 
 import { TypeOrmFetchHelper } from './query/typeorm-fetch-helper';
 import { TypeOrmQueryComposer } from './query/typeorm-query-composer';
@@ -20,6 +22,12 @@ export interface TypeOrmQueryTranslatorConfig<T extends ObjectLiteral> {
   entityHasDeleteColumn: boolean;
   onBadRequest: (msg: string) => void;
   joinResolver: JoinResolver<SelectQueryBuilder<T>>;
+  /** Cache backend (resolved by service: ctor > CrudConfigService.config.query.cacheStrategy > undefined) */
+  cacheStrategy?: CacheStrategy;
+  /** Entity name for cache-key prefix. */
+  entityName?: string;
+  /** Optional logger threaded into FetchHelper for `withCacheErrorPolicy` warnings. */
+  logger?: LoggerService;
 }
 
 /**
@@ -56,9 +64,13 @@ export class TypeOrmQueryTranslator<T extends ObjectLiteral> implements QueryTra
       onBadRequest: config.onBadRequest,
       joinResolver: config.joinResolver,
       whereBuilder: this.whereBuilder,
+      cacheStrategy: config.cacheStrategy,
     });
     this.fetchHelper = new TypeOrmFetchHelper<T>({
       onNotFound: defaultOnNotFound,
+      cacheStrategy: config.cacheStrategy,
+      entityName: config.entityName,
+      logger: config.logger,
     });
   }
 
