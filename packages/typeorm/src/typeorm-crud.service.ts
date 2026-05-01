@@ -67,7 +67,7 @@ export class TypeOrmCrudService<T> extends CrudService<T> {
       cacheStrategy: this.cacheStrategyOverride,
       entityName: this.alias,
       logger: this.logger,
-      // NO cacheTtl — TTL is per-request, sourced via FetchHelper.getEffectiveTtl(options)
+      // TTL is per-request, sourced via FetchHelper.getEffectiveTtl(options)
     });
 
     this.logger.debug?.(`CrudService initialized: ${(this.entityType as any)?.name ?? 'unknown'}`);
