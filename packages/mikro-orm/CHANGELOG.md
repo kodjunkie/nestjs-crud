@@ -8,6 +8,16 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 ### Added
 
 - `MikroOrmCrudService<T>` constructor now accepts `EntityManager | EntityRepository<T>`. Consumers using `@InjectRepository(User)` from `@mikro-orm/nestjs` can pass the repository directly to `super()` instead of unwrapping with `repo.getEntityManager()`. The library performs the unwrap internally via a property-based type guard, preserving the ALS-backed em proxy so request-scope identity-map isolation is unchanged.
+- `MikroOrmCacheStrategy` — bring-your-own Redis-backed `CacheStrategy` implementation. Bypasses MikroORM's Result Cache because `em.clearCache(key)` is exact-key only (no prefix scan); the strategy's own SCAN+DEL gives uniform entity-prefix invalidation matching the other adapters. Provides single-flight de-duplication. Uses `{ PX: ttl }` (milliseconds).
+- `MikroOrmCrudService` constructor accepts an optional fourth `cacheStrategy` argument (after `emOrRepo`, `entityClass`, `logger?`). Existing constructor signatures continue to work unchanged.
+- The `EntityManager` thunk (`getEm()`) is preserved — the cache wrap goes around the em-resolved fetch, so request-scope identity-map isolation continues to hold even under cache hits.
+- All six write methods auto-invalidate the entity-prefix cache after a successful commit.
+- `MikroOrmFetchHelper` now throws `CrudCacheNotConfiguredError` when `@Crud({ query: { cache } })` is set without a wired `cacheStrategy`. Mirrors the TypeORM fail-fast behavior.
+- Honors `cacheErrorPolicy` from `CrudConfigService.config.query` — set to `'fallback-to-source'` for graceful degradation when Redis is down.
+
+### Changed
+
+- `redis` is now declared as an optional `peerDependency` (`^5.0.0`) on `@nestjs-crud/mikro-orm` (modeled on `@nestjs-crud/core`'s `@nestjs/swagger` optional-peer pattern). Consumers without Redis install cleanly; instantiating `MikroOrmCacheStrategy` without `redis` throws a clear error.
 
 ## [2.0.1](https://github.com/kodjunkie/nestjs-crud/compare/v2.0.0...v2.0.1) (2026-04-23)
 

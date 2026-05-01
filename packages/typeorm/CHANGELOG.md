@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [Unreleased]
+
+### Added
+
+- `TypeOrmCacheStrategy` — bring-your-own Redis-backed `CacheStrategy` implementation. Uses non-blocking `scanIterator` + `del` for entity-prefix invalidation (never `client.keys`). Provides single-flight de-duplication (concurrent cold-cache reads invoke the underlying query once). Uses `{ PX: ttl }` (milliseconds) for Redis SETs.
+- `TypeOrmCrudService` constructor accepts an optional third `cacheStrategy` argument. Existing `super(repo)` and `super(repo, logger)` calls continue to work unchanged.
+- When a `CacheStrategy` is wired, the adapter skips its native `query.cache(ttl)` step in `QueryComposer` to prevent double-caching. The legacy `DataSource.cache` provider continues to work as a fallback when no `CacheStrategy` is configured. The legacy native pass-through is marked `@deprecated` (since 2.2.0) and is on a v3 removal track.
+- All six write methods auto-invalidate the entity-prefix cache after a successful commit.
+- Honors `cacheErrorPolicy` from `CrudConfigService.config.query` — set to `'fallback-to-source'` for graceful degradation when Redis is down.
+
+
 ## [2.0.0](https://github.com/kodjunkie/nestjs-crud/compare/v1.0.2...v2.0.0) (2026-04-23)
 
 Coordinated v2.0.0 milestone release. See the [root CHANGELOG.md](../../CHANGELOG.md#200--2026-04-23) and the [v2 Migration guide](https://github.com/kodjunkie/nestjs-crud/wiki/v2-Migration) for full breaking-change details.
