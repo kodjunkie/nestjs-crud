@@ -1,38 +1,38 @@
 import type { CacheStrategy } from '@nestjs-crud/core/cache';
-
-/**
- * Loose structural type matching `redis@5+` client without a hard peer-dep.
- * The consumer constructs a `createClient(...)` redis client and passes it in.
- * Uppercase `PX` is the millisecond option (not `EX`, which is seconds).
- */
-type RedisClientLike = {
-  get(key: string): Promise<string | null>;
-  set(key: string, value: string, options: { PX: number }): Promise<unknown>;
-  del(keys: string | string[]): Promise<number>;
-  scanIterator(options: { MATCH: string; COUNT: number }): AsyncIterable<string>;
-};
+import { type RedisLike, toRedisLike } from '@nestjs-crud/core/cache';
 
 /**
  * BYO Redis-backed `CacheStrategy` for the TypeORM adapter.
  *
- * Consumer constructs a `redis@5+` client and passes it in:
+ * Accepts a `redis@5+` (node-redis) client, an `ioredis` client, or any object
+ * implementing the `RedisLike` interface from `@nestjs-crud/core/cache`.
+ * Auto-detection picks the right adapter; lazy-once auto-connect means you do
+ * not need to call `await redis.connect()` before passing the client.
  *
  * ```ts
+ * // Option A — node-redis (v5)
  * import { createClient } from 'redis';
  * import { TypeOrmCacheStrategy } from '@nestjs-crud/typeorm';
  *
  * const redis = createClient({ url: 'redis://localhost:6379' });
- * await redis.connect();
+ * CrudConfigService.load({
+ *   query: { cache: 5000, cacheStrategy: new TypeOrmCacheStrategy(redis) },
+ * });
+ *
+ * // Option B — ioredis
+ * import Redis from 'ioredis';
+ * import { TypeOrmCacheStrategy } from '@nestjs-crud/typeorm';
+ *
+ * const redis = new Redis({ host: 'localhost', port: 6379 });
  * CrudConfigService.load({
  *   query: { cache: 5000, cacheStrategy: new TypeOrmCacheStrategy(redis) },
  * });
  * ```
  *
- * `invalidate(prefix)` uses non-blocking `scanIterator` — NEVER use
- * `client.keys(prefix + '*')`, which blocks Redis's single-threaded event loop.
+ * `invalidate(prefix)` uses non-blocking `scanPrefix` — NEVER `client.keys()`,
+ * which blocks Redis's single-threaded event loop.
  *
- * **TTL units:** all `ttl` arguments are MILLISECONDS. The `set` call uses
- * `{ PX: ttl }` (uppercase PX = milliseconds; do NOT use `EX` which is seconds).
+ * **TTL units:** all `ttl` arguments are MILLISECONDS.
  *
  * **Single-flight:** the `inflight` Map prevents thundering-herd amplification on
  * cold cache. Concurrent `wrap('k', fetchFn, ttl)` callers for the same key await
@@ -43,10 +43,14 @@ type RedisClientLike = {
  * @since 2.2.0
  */
 export class TypeOrmCacheStrategy implements CacheStrategy {
+  private readonly redis: RedisLike;
+
   /** Single-flight de-dup map. Cleared on settle (resolve OR reject). */
   private readonly inflight = new Map<string, Promise<unknown>>();
 
-  constructor(private readonly redisClient: RedisClientLike) {}
+  constructor(client: RedisLike | unknown) {
+    this.redis = toRedisLike(client);
+  }
 
   public async wrap<T>(key: string, fetchFn: () => Promise<T>, ttl: number): Promise<T> {
     const cached = await this.get<T>(key);
@@ -71,22 +75,21 @@ export class TypeOrmCacheStrategy implements CacheStrategy {
   }
 
   public async get<T>(key: string): Promise<T | undefined> {
-    const raw = await this.redisClient.get(key);
+    const raw = await this.redis.get(key);
     return raw ? (JSON.parse(raw) as T) : undefined;
   }
 
   public async set<T>(key: string, value: T, ttl: number): Promise<void> {
-    // PX = milliseconds. Do NOT switch to EX (seconds).
-    await this.redisClient.set(key, JSON.stringify(value), { PX: ttl });
+    await this.redis.set(key, JSON.stringify(value), ttl);
   }
 
   public async invalidate(prefix: string): Promise<void> {
     const keys: string[] = [];
-    for await (const key of this.redisClient.scanIterator({ MATCH: `${prefix}*`, COUNT: 100 })) {
-      keys.push(key);
+    for await (const batch of this.redis.scanPrefix(prefix)) {
+      keys.push(...batch);
     }
     if (keys.length > 0) {
-      await this.redisClient.del(keys);
+      await this.redis.del(keys);
     }
   }
 }
