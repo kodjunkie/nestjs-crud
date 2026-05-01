@@ -70,6 +70,9 @@ export class DrizzleQueryTranslator<T extends Record<string, unknown>> implement
     });
     this.fetchHelper = new DrizzleFetchHelper({
       onNotFound: defaultOnNotFound,
+      cacheStrategy: config.cacheStrategy,
+      entityName: config.entityName,
+      logger: config.logger,
     });
   }
 

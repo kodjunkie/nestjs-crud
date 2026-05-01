@@ -63,6 +63,15 @@ export interface DrizzleQueryTranslatorConfig<_T extends Record<string, unknown>
   onBadRequest: (msg: string) => void;
 
   joinResolver: JoinResolver<any>;
+
+  /** Optional cache backend. When set, read paths are wrapped with the strategy. */
+  cacheStrategy?: import('@nestjs-crud/core/cache').CacheStrategy;
+
+  /** Entity name for cache-key prefix. Required when cacheStrategy is set. */
+  entityName?: string;
+
+  /** Optional logger threaded into FetchHelper for cacheErrorPolicy warnings (FIX 2). */
+  logger?: import('@nestjs/common').LoggerService;
 }
 
 /**
