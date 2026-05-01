@@ -76,11 +76,7 @@ export class PrismaQueryTranslator<T extends Record<string, unknown>> implements
    * the result is wrapped in the strategy — cache-hit returns early, cache-miss
    * executes and sets the result. Bypassed when `?cache=0` or no strategy.
    */
-  public async executeMany<R = T>(
-    qb: any,
-    parsed: ParsedRequestParams,
-    options: CrudRequestOptions,
-  ): Promise<R[]> {
+  public async executeMany<R = T>(qb: any, parsed: ParsedRequestParams, options: CrudRequestOptions): Promise<R[]> {
     return this.fetchHelper.executeMany<R>(qb, parsed, options);
   }
 

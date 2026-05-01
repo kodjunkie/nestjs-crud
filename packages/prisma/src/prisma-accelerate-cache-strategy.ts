@@ -66,10 +66,7 @@ export class PrismaAccelerateCacheStrategy implements CacheStrategy {
     // FIX 1 — convert milliseconds → seconds for Accelerate's API.
     // Math.ceil ensures we never under-cache (e.g. 1500ms rounds up to 2s, not 1).
     const ttlSeconds = Math.ceil(ttl / 1000);
-    return PrismaAccelerateCacheStrategy.currentContext.run(
-      { cacheStrategy: { ttl: ttlSeconds } },
-      fetchFn,
-    );
+    return PrismaAccelerateCacheStrategy.currentContext.run({ cacheStrategy: { ttl: ttlSeconds } }, fetchFn);
   }
 
   public async get<T>(_key: string): Promise<T | undefined> {

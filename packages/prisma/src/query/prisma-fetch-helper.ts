@@ -143,20 +143,14 @@ export class PrismaFetchHelper implements FetchHelper<any> {
     if (!this.shouldCache(parsed, options)) return fetchFn();
     const ttl = this.getEffectiveTtl(options)!;
     const key = buildCacheKey(this.config.entityName!, parsed);
-    return this.withCacheErrorPolicy(
-      () => this.getResolvedStrategy()!.wrap(key, fetchFn, ttl),
-      fetchFn,
-    );
+    return this.withCacheErrorPolicy(() => this.getResolvedStrategy()!.wrap(key, fetchFn, ttl), fetchFn);
   }
 
   /**
    * FIX 2 — apply `cacheErrorPolicy` from CrudConfigService.config.query.cacheErrorPolicy.
    * Mirrors the TypeORM/MikroORM/Drizzle helpers exactly.
    */
-  private async withCacheErrorPolicy<R>(
-    wrapped: () => Promise<R>,
-    fetchFn: () => Promise<R>,
-  ): Promise<R> {
+  private async withCacheErrorPolicy<R>(wrapped: () => Promise<R>, fetchFn: () => Promise<R>): Promise<R> {
     try {
       return await wrapped();
     } catch (err) {
