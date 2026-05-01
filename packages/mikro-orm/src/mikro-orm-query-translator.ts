@@ -51,7 +51,13 @@ export class MikroOrmQueryTranslator<T extends object> implements QueryTranslato
       joinResolver,
       whereBuilder: this.whereBuilder,
     });
-    this.fetchHelper = new MikroOrmFetchHelper<T>({ onNotFound: defaultOnNotFound, getEm });
+    this.fetchHelper = new MikroOrmFetchHelper<T>({
+      onNotFound: defaultOnNotFound,
+      getEm,
+      cacheStrategy: config.cacheStrategy,
+      entityName: config.entityName,
+      logger: config.logger,
+    });
   }
 
   public buildWhere(search: SCondition): FilterQuery<T> | undefined {

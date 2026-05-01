@@ -48,7 +48,13 @@
     "@nestjs-crud/core": "^2.0.0",
     "@nestjs-crud/request": "^2.0.0",
     "@nestjs-crud/util": "^2.0.0",
-    "@nestjs/common": "^10.0.0 || ^11.0.0"
+    "@nestjs/common": "^10.0.0 || ^11.0.0",
+    "redis": "^5.0.0"
+  },
+  "peerDependenciesMeta": {
+    "redis": {
+      "optional": true
+    }
   },
   "gitHead": "6f5fb9b83cde621265e4268c904c6ee98ae89142",
   "devDependencies": {

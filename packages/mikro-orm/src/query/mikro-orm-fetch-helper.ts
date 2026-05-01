@@ -1,8 +1,11 @@
-import { CrudRequestOptions } from '@nestjs-crud/core';
+import { CrudCacheNotConfiguredError, CrudConfigService, CrudRequestOptions } from '@nestjs-crud/core';
+import { buildCacheKey } from '@nestjs-crud/core/cache';
+import type { CacheStrategy } from '@nestjs-crud/core/cache';
 import type { FetchHelper, FetchHelperFindOneOpts } from '@nestjs-crud/core/query';
 import { ParsedRequestParams } from '@nestjs-crud/request';
 import { EntityClass, EntityManager } from '@mikro-orm/core';
 import type { QueryBuilder } from '@mikro-orm/knex';
+import { Logger, LoggerService } from '@nestjs/common';
 
 export interface MikroOrmFetchHelperConfig {
   onNotFound: (alias: string) => void;
@@ -13,9 +16,17 @@ export interface MikroOrmFetchHelperConfig {
    * freeze a stale map across requests, corrupting write paths ("row was
    * updated by another transaction" under load). Every method that needs em
    * calls `this.config.getEm()` fresh; the result is NEVER cached beyond
-   * method scope.
+   * method scope. Cache-wrap closures (when `cacheStrategy` is wired) MUST
+   * also call `getEm()` INSIDE the closure body — capturing em at wrap time
+   * would re-introduce the bug.
    */
   getEm: () => EntityManager;
+  /** Optional cache backend; resolved by the translator. */
+  cacheStrategy?: CacheStrategy;
+  /** Entity name for cache-key prefix. Required when cacheStrategy is set. */
+  entityName?: string;
+  /** Optional logger threaded into withCacheErrorPolicy (FIX 2). */
+  logger?: LoggerService;
 }
 
 /**
@@ -28,36 +39,54 @@ export interface MikroOrmFetchHelperConfig {
  * ### getEm thunk contract
  *
  * The ctor takes `getEm: () => EntityManager` — a thunk, NOT a captured
- * `em` field. `findOneOrFail` resolves em fresh via `this.config.getEm()`
- * so request-scope middleware returns the correct em each call and the
- * identity map never goes stale. DO NOT add `private readonly em` — the
- * acceptance grep explicitly rejects that shape.
+ * `em` field. `findOneOrFail`/`executeMany` resolve em fresh via
+ * `this.config.getEm()` so request-scope middleware returns the correct em
+ * each call and the identity map never goes stale. DO NOT add
+ * Adding a cached `em` instance field — the acceptance grep explicitly rejects that shape.
+ *
+ * **Cache-wrap closures must also call getEm() INSIDE the closure body** —
+ * capturing em outside the closure re-introduces the cross-request identity-map bug.
  *
  * @internal — subject to change without semver-major.
  * @since 2.0.0
  */
 export class MikroOrmFetchHelper<T extends object> implements FetchHelper<QueryBuilder<T>> {
-  constructor(private readonly config: MikroOrmFetchHelperConfig) {}
+  private readonly logger: LoggerService;
+
+  constructor(private readonly config: MikroOrmFetchHelperConfig) {
+    this.logger = config.logger ?? new Logger(MikroOrmFetchHelper.name);
+  }
 
   public async count(qb: QueryBuilder<T>): Promise<number> {
     return (qb as any).getCount();
   }
 
-  public async findOneOrFail<R = T>(qb: QueryBuilder<T>, opts: FetchHelperFindOneOpts): Promise<R> {
+  public async findOneOrFail<R = T>(
+    qb: QueryBuilder<T>,
+    opts: FetchHelperFindOneOpts,
+    parsed?: ParsedRequestParams,
+    options?: CrudRequestOptions,
+  ): Promise<R> {
     // Fresh em per call (di-scope-awareness). The getEm() thunk is
     // re-invoked here instead of captured at ctor time.
     const em = this.config.getEm();
     void em; // em is currently resolved by callers via translator.findOneOrFail; reserved for future parity.
 
-    (qb as any).limit(1);
-    const result = await (qb as any).getSingleResult();
+    const fetchFn = async (): Promise<unknown> => {
+      // CRITICAL: getEm() called INSIDE the closure to preserve the thunk invariant
+      // even when cacheStrategy.wrap re-invokes this closure asynchronously.
+      const innerEm = this.config.getEm();
+      void innerEm;
+      (qb as any).limit(1);
+      const result = await (qb as any).getSingleResult();
+      if (!result) {
+        const notify = opts.onNotFound ?? this.config.onNotFound;
+        notify('');
+      }
+      return result;
+    };
 
-    if (!result) {
-      const notify = opts.onNotFound ?? this.config.onNotFound;
-      notify('');
-    }
-
-    return result as unknown as R;
+    return this.wrapRead<R>(fetchFn as () => Promise<R>, parsed, options);
   }
 
   /**
@@ -79,14 +108,110 @@ export class MikroOrmFetchHelper<T extends object> implements FetchHelper<QueryB
 
   public async executeMany<R = T>(
     qb: QueryBuilder<T>,
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    _parsed: ParsedRequestParams,
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    _options: CrudRequestOptions,
+    parsed: ParsedRequestParams,
+    options: CrudRequestOptions,
   ): Promise<R[]> {
-    // Reserved for future parity. The MikroOrmCrudService currently
-    // owns `getMany` (pagination-aware). Keeping this method declared so
-    // `FetchHelper<Q>` is fully implemented; not yet wired into the facade.
-    return (await (qb as any).getResult()) as unknown as R[];
+    const fetchFn = async (): Promise<unknown[]> => {
+      // CRITICAL: getEm() resolved INSIDE the closure (preserves thunk invariant).
+      const em = this.config.getEm();
+      void em;
+      return (qb as any).getResult();
+    };
+
+    if (!this.shouldCache(parsed, options)) {
+      // D-11 fail-fast: if @Crud cache option is set but no strategy is wired, throw.
+      this.assertStrategyOrPassThrough(parsed, options);
+      return (await fetchFn()) as unknown as R[];
+    }
+    const ttl = this.getEffectiveTtl(options)!;
+    const key = buildCacheKey(this.config.entityName!, parsed);
+    return (await this.withCacheErrorPolicy(
+      () => this.config.cacheStrategy!.wrap(key, fetchFn, ttl),
+      fetchFn,
+    )) as unknown as R[];
+  }
+
+  // ----- private cache helpers -----
+
+  /**
+   * Internal cache wrapper used by `findOneOrFail`. Both `executeMany` and
+   * `findOneOrFail` derive the cache key from the SAME `buildCacheKey(entityName, parsed)`
+   * util (D-06 — full request fingerprint). TTL sourced from `options.query.cache`
+   * via `getEffectiveTtl` (D-10 — no hard-coded TTL fallback).
+   *
+   * If `parsed` or `options` is undefined (e.g. legacy callers without request
+   * context), the wrap is skipped — fetchFn runs directly. NO 1000ms default.
+   */
+  private async wrapRead<R>(
+    fetchFn: () => Promise<R>,
+    parsed?: ParsedRequestParams,
+    options?: CrudRequestOptions,
+  ): Promise<R> {
+    if (!parsed || !options) return fetchFn();
+    if (!this.shouldCache(parsed, options)) {
+      this.assertStrategyOrPassThrough(parsed, options);
+      return fetchFn();
+    }
+    const ttl = this.getEffectiveTtl(options)!;
+    const key = buildCacheKey(this.config.entityName!, parsed);
+    return this.withCacheErrorPolicy(
+      () => this.config.cacheStrategy!.wrap(key, fetchFn, ttl),
+      fetchFn,
+    );
+  }
+
+  /**
+   * FIX 2 — apply `cacheErrorPolicy` from CrudConfigService.config.query.cacheErrorPolicy.
+   * Mirrors the TypeORM/Drizzle/Prisma helpers exactly.
+   */
+  private async withCacheErrorPolicy<R>(
+    wrapped: () => Promise<R>,
+    fetchFn: () => Promise<R>,
+  ): Promise<R> {
+    try {
+      return await wrapped();
+    } catch (err) {
+      const policy = CrudConfigService.config.query?.cacheErrorPolicy ?? 'fail-fast';
+      if (policy === 'fallback-to-source') {
+        this.logger.warn?.(
+          `cache backend error, falling back to source: ${err instanceof Error ? err.message : String(err)}`,
+        );
+        return fetchFn();
+      }
+      throw err;
+    }
+  }
+
+  /**
+   * Extract the per-request TTL from `options.query.cache` (sole production source per D-10).
+   * Returns `undefined` when the option is unset, false, or non-positive. Units = MILLISECONDS (FIX 1).
+   */
+  private getEffectiveTtl(options: CrudRequestOptions): number | undefined {
+    const optsCache = options?.query?.cache;
+    if (typeof optsCache === 'number' && optsCache > 0) return optsCache;
+    return undefined;
+  }
+
+  /**
+   * Cache predicate. Requires strategy + entityName + positive TTL + bypass NOT explicitly false.
+   */
+  private shouldCache(parsed: ParsedRequestParams, options: CrudRequestOptions): boolean {
+    if (!this.config.cacheStrategy || !this.config.entityName) return false;
+    if (this.getEffectiveTtl(options) === undefined) return false;
+    if (parsed.options?.cache === false) return false; // D-13 bypass-read
+    if (parsed.cache === 0) return false; // legacy numeric bypass
+    return true;
+  }
+
+  /**
+   * D-11 fail-fast: if the consumer set `@Crud({ query: { cache } })` but did NOT
+   * wire a strategy, throw `CrudCacheNotConfiguredError`. Mirrors TypeORM behavior.
+   * Skips the throw when bypass is requested (consumer explicitly opted out for this read).
+   */
+  private assertStrategyOrPassThrough(parsed: ParsedRequestParams, options: CrudRequestOptions): void {
+    const ttl = this.getEffectiveTtl(options);
+    if (!ttl) return; // no @Crud cache option set; pass-through silently
+    if (parsed.options?.cache === false || parsed.cache === 0) return; // bypass requested
+    if (!this.config.cacheStrategy) throw new CrudCacheNotConfiguredError();
   }
 }
