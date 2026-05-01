@@ -17,11 +17,12 @@ export class PrismaQueryTranslator<T extends Record<string, unknown>> implements
   any,
   Record<string, any>
 > {
+  /** @internal — exposed via executeMany/findOneOrFail for cache-path routing. */
+  public readonly fetchHelper: PrismaFetchHelper;
+
   private readonly whereBuilder: PrismaWhereBuilder;
 
   private readonly queryComposer: PrismaQueryComposer;
-
-  private readonly fetchHelper: PrismaFetchHelper;
 
   constructor(
     private readonly prisma: PrismaClientLike,
@@ -46,6 +47,9 @@ export class PrismaQueryTranslator<T extends Record<string, unknown>> implements
     this.fetchHelper = new PrismaFetchHelper({
       getDelegate: () => (this.prisma as any)[this.modelName],
       onNotFound: () => undefined,
+      cacheStrategy: config.cacheStrategy,
+      entityName: config.entityName,
+      logger: config.logger,
     });
   }
 
@@ -64,6 +68,38 @@ export class PrismaQueryTranslator<T extends Record<string, unknown>> implements
 
   public async count(q: any): Promise<number> {
     return (this.prisma as any)[this.modelName].count({ where: q.where });
+  }
+
+  /**
+   * Execute the composed query through the FetchHelper cache wrap path.
+   * When a `cacheStrategy` is wired (via ctor config or CrudConfigService global),
+   * the result is wrapped in the strategy — cache-hit returns early, cache-miss
+   * executes and sets the result. Bypassed when `?cache=0` or no strategy.
+   */
+  public async executeMany<R = T>(
+    qb: any,
+    parsed: ParsedRequestParams,
+    options: CrudRequestOptions,
+  ): Promise<R[]> {
+    return this.fetchHelper.executeMany<R>(qb, parsed, options);
+  }
+
+  /**
+   * Execute a findFirst through the FetchHelper cache wrap path.
+   * Routes through the cache wrap when a strategy is wired and the
+   * request is not bypassed (D-10 + D-11).
+   */
+  public async findOneOrFail<R = T>(
+    qb: any,
+    parsed?: ParsedRequestParams,
+    options?: CrudRequestOptions,
+  ): Promise<R | null> {
+    return (this.fetchHelper as any).findOneOrFail(
+      qb,
+      { onNotFound: () => undefined },
+      parsed,
+      options,
+    ) as Promise<R | null>;
   }
 
   /** Transaction scope-clone hook. */

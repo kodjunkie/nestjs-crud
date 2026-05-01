@@ -1,4 +1,5 @@
 import type { JoinResolver } from '@nestjs-crud/core';
+import type { CacheStrategy } from '@nestjs-crud/core/cache';
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 export interface PrismaQueryTranslatorConfig<_T> {
@@ -17,6 +18,20 @@ export interface PrismaQueryTranslatorConfig<_T> {
 
   // names of to-one/to-many relation fields
   relationFields?: string[];
+
+  /** Optional cache backend. When set, FetchHelper wraps reads and invalidates on writes. */
+  cacheStrategy?: CacheStrategy;
+
+  /** Entity name used as cache-key prefix. Required when cacheStrategy is set. */
+  entityName?: string;
+
+  /** Optional logger passed into PrismaFetchHelper for cacheErrorPolicy warnings (FIX 2). */
+  logger?: {
+    error: (msg: string, trace?: string) => void;
+    warn?: (msg: string) => void;
+    debug?: (msg: string) => void;
+    [k: string]: any;
+  };
 }
 
 export interface PrismaClientLike {
