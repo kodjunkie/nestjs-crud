@@ -8,3 +8,4 @@ export * from './interceptors';
 export * from './services';
 export * from './exceptions';
 export * from './util';
+export * from './cache';
