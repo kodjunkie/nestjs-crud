@@ -48,13 +48,17 @@
     "@nestjs/common": "^10.0.0 || ^11.0.0",
     "@prisma/client": "^7.0.0",
     "@prisma/extension-accelerate": "^3.0.0",
-    "redis": "^5.0.0"
+    "redis": "^5.0.0",
+    "ioredis": "^5.0.0"
   },
   "peerDependenciesMeta": {
     "@prisma/extension-accelerate": {
       "optional": true
     },
     "redis": {
+      "optional": true
+    },
+    "ioredis": {
       "optional": true
     }
   }
