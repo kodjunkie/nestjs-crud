@@ -15,7 +15,7 @@
 
 Before upgrading:
 
-- **Node.js >=22.0.0** (enforced via `engines.node` in every `package.json`). Yarn or npm install on Node 20 will warn (or fail with `--engine-strict`).
+- **Node.js >=22.0.0** (enforced via `engines.node` in every `package.json`). Yarn or npm install on Node <22 will warn (or fail with `--engine-strict`).
 - **Peer-dependency ranges (v2.0.0):**
   - `@nestjs/common`: `^10.0.0 || ^11.0.0` (all 4 adapter packages, supports both Nest v10 and v11)
   - `@nestjs/typeorm`: `^10.0.0 || ^11.0.0` (typeorm package only)
@@ -201,7 +201,6 @@ These are not promised by v2.0.0; they are candidates for later releases.
 - **Unified caching API across all 4 adapters.** `@Crud({ query: { cache } })` is wired only for TypeORM. Drizzle, MikroORM, and Prisma consumers use ORM-native primitives at the application layer.
 - **Unified `relationLoadStrategy` across all 4 adapters.** `relationLoadStrategy` is TypeORM-only.
 - **MikroORM v6 dropped.** v2 peer-deps require `@mikro-orm/core ^7.0.0`. v6 consumers must upgrade MikroORM first (closes the critical SQLi and high prototype-pollution alerts in <6.6.10).
-- **Build orchestration evaluation.** `@zmotivat0r/mrepo` is the current orchestrator; replacement candidates (Nx, Turborepo, plain `tsc -b`) are under consideration.
 
 ## See also
 

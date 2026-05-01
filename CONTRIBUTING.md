@@ -16,9 +16,9 @@ Pick the right branch for your contribution:
 ## Local setup
 
 Prerequisites:
-- Node.js >=22.0.0 (enforced via `engines.node` in every package.json — see BUILD-01)
-- Yarn (classic, via Corepack or `npm i -g yarn`)
-- Docker Desktop (for integration tests against Postgres + MySQL)
+- Node.js >=22.0.0 (enforced via `engines.node` in every package.json)
+- Yarn 4 (via Corepack: `corepack enable && corepack prepare yarn@4.12.0 --activate`)
+- Docker Desktop (for integration tests against Postgres + MySQL + Redis)
 
 ```bash
 git clone git@github.com:kodjunkie/nestjs-crud.git
@@ -29,18 +29,18 @@ yarn install
 ## Building locally
 
 ```bash
-yarn build       # Build all packages (tsc -b via mrepo, respects dependency order)
-yarn rebuild     # Clean + build (use when lib/ is out of date or stale)
-yarn clean       # Remove lib/ dirs and .mrepo cache
+yarn build           # Build all packages (`tsc -b` walks composite project refs in dependency order)
+yarn run rebuild     # Clean + build (use when lib/ is out of date or stale; bare `yarn rebuild` invokes Yarn 4's built-in rebuild instead — use the `run` form)
+yarn clean           # Remove lib/ dirs and *.tsbuildinfo files
 ```
 
-**If you see TS5055 errors on `yarn build`:** run `yarn rebuild` instead. The repo's composite TypeScript refs can occasionally produce TS5055 when `lib/` outputs are re-read as inputs; `yarn clean && yarn build` always resolves it. As of v1.0.2, root `tsconfig.json` excludes `**/lib` and `**/*.tsbuildinfo` to prevent this in most cases.
+**If you see TS5055 errors on `yarn build`:** run `yarn run rebuild` (or `yarn clean && yarn build`). Root `tsconfig.json` excludes `**/lib` and `**/*.tsbuildinfo` to prevent this in most cases.
 
 ## Running tests
 
 Tests run against source via Jest's `moduleNameMapper` — no pre-build required for the typeorm/drizzle/core/request/util packages.
 
-Each adapter has its **own jest.config.js** (Phases 09.1 + 10). The `test:*` scripts route correctly:
+Each adapter has its **own jest.config.js** with `testMatch` scoped to that package's `test/`. The `test:*` scripts route correctly:
 
 ```bash
 # Fast: unit tests (no DB) — core, request, util only
@@ -115,13 +115,11 @@ All three pieces are `@internal` — they're exported only via the `@nestjs-crud
 
 When adding a new adapter, follow this exact shape. Cross-reference the existing 4 implementations in `packages/{typeorm,drizzle,mikro-orm,prisma}/src/`.
 
-## Tooling acknowledgement
+## Build orchestration
 
-This monorepo uses [`@zmotivat0r/mrepo`](https://www.npmjs.com/package/@zmotivat0r/mrepo) for build orchestration over Yarn workspaces + Lerna. mrepo respects the package dependency chain (`util → request → core → typeorm/drizzle/mikro-orm/prisma`) and caches build outputs under `.mrepo/`.
+Yarn 4 workspaces + Lerna 9 + native TypeScript composite project refs (`tsc -b`). Lerna handles per-package dispatch (`lerna run`); `tsc -b` walks the dependency chain (`util → request → core → typeorm/drizzle/mikro-orm/prisma`) natively without a separate orchestrator.
 
-A future evaluation of mrepo's stickiness vs. alternatives (Nx, Turborepo, plain tsc -b) is tracked in the project's internal todo list. v2.x ships with mrepo as-is; no migration is planned for the v2.x line.
-
-If `yarn build` fails with TS5055, run `yarn rebuild` (`yarn clean && yarn build`) — see the build section above.
+If `yarn build` fails with TS5055, run `yarn run rebuild` (or `yarn clean && yarn build`).
 
 ## Commit conventions
 
@@ -138,14 +136,14 @@ Scopes: `core`, `request`, `util`, `typeorm`, `drizzle`, `mikro-orm`, `docs`, `c
 
 Lerna's `--conventional-commits` mode reads these when generating CHANGELOGs, so a clean commit history becomes readable release notes automatically.
 
-In v2.x, Lerna's `--conventional-commits` mode also drives per-package CHANGELOG generation during `lerna version`. Commit scopes like `feat(09-04)` (phase-numbered) work but produce noisy auto-CHANGELOG entries — the root `CHANGELOG.md` is hand-curated on release branches to compensate.
+Avoid phase-numbered scopes (e.g. `feat(09-04)` or `feat(21-W0)`) — they produce noisy auto-CHANGELOG entries that contributors can't decode without internal context. Use package or feature scopes for clean output. The root `CHANGELOG.md` is hand-curated on release branches to compensate when auto-generation is imperfect.
 
 ## Pull requests
 
 - One logical change per PR. Keep the diff focused.
 - If adding a bugfix, add a regression test. Especially for regex / state / async bugs — repeat-call or concurrent-call tests are what catch the real-world shape.
 - If changing a package's public API, target `master` (v2) not `v1.0.2`.
-- PR description should include the requirement ID (e.g., `QUALITY-02`, `ARCH-01`) when the change is part of a tracked milestone.
+- PR description should describe the change in plain English. Reference issue numbers with `Fixes #N` / `Closes #N` where applicable.
 
 ## Questions
 
