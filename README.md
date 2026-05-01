@@ -50,12 +50,12 @@ You get `GET /users`, `GET /users/:id`, `POST /users`, `POST /users/bulk`, `PATC
 
 ## Adapters
 
-| Adapter  | Package                                                                          | Docs                                                                                 |
-| -------- | -------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
-| TypeORM  | [`@nestjs-crud/typeorm`](https://www.npmjs.com/package/@nestjs-crud/typeorm)     | [ServiceTypeorm](https://github.com/kodjunkie/nestjs-crud/wiki/ServiceTypeorm)       |
-| Drizzle  | [`@nestjs-crud/drizzle`](https://www.npmjs.com/package/@nestjs-crud/drizzle)     | [ServiceDrizzle](https://github.com/kodjunkie/nestjs-crud/wiki/ServiceDrizzle)       |
-| MikroORM | [`@nestjs-crud/mikro-orm`](https://www.npmjs.com/package/@nestjs-crud/mikro-orm) | [ServiceMikroOrm](https://github.com/kodjunkie/nestjs-crud/wiki/ServiceMikroOrm)     |
-| Prisma   | [`@nestjs-crud/prisma`](https://www.npmjs.com/package/@nestjs-crud/prisma)       | [ServicePrisma](https://github.com/kodjunkie/nestjs-crud/wiki/ServicePrisma)         |
+| Adapter  | Package                                                                          | Docs                                                                             |
+| -------- | -------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| TypeORM  | [`@nestjs-crud/typeorm`](https://www.npmjs.com/package/@nestjs-crud/typeorm)     | [ServiceTypeorm](https://github.com/kodjunkie/nestjs-crud/wiki/ServiceTypeorm)   |
+| Drizzle  | [`@nestjs-crud/drizzle`](https://www.npmjs.com/package/@nestjs-crud/drizzle)     | [ServiceDrizzle](https://github.com/kodjunkie/nestjs-crud/wiki/ServiceDrizzle)   |
+| MikroORM | [`@nestjs-crud/mikro-orm`](https://www.npmjs.com/package/@nestjs-crud/mikro-orm) | [ServiceMikroOrm](https://github.com/kodjunkie/nestjs-crud/wiki/ServiceMikroOrm) |
+| Prisma   | [`@nestjs-crud/prisma`](https://www.npmjs.com/package/@nestjs-crud/prisma)       | [ServicePrisma](https://github.com/kodjunkie/nestjs-crud/wiki/ServicePrisma)     |
 
 Plus [`@nestjs-crud/core`](https://www.npmjs.com/package/@nestjs-crud/core) (decorator + framework, see [Controllers](https://github.com/kodjunkie/nestjs-crud/wiki/Controllers)) and [`@nestjs-crud/request`](https://www.npmjs.com/package/@nestjs-crud/request) (frontend query builder, see [Requests](https://github.com/kodjunkie/nestjs-crud/wiki/Requests)).
 
@@ -63,7 +63,6 @@ Plus [`@nestjs-crud/core`](https://www.npmjs.com/package/@nestjs-crud/core) (dec
 
 - **v2.x** (current): released on npm as `@nestjs-crud/*@2.x`, active development on `master`. Adds the Prisma adapter, a shared `QueryTranslator` core, tighter types, and real-DB integration tests.
 - **v1.0.x** (maintenance): drop-in replacement for [`@nestjsx/crud`](https://github.com/nestjsx/crud). Same API, modernized dependencies, security patches, runs on NestJS 11. Moving off the base library? Install `@nestjs-crud/*@1.0.x` and you're done, no code changes. Browse the [`v1.0.2`](https://github.com/kodjunkie/nestjs-crud/tree/v1.0.2) tag or branch. Backports land there only if needed.
-- Older tags (`v1.0.1` and earlier) remain accessible in Git.
 
 Moving off `@nestjsx/crud`? Step first to `@nestjs-crud/*@1.0.x` (same API, zero code changes), then decide whether to take the breaking-change upgrade to `@nestjs-crud/*@2.x` via the [v1 → v2 guide](https://github.com/kodjunkie/nestjs-crud/wiki/v2-Migration). Already on v2.0? The [v2.0 → v2.1 guide](https://github.com/kodjunkie/nestjs-crud/wiki/v2.1-Migration) covers the Prisma-v7 consumer migration.
 
