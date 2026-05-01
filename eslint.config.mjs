@@ -1,16 +1,10 @@
-import tseslint from 'typescript-eslint';
 import prettierConfig from 'eslint-config-prettier';
 import globals from 'globals';
+import tseslint from 'typescript-eslint';
 
 export default tseslint.config(
   {
-    ignores: [
-      '**/lib/**',
-      '**/node_modules/**',
-      '.mrepo/**',
-      'coverage/**',
-      'packages/typeorm/test/__fixture__/app/**',
-    ],
+    ignores: ['**/lib/**', '**/node_modules/**', 'coverage/**', 'packages/typeorm/test/__fixture__/app/**'],
   },
   ...tseslint.configs.recommended,
   {
