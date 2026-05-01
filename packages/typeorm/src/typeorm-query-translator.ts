@@ -120,12 +120,7 @@ export class TypeOrmQueryTranslator<T extends ObjectLiteral> implements QueryTra
       if (where) builder.andWhere(where);
     }
 
-    return this.fetchHelper.findOneOrFail<T>(
-      builder,
-      { withDeleted, onNotFound: () => onNotFound() },
-      parsed,
-      options,
-    );
+    return this.fetchHelper.findOneOrFail<T>(builder, { withDeleted, onNotFound: () => onNotFound() }, parsed, options);
   }
 
   private get alias(): string {

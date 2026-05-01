@@ -56,7 +56,17 @@ export class CrudConfigService {
         params,
         serialize,
       },
-      { arrayMerge: (a, b, _c) => b },
+      {
+        arrayMerge: (a, b, _c) => b,
+        // Only recursively merge plain objects (prototype === Object.prototype).
+        // Class instances (e.g. CacheStrategy implementations) are treated as
+        // leaf values and assigned directly — deepmerge would otherwise strip
+        // their prototype methods by copying only own enumerable properties.
+        isMergeableObject: (val: unknown) =>
+          val !== null &&
+          typeof val === 'object' &&
+          Object.getPrototypeOf(val) === Object.prototype,
+      },
     );
   }
 

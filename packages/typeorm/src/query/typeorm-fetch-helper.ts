@@ -70,10 +70,7 @@ export class TypeOrmFetchHelper<T extends ObjectLiteral> implements FetchHelper<
     }
     const ttl = this.getEffectiveTtl(options)!;
     const key = buildCacheKey(this.config.entityName!, parsed);
-    return (await this.withCacheErrorPolicy(
-      () => strategy.wrap(key, fetchFn, ttl),
-      fetchFn,
-    )) as unknown as R[];
+    return (await this.withCacheErrorPolicy(() => strategy.wrap(key, fetchFn, ttl), fetchFn)) as unknown as R[];
   }
 
   /**

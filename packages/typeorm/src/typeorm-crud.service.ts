@@ -1,5 +1,6 @@
 import {
   CreateManyDto,
+  CrudConfigService,
   CrudRequest,
   CrudRequestOptions,
   CrudService,
@@ -8,6 +9,7 @@ import {
   prepareEntityBeforeSave as prepareEntityBeforeSaveUtil,
   QueryOptions,
 } from '@nestjs-crud/core';
+import type { CacheStrategy } from '@nestjs-crud/core/cache';
 import { ParsedRequestParams } from '@nestjs-crud/request';
 import { ClassType, hasLength, isArrayFull, isObject, isUndefined } from '@nestjs-crud/util';
 import { plainToClass } from 'class-transformer';
@@ -34,13 +36,18 @@ export class TypeOrmCrudService<T> extends CrudService<T> {
 
   protected readonly joinResolver: TypeOrmJoinResolver<T>;
 
+  /** Per-service cache strategy override (ctor injection). Takes priority over the global default. */
+  protected readonly cacheStrategyOverride?: CacheStrategy;
+
   constructor(
     protected repo: Repository<T>,
     logger?: LoggerService,
+    cacheStrategy?: CacheStrategy,
   ) {
     super();
 
     this.logger = logger ?? new Logger(TypeOrmCrudService.name);
+    this.cacheStrategyOverride = cacheStrategy;
     this.dbName = this.repo.metadata.connection.options.type;
     this.onInitMapEntityColumns();
 
@@ -55,6 +62,12 @@ export class TypeOrmCrudService<T> extends CrudService<T> {
         this.throwBadRequestException(msg);
       },
       joinResolver: this.joinResolver,
+      // Wire ctor override (if any) into the translator; FetchHelper will fall
+      // back to CrudConfigService.config.query.cacheStrategy lazily at call time.
+      cacheStrategy: this.cacheStrategyOverride,
+      entityName: this.alias,
+      logger: this.logger,
+      // NO cacheTtl — TTL is per-request, sourced via FetchHelper.getEffectiveTtl(options)
     });
 
     this.logger.debug?.(`CrudService initialized: ${(this.entityType as any)?.name ?? 'unknown'}`);
@@ -100,6 +113,7 @@ export class TypeOrmCrudService<T> extends CrudService<T> {
     }
 
     const saved = await this.repo.save(entity as DeepPartial<T>);
+    await this._invalidateCache();
 
     if (returnShallow) {
       return saved;
@@ -123,11 +137,13 @@ export class TypeOrmCrudService<T> extends CrudService<T> {
       this.throwBadRequestException('Empty data. Nothing to save.');
     }
 
-    return this.repo.save(bulk as DeepPartial<T>[], { chunk: 50 });
+    const result = await this.repo.save(bulk as DeepPartial<T>[], { chunk: 50 });
+    await this._invalidateCache();
+    return result;
   }
 
   public async updateOne(req: CrudRequest, dto: T | Partial<T>): Promise<T> {
-    return this.withTransaction('updateOne', async (scopedRepo) => {
+    const result = await this.withTransaction('updateOne', async (scopedRepo) => {
       const { allowParamsOverride, returnShallow } = req.options.routes.updateOneBase;
       const paramsFilters = this.getParamFilters(req.parsed);
       const found = await this.getOneOrFail(req, returnShallow, false, scopedRepo);
@@ -148,15 +164,19 @@ export class TypeOrmCrudService<T> extends CrudService<T> {
       });
       return this.getOneOrFail(req, false, false, scopedRepo);
     });
+    await this._invalidateCache();
+    return result;
   }
 
   public async recoverOne(req: CrudRequest): Promise<T> {
     const found = await this.getOneOrFail(req, false, true);
-    return this.repo.recover(found as DeepPartial<T>);
+    const result = await this.repo.recover(found as DeepPartial<T>);
+    await this._invalidateCache();
+    return result;
   }
 
   public async replaceOne(req: CrudRequest, dto: T | Partial<T>): Promise<T> {
-    return this.withTransaction('replaceOne', async (scopedRepo) => {
+    const result = await this.withTransaction('replaceOne', async (scopedRepo) => {
       const { allowParamsOverride, returnShallow } = req.options.routes.replaceOneBase;
       const paramsFilters = this.getParamFilters(req.parsed);
       const found = await this.getOneOrFail(req, returnShallow, false, scopedRepo).catch(() => undefined);
@@ -185,10 +205,12 @@ export class TypeOrmCrudService<T> extends CrudService<T> {
       req.parsed.search = primaryParams.reduce((acc, p) => ({ ...acc, [p]: replaced[p] }), {});
       return this.getOneOrFail(req, false, false, scopedRepo);
     });
+    await this._invalidateCache();
+    return result;
   }
 
   public async deleteOne(req: CrudRequest): Promise<void | T> {
-    return this.withTransaction('deleteOne', async (scopedRepo) => {
+    const result = await this.withTransaction('deleteOne', async (scopedRepo) => {
       const { returnDeleted } = req.options.routes.deleteOneBase;
       const found = await this.getOneOrFail(req, returnDeleted, false, scopedRepo);
       const toReturn = returnDeleted
@@ -203,6 +225,8 @@ export class TypeOrmCrudService<T> extends CrudService<T> {
 
       return toReturn;
     });
+    await this._invalidateCache();
+    return result;
   }
 
   public getParamFilters(parsed: CrudRequest['parsed']): ObjectLiteral {
@@ -227,12 +251,27 @@ export class TypeOrmCrudService<T> extends CrudService<T> {
     return builder;
   }
 
+  /**
+   * Resolve the cache strategy in priority order:
+   * 1. Constructor override (per-service)
+   * 2. `CrudConfigService.config.query.cacheStrategy` (global, lazily read)
+   * 3. undefined (no caching)
+   *
+   * Called at request time for write-path invalidation so tests can wire the
+   * strategy via `CrudConfigService.load(...)` after app bootstrap.
+   *
+   * @since 2.2.0
+   */
+  protected _resolveCacheStrategy(): CacheStrategy | undefined {
+    return this.cacheStrategyOverride ?? CrudConfigService.config.query?.cacheStrategy;
+  }
+
   protected async doGetMany(
     builder: SelectQueryBuilder<T>,
     query: ParsedRequestParams,
     options: CrudRequestOptions,
   ): Promise<GetManyDefaultResponse<T> | T[]> {
-    if (!this.decidePagination(query, options)) return builder.getMany();
+    if (!this.decidePagination(query, options)) return this.translator.executeMany<T>(builder, query, options);
     const [data, total] = await builder.getManyAndCount();
     const limit = this.getTake(query, options.query);
     const offset = this.getSkip(query, limit);
@@ -303,5 +342,25 @@ export class TypeOrmCrudService<T> extends CrudService<T> {
 
   protected getSelect(query: ParsedRequestParams, options: QueryOptions): string[] {
     return getSelectUtil(query, options, this.entityColumns, this.entityPrimaryColumns, this.alias);
+  }
+
+  /**
+   * Auto-invalidate cache by entity-name prefix after a successful write.
+   * No-op when no strategy is wired. Errors from invalidate are logged but not
+   * rethrown — write success is the user-visible outcome; cache eviction is a
+   * best-effort optimization.
+   *
+   * @since 2.2.0
+   */
+  private async _invalidateCache(): Promise<void> {
+    const strategy = this._resolveCacheStrategy();
+    if (!strategy) return;
+    try {
+      await strategy.invalidate(`${this.alias}:`);
+    } catch (err) {
+      this.logger.warn?.(
+        `CacheStrategy.invalidate failed for ${this.alias}: ${err instanceof Error ? err.name : 'UnknownError'}`,
+      );
+    }
   }
 }
