@@ -15,6 +15,13 @@ import { MeController } from './me.controller';
   imports: [TypeOrmModule.forFeature([User, UserProfile])],
   providers: [UsersService],
   exports: [UsersService],
-  controllers: [UsersController, UsersWithStrategyController, MeController, UsersCachedController, UsersCursorController, UsersCursorNoLimitController],
+  controllers: [
+    UsersController,
+    UsersWithStrategyController,
+    MeController,
+    UsersCachedController,
+    UsersCursorController,
+    UsersCursorNoLimitController,
+  ],
 })
 export class UsersModule {}

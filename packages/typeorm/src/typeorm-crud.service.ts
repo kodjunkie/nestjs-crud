@@ -389,9 +389,7 @@ export class TypeOrmCrudService<T> extends CrudService<T> {
 
     // sortField mismatch guard
     if (decoded && decoded.sortField !== sort.field) {
-      this.throwBadRequestException(
-        `Cursor sort field mismatch: expected '${sort.field}', got '${decoded.sortField}'`,
-      );
+      this.throwBadRequestException(`Cursor sort field mismatch: expected '${sort.field}', got '${decoded.sortField}'`);
     }
 
     // D-06a: missing-limit terminal → 400

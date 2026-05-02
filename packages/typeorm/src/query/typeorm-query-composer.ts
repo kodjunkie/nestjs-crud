@@ -167,11 +167,7 @@ export class TypeOrmQueryComposer<T extends ObjectLiteral> implements QueryCompo
    *
    * @since 2.2.0
    */
-  public applyCursor(
-    qb: SelectQueryBuilder<T>,
-    decoded: CursorPayload | null,
-    sort: QuerySort,
-  ): SelectQueryBuilder<T> {
+  public applyCursor(qb: SelectQueryBuilder<T>, decoded: CursorPayload | null, sort: QuerySort): SelectQueryBuilder<T> {
     // SQLi guard — single-segment allowlist (same as mapSort else branch)
     if (!this.entityColumnsHash[sort.field]) {
       this.onBadRequest(`Invalid sort field: '${sort.field}'`);

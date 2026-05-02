@@ -165,7 +165,8 @@ const runSuite = !dialect || dialect === 'mysql' || dialect === 'postgres';
     const page1 = (await request(server).get(`/users-cursor?sort=id,DESC`).expect(200)).body;
     expect(page1.data.length).toBeGreaterThan(0);
     expect(page1.cursor.next).toBeTruthy();
-    const page2 = (await request(server).get(`/users-cursor?sort=id,DESC&cursor=${page1.cursor.next}`).expect(200)).body;
+    const page2 = (await request(server).get(`/users-cursor?sort=id,DESC&cursor=${page1.cursor.next}`).expect(200))
+      .body;
     const p1Ids = new Set(page1.data.map((r: any) => r.id));
     for (const r of page2.data) {
       expect(p1Ids.has(r.id)).toBe(false);
