@@ -606,4 +606,10 @@ describe('#request-query', () => {
       });
     });
   });
+
+  describe('#parse cursor', () => {
+    it.todo('stores opaque cursor string when ?cursor=<token> present — Plan 01');
+    it.todo('throws RequestQueryException on cursor + offset (mutex) — Plan 01');
+    it.todo('throws RequestQueryException on cursor + page (mutex) — Plan 01');
+  });
 });

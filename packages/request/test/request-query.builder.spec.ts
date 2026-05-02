@@ -381,4 +381,10 @@ describe('#request-query', () => {
       });
     });
   });
+
+  describe('#setCursor', () => {
+    it.todo('sets cursor token on query object — Plan 01');
+    it.todo('ignores empty string token — Plan 01');
+    it.todo("registers 'cursor' in default paramNamesMap — Plan 01");
+  });
 });
