@@ -79,5 +79,5 @@ export class CompaniesController {
 
 - [Wiki: ServicePrisma](https://github.com/kodjunkie/nestjs-crud/wiki/ServicePrisma) — full Prisma adapter API
 - [Wiki: Logging](https://github.com/kodjunkie/nestjs-crud/wiki/Logging) — optional `LoggerService` on `serviceConfig.logger` (v2.0.0); defaults to `new Logger(PrismaCrudService.name)` when omitted
-- [Wiki: Caching](https://github.com/kodjunkie/nestjs-crud/wiki/Caching) — current state for Prisma (consumer-owned)
+- [Wiki: Caching](https://github.com/kodjunkie/nestjs-crud/wiki/Caching) — `@Crud({ query: { cache } })` honored via `PrismaRedisCacheStrategy` or `PrismaAccelerateCacheStrategy` (v2.2.0+)
 - [v2 Migration guide](https://github.com/kodjunkie/nestjs-crud/wiki/v2-Migration)

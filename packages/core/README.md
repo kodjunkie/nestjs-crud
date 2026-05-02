@@ -20,7 +20,7 @@ You also need ONE of the adapter packages: `@nestjs-crud/typeorm`, `@nestjs-crud
 - **`@Crud()` decorator** — class-level on a controller; auto-generates 8 RESTful routes (`getMany`, `getOne`, `createOne`, `createMany`, `updateOne`, `replaceOne`, `deleteOne`, `recoverOne`).
 - **`@Override()`, `@ParsedRequest()`** — method/parameter decorators for customizing generated routes.
 - **`CrudConfigService`** — global defaults for query parsing, response shape, validation groups.
-- **`CrudCacheNotConfiguredError`** (new in v2.0.0) — thrown when `@Crud({ query: { cache } })` is set without a `DataSource` cache provider (TypeORM only).
+- **`CrudCacheNotConfiguredError`** (new in v2.0.0) — thrown when `@Crud({ query: { cache } })` is set without a wired `CacheStrategy` (and, for TypeORM, without a `DataSource.cache` fallback). Honored across all 4 adapters via the unified `CacheStrategy` interface in `@nestjs-crud/core/cache` (v2.2.0+).
 
 ```typescript
 import { Controller } from '@nestjs/common';
