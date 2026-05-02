@@ -34,6 +34,16 @@ export interface ParsedRequestParams {
   offset: number;
   page: number;
   cache: number;
+  /**
+   * Opaque cursor token (base64url JSON) — present only when the consumer
+   * passes `?cursor=<token>` in the request. Parser stores the raw string;
+   * the adapter-side cursor branch decodes it.
+   *
+   * Mutually exclusive with `offset` and `page` (parser throws on collision).
+   *
+   * @since 2.2.0
+   */
+  cursor?: string;
   includeDeleted: number;
   /**
    * Per-request bypass/control flags. Distinct from the numeric `cache` field above:

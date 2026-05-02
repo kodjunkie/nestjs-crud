@@ -380,11 +380,22 @@ describe('#request-query', () => {
         expect(test).toBe(expected);
       });
     });
-  });
 
-  describe('#setCursor', () => {
-    it.todo('sets cursor token on query object — Plan 01');
-    it.todo('ignores empty string token — Plan 01');
-    it.todo("registers 'cursor' in default paramNamesMap — Plan 01");
+    describe('#setCursor', () => {
+      it('sets cursor token on query object', () => {
+        qb.setCursor('eyJzb3J0RmllbGQiOiJpZCJ9');
+        expect((qb as any).queryObject.cursor).toBe('eyJzb3J0RmllbGQiOiJpZCJ9');
+      });
+
+      it('ignores empty string token', () => {
+        qb.setCursor('');
+        expect((qb as any).queryObject.cursor).toBeUndefined();
+      });
+
+      it("registers 'cursor' in default paramNamesMap", () => {
+        const builder = RequestQueryBuilder.create();
+        expect((builder as any).paramNames.cursor).toBe('cursor');
+      });
+    });
   });
 });

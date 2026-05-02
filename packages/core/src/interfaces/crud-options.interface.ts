@@ -35,6 +35,20 @@ export interface CrudOptions {
    * Reserved keys (`'__proto__'`, `'constructor'`, `'prototype'`) are rejected at decoration time.
    */
   serviceProperty?: string;
+
+  /**
+   * Pagination mode for `getManyBase` (controller-level default).
+   * - 'offset' (default): existing offset/page response shape `{ data, count, total, page, pageCount }`.
+   * - 'cursor': opt-in cursor pagination — response shape `{ data, count, cursor: { next, prev } }`.
+   *
+   * Per-route override available via `query.pagination` on `QueryOptions`.
+   * Cursor mode requires a single explicit sort field and a `limit`; cursor
+   * tokens are opaque base64url JSON, NOT signed (authorization stays in
+   * `@CrudAuth`).
+   *
+   * @since 2.2.0
+   */
+  pagination?: 'offset' | 'cursor';
 }
 
 export interface MergedCrudOptions extends CrudOptions {

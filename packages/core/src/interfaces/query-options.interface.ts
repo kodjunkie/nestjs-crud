@@ -23,6 +23,16 @@ export interface QueryOptions {
    * only affects the TypeORM adapter. No-op for non-TypeORM adapters.
    */
   relationLoadStrategy?: 'join' | 'query';
+
+  /**
+   * Pagination mode for this route's `getManyBase`. Per-route override of
+   * controller-level `CrudOptions.pagination`.
+   * - 'offset' (default): offset response shape `{ data, count, total, page, pageCount }`.
+   * - 'cursor': opt-in cursor pagination — response shape `{ data, count, cursor: { next, prev } }`.
+   *
+   * @since 2.2.0
+   */
+  pagination?: 'offset' | 'cursor';
 }
 
 export interface JoinOptions {

@@ -12,6 +12,8 @@ export interface RequestQueryBuilderOptions {
     offset?: string | string[];
     page?: string | string[];
     cache?: string | string[];
+    /** @since 2.2.0 */
+    cursor?: string | string[];
     includeDeleted?: string | string[];
   };
 }

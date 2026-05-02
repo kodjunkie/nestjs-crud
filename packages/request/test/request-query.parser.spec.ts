@@ -605,11 +605,33 @@ describe('#request-query', () => {
         expect(test).toMatchObject(expected);
       });
     });
-  });
 
-  describe('#parse cursor', () => {
-    it.todo('stores opaque cursor string when ?cursor=<token> present — Plan 01');
-    it.todo('throws RequestQueryException on cursor + offset (mutex) — Plan 01');
-    it.todo('throws RequestQueryException on cursor + page (mutex) — Plan 01');
+    describe('#parse cursor', () => {
+      it('stores opaque cursor string when ?cursor=<token> present', () => {
+        const query = { cursor: 'eyJzb3J0RmllbGQiOiJpZCJ9' };
+        const test = qp.parseQuery(query);
+        expect(test.cursor).toBe('eyJzb3J0RmllbGQiOiJpZCJ9');
+      });
+
+      it('returns parsed.cursor === undefined when ?cursor absent', () => {
+        const test = qp.parseQuery({});
+        expect(test.cursor).toBeUndefined();
+      });
+
+      it('throws RequestQueryException on cursor + offset (mutex)', () => {
+        const query = { cursor: 'X', offset: '10' };
+        expect(() => qp.parseQuery(query)).toThrow(RequestQueryException);
+      });
+
+      it('throws RequestQueryException on cursor + page (mutex)', () => {
+        const query = { cursor: 'X', page: '2' };
+        expect(() => qp.parseQuery(query)).toThrow(RequestQueryException);
+      });
+
+      it('does not throw on empty cursor + offset (empty cursor treated as absent)', () => {
+        const query = { cursor: '', offset: '10' };
+        expect(() => qp.parseQuery(query)).not.toThrow();
+      });
+    });
   });
 });

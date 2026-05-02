@@ -63,6 +63,8 @@ export class RequestQueryParser implements ParsedRequestParams {
 
   public cache: number;
 
+  public cursor: string;
+
   public includeDeleted: number;
 
   public options: ParsedRequestOptions = {};
@@ -98,6 +100,7 @@ export class RequestQueryParser implements ParsedRequestParams {
       offset: this.offset,
       page: this.page,
       cache: this.cache,
+      cursor: this.cursor,
       includeDeleted: this.includeDeleted,
       options: this.options,
     };
@@ -161,6 +164,12 @@ export class RequestQueryParser implements ParsedRequestParams {
           'includeDeleted',
           this.numericParser.bind(this, 'includeDeleted'),
         )[0];
+        this.cursor = this.parseQueryParam('cursor', (s: string) => s)[0];
+        if (this.cursor && this.cursor.length > 0 && (this.offset !== undefined || this.page !== undefined)) {
+          throw new RequestQueryException(
+            'Invalid query: cursor and offset/page are mutually exclusive',
+          );
+        }
       }
     }
 
