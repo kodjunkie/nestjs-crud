@@ -166,9 +166,7 @@ export class RequestQueryParser implements ParsedRequestParams {
         )[0];
         this.cursor = this.parseQueryParam('cursor', (s: string) => s)[0];
         if (this.cursor && this.cursor.length > 0 && (this.offset !== undefined || this.page !== undefined)) {
-          throw new RequestQueryException(
-            'Invalid query: cursor and offset/page are mutually exclusive',
-          );
+          throw new RequestQueryException('Invalid query: cursor and offset/page are mutually exclusive');
         }
       }
     }
