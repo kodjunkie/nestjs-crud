@@ -1,5 +1,6 @@
 import { CrudCacheNotConfiguredError, CrudConfigService, getAllowedColumns, JoinResolver } from '@nestjs-crud/core';
 import type { CacheStrategy } from '@nestjs-crud/core/cache';
+import type { CursorPayload } from '@nestjs-crud/core/cursor';
 import type { QueryComposer, WhereBuilder } from '@nestjs-crud/core/query';
 import { ParsedRequestParams, QuerySort } from '@nestjs-crud/request';
 import { objKeys } from '@nestjs-crud/util';
@@ -155,6 +156,55 @@ export class TypeOrmQueryComposer<T extends ObjectLiteral> implements QueryCompo
     }
 
     return query;
+  }
+
+  /**
+   * Apply keyset cursor WHERE + ORDER BY (with PK tie-breaker) on top of the
+   * already-composed query. Skipped silently when `decoded` is null (first page).
+   *
+   * SQLi guard: validates `sort.field` via the same `entityColumnsHash`
+   * allowlist used by `mapSort` for single-segment sort fields.
+   *
+   * @since 2.2.0
+   */
+  public applyCursor(
+    qb: SelectQueryBuilder<T>,
+    decoded: CursorPayload | null,
+    sort: QuerySort,
+  ): SelectQueryBuilder<T> {
+    // SQLi guard — single-segment allowlist (same as mapSort else branch)
+    if (!this.entityColumnsHash[sort.field]) {
+      this.onBadRequest(`Invalid sort field: '${sort.field}'`);
+    }
+
+    const isAsc = sort.order === 'ASC';
+    // For forward navigation: ASC keeps >, DESC keeps <.
+    // For backward navigation: invert the comparison direction.
+    const isForward = !decoded || decoded.dir === 'next';
+    const cmp = isAsc === isForward ? '>' : '<';
+    const dir: 'ASC' | 'DESC' = isAsc === isForward ? 'ASC' : 'DESC';
+    const idField = this.entityPrimaryColumns[0];
+    // Build sort params using same format as mapSort (object with alias.property keys)
+    const sortParams = this.mapSort([
+      { field: sort.field, order: dir },
+      { field: idField, order: dir },
+    ]);
+    // Always apply ORDER BY with PK tie-breaker — critical for correctness when sort field
+    // has ties across page boundaries (ensures consistent row order on ALL pages).
+    qb.orderBy(sortParams);
+
+    // Add keyset WHERE only for non-first pages (decoded carries cursor position)
+    if (decoded) {
+      // Use alias.property strings — TypeORM resolves these in andWhere template expressions.
+      const sortColRef = `${this.alias}.${sort.field}`;
+      const idColRef = `${this.alias}.${idField}`;
+      qb.andWhere(
+        `(${sortColRef} ${cmp} :__cursor_v) OR (${sortColRef} = :__cursor_v AND ${idColRef} ${cmp} :__cursor_id)`,
+        { __cursor_v: decoded.sortValue, __cursor_id: decoded.id },
+      );
+    }
+
+    return qb;
   }
 
   private get alias(): string {

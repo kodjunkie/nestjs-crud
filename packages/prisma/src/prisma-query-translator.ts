@@ -2,7 +2,8 @@ import type { QueryTranslator } from '@nestjs-crud/core';
 
 import type { CrudRequestOptions } from '@nestjs-crud/core';
 
-import type { ParsedRequestParams, SCondition } from '@nestjs-crud/request';
+import type { CursorPayload } from '@nestjs-crud/core/cursor';
+import type { ParsedRequestParams, QuerySort, SCondition } from '@nestjs-crud/request';
 
 import { PrismaClientLike, PrismaQueryTranslatorConfig } from './interfaces';
 
@@ -101,5 +102,16 @@ export class PrismaQueryTranslator<T extends Record<string, unknown>> implements
   /** Transaction scope-clone hook. */
   public cloneFor(tx: PrismaClientLike): PrismaQueryTranslator<T> {
     return new PrismaQueryTranslator<T>(tx, this.modelName, this.config);
+  }
+
+  /**
+   * Cursor pagination stub — full implementation in Plan 05.
+   * Satisfies the required `QueryTranslator<Q,W>.applyCursor` contract.
+   *
+   * @since 2.2.0
+   */
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  public applyCursor(query: any, decoded: CursorPayload | null, sort: QuerySort): any {
+    return (this.queryComposer as any).applyCursor(query, decoded, sort);
   }
 }

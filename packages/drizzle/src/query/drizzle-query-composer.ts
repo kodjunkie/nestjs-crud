@@ -1,4 +1,5 @@
 import { CrudRequestOptions, getAllowedColumns, JoinResolver } from '@nestjs-crud/core';
+import type { CursorPayload } from '@nestjs-crud/core/cursor';
 import type { QueryComposer, WhereBuilder } from '@nestjs-crud/core/query';
 import { ParsedRequestParams, QuerySort } from '@nestjs-crud/request';
 import { objKeys } from '@nestjs-crud/util';
@@ -204,6 +205,18 @@ export class DrizzleQueryComposer implements QueryComposer<AnyDrizzleSelect> {
 
   public getSkip(query: ParsedRequestParams, take: number): number | null {
     return query.page && take ? take * (query.page - 1) : query.offset ? query.offset : null;
+  }
+
+  /**
+   * Cursor pagination stub — full implementation in Plan 03.
+   * Satisfies the required `QueryComposer<Q>.applyCursor` contract
+   * from the core interface so the build passes while Plan 03 is pending.
+   *
+   * @since 2.2.0
+   */
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  public applyCursor(_qb: AnyDrizzleSelect, _decoded: CursorPayload | null, _sort: QuerySort): AnyDrizzleSelect {
+    throw new Error('Drizzle cursor pagination not yet implemented — pending Plan 03');
   }
 
   /**

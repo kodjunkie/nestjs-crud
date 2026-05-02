@@ -1,7 +1,8 @@
 import { getAllowedColumns } from '@nestjs-crud/core';
+import type { CursorPayload } from '@nestjs-crud/core/cursor';
 import type { QueryComposer, WhereBuilder } from '@nestjs-crud/core/query';
 import type { CrudRequestOptions, JoinOptions, JoinResolver } from '@nestjs-crud/core';
-import type { ParsedRequestParams } from '@nestjs-crud/request';
+import type { ParsedRequestParams, QuerySort } from '@nestjs-crud/request';
 
 /**
  * @internal — subject to change without semver-major.
@@ -123,6 +124,17 @@ export class PrismaQueryComposer implements QueryComposer<any> {
 
   public getSkip(query: ParsedRequestParams, take: number): number | null {
     return query.page && take ? take * (query.page - 1) : query.offset ? query.offset : null;
+  }
+
+  /**
+   * Cursor pagination stub — full implementation in Plan 05.
+   * Satisfies the required `QueryComposer<Q>.applyCursor` contract.
+   *
+   * @since 2.2.0
+   */
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  public applyCursor(qb: any, _decoded: CursorPayload | null, _sort: QuerySort): any {
+    throw new Error('Prisma cursor pagination not yet implemented — pending Plan 05');
   }
 
   /**

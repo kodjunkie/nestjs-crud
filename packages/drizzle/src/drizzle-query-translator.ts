@@ -1,5 +1,6 @@
 import { CrudRequestOptions, QueryTranslator } from '@nestjs-crud/core';
-import { ParsedRequestParams, SCondition } from '@nestjs-crud/request';
+import type { CursorPayload } from '@nestjs-crud/core/cursor';
+import { ParsedRequestParams, QuerySort, SCondition } from '@nestjs-crud/request';
 import { Column, SQL, Table } from 'drizzle-orm';
 
 import { DrizzleClient } from './interfaces/drizzle-client.interface';
@@ -146,5 +147,16 @@ export class DrizzleQueryTranslator<T extends Record<string, unknown>> implement
     options: CrudRequestOptions,
   ): Promise<R[]> {
     return this.fetchHelper.executeMany<R>(qb, parsed, options);
+  }
+
+  /**
+   * Cursor pagination stub — full implementation in Plan 03.
+   * Satisfies the required `QueryTranslator<Q,W>.applyCursor` contract.
+   *
+   * @since 2.2.0
+   */
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  public applyCursor(query: AnyDrizzleSelect, decoded: CursorPayload | null, sort: QuerySort): AnyDrizzleSelect {
+    return this.queryComposer.applyCursor(query, decoded, sort);
   }
 }

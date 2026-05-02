@@ -1,6 +1,7 @@
 import { CrudRequestOptions, JoinResolver, QueryTranslator } from '@nestjs-crud/core';
 import type { CacheStrategy } from '@nestjs-crud/core/cache';
-import { ParsedRequestParams, SCondition } from '@nestjs-crud/request';
+import type { CursorPayload } from '@nestjs-crud/core/cursor';
+import { ParsedRequestParams, QuerySort, SCondition } from '@nestjs-crud/request';
 import { Brackets, ObjectLiteral, Repository, SelectQueryBuilder } from 'typeorm';
 import type { LoggerService } from '@nestjs/common';
 
@@ -84,6 +85,14 @@ export class TypeOrmQueryTranslator<T extends ObjectLiteral> implements QueryTra
     options: CrudRequestOptions,
   ): SelectQueryBuilder<T> {
     return this.queryComposer.applyToQuery(query, parsed, options);
+  }
+
+  public applyCursor(
+    query: SelectQueryBuilder<T>,
+    decoded: CursorPayload | null,
+    sort: QuerySort,
+  ): SelectQueryBuilder<T> {
+    return this.queryComposer.applyCursor(query, decoded, sort);
   }
 
   public newQuery(select?: string[]): SelectQueryBuilder<T> {

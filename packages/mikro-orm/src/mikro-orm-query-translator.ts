@@ -1,5 +1,6 @@
 import { CrudRequestOptions, QueryTranslator } from '@nestjs-crud/core';
-import { ParsedRequestParams, SCondition } from '@nestjs-crud/request';
+import type { CursorPayload } from '@nestjs-crud/core/cursor';
+import { ParsedRequestParams, QuerySort, SCondition } from '@nestjs-crud/request';
 import { EntityClass, EntityManager, FilterQuery } from '@mikro-orm/core';
 import type { QueryBuilder } from '@mikro-orm/knex';
 
@@ -131,5 +132,16 @@ export class MikroOrmQueryTranslator<T extends object> implements QueryTranslato
 
   public getSkip(query: ParsedRequestParams, take: number): number | null {
     return this.composer.getSkip(query, take);
+  }
+
+  /**
+   * Cursor pagination stub — full implementation in Plan 04.
+   * Satisfies the required `QueryTranslator<Q,W>.applyCursor` contract.
+   *
+   * @since 2.2.0
+   */
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  public applyCursor(query: QueryBuilder<any>, decoded: CursorPayload | null, sort: QuerySort): QueryBuilder<any> {
+    return this.composer.applyCursor(query, decoded, sort);
   }
 }

@@ -15,7 +15,7 @@ import { UsersService } from './users.service';
  */
 @Crud({
   model: { type: User },
-  query: { limit: 5 },
+  query: { pagination: 'cursor', limit: 5 },
 })
 @Controller('users-cursor')
 export class UsersCursorController {
