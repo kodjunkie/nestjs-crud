@@ -39,5 +39,7 @@ const runSuite = dialect === 'postgres' || dialect === 'mysql';
   it.todo('missing limit + cursor mode returns 400 BadRequest — Plan 03');
 
   // Reference server in placeholder so unused-var lint does not complain on the stub
-  it('app boots', () => { expect(server).toBeDefined(); });
+  it('app boots', () => {
+    expect(server).toBeDefined();
+  });
 });

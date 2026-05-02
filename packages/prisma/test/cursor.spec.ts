@@ -42,5 +42,7 @@ const dialect = (provider === 'mysql' ? 'mysql' : 'postgres') as 'postgres' | 'm
   // Reference server in placeholder so unused-var lint does not complain on the stub
   // dialect is used in the describe label above; void here to keep it referenced
   void dialect;
-  it('app boots', () => { expect(server).toBeDefined(); });
+  it('app boots', () => {
+    expect(server).toBeDefined();
+  });
 });
