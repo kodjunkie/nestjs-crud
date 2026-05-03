@@ -1,4 +1,5 @@
 import { CrudRequestOptions, getAllowedColumns, JoinResolver } from '@nestjs-crud/core';
+import type { CursorPayload } from '@nestjs-crud/core/cursor';
 import type { QueryComposer, WhereBuilder } from '@nestjs-crud/core/query';
 import { ParsedRequestParams, QuerySort } from '@nestjs-crud/request';
 import { objKeys } from '@nestjs-crud/util';
@@ -168,6 +169,49 @@ export class MikroOrmQueryComposer<T extends object> implements QueryComposer<Qu
   }
 
   /**
+   * Apply keyset cursor WHERE + ORDER BY (with PK tie-breaker) on top of the
+   * already-composed query. Skipped silently when `decoded` is null (first page).
+   *
+   * SQLi guard: validates `sort.field` via the same `propertiesMap` allowlist
+   * used by `mapSort`.
+   *
+   * **em-free:** Honors the em-thunk invariant — reads only `this.propertiesMap`
+   * and `this.entityPrimaryColumns` (both injected via config). The cursor
+   * branch in the service freshly resolves the entity manager per call via
+   * `createQueryBuilder` on the injected proxy.
+   *
+   * @since 2.2.0
+   */
+  public applyCursor(qb: QueryBuilder<T>, decoded: CursorPayload | null, sort: QuerySort): QueryBuilder<T> {
+    if (!decoded) return qb;
+
+    if (!this.propertiesMap[sort.field]) {
+      this.onBadRequest(`Invalid sort field: '${sort.field}'`);
+    }
+
+    const isAsc = sort.order === 'ASC';
+    const isForward = decoded.dir === 'next';
+    const op = isAsc === isForward ? '$gt' : '$lt';
+    const dir: 'ASC' | 'DESC' = isAsc === isForward ? 'ASC' : 'DESC';
+    const idField = this.entityPrimaryColumns[0];
+
+    // Smart-query OR-decomposed shape — same predicate structure as
+    // TypeORM/Drizzle/Prisma adapters. MikroORM v7 QB types narrow generics
+    // in ESM-quirky ways; the existing applyToQuery body uses (qb as any)
+    // for the same reason.
+    (qb as any).andWhere({
+      $or: [
+        { [sort.field]: { [op]: decoded.sortValue } },
+        { $and: [{ [sort.field]: decoded.sortValue }, { [idField]: { [op]: decoded.id } }] },
+      ],
+    });
+    // Re-apply ORDER BY with PK tie-breaker
+    (qb as any).orderBy({ [sort.field]: dir, [idField]: dir });
+
+    return qb;
+  }
+
+  /**
    * SQLi invariant: dotted-path sort fields MUST round-trip through
    * `joinResolver.getAllowedColumnsFor(relation)` before reaching `orderBy`.
    * Single-segment fields assert against `propertiesMap`.
@@ -189,10 +233,7 @@ export class MikroOrmQueryComposer<T extends object> implements QueryComposer<Qu
         }
         orderBy[s.field] = s.order === 'DESC' ? 'DESC' : 'ASC';
       } else {
-        if (!this.propertiesMap[s.field]) {
-          this.onBadRequest(`Invalid sort field: '${s.field}'`);
-          continue;
-        }
+        if (!this.propertiesMap[s.field]) this.onBadRequest(`Invalid sort field: '${s.field}'`);
         orderBy[s.field] = s.order === 'DESC' ? 'DESC' : 'ASC';
       }
     }

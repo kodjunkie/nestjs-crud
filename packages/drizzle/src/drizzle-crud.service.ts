@@ -1,4 +1,15 @@
-import { CrudService, CrudRequest, CreateManyDto, GetManyDefaultResponse } from '@nestjs-crud/core';
+import {
+  CrudConfigService,
+  CrudService,
+  CrudRequest,
+  CrudRequestOptions,
+  CreateManyDto,
+  GetManyDefaultResponse,
+} from '@nestjs-crud/core';
+import type { CacheStrategy } from '@nestjs-crud/core/cache';
+import { CursorCodec } from '@nestjs-crud/core/cursor';
+import type { CursorPaginatedResponse } from '@nestjs-crud/core/cursor';
+import { ParsedRequestParams } from '@nestjs-crud/request';
 import { Logger, LoggerService, NotFoundException } from '@nestjs/common';
 import { hasLength, isArrayFull, isNil, isObject, objKeys } from '@nestjs-crud/util';
 import { Table, Column, SQL, and, eq, sql, getTableColumns, getTableName } from 'drizzle-orm';
@@ -27,14 +38,18 @@ export class DrizzleCrudService<T extends Record<string, unknown>> extends CrudS
 
   protected readonly joinResolver: DrizzleJoinResolver;
 
+  protected readonly cacheStrategyOverride?: CacheStrategy;
+
   constructor(
     protected db: DrizzleClient,
     protected table: Table,
     protected relationsConfig: DrizzleRelationsConfig = {},
     logger?: LoggerService,
+    cacheStrategy?: CacheStrategy,
   ) {
     super();
     this.logger = logger ?? new Logger(DrizzleCrudService.name);
+    this.cacheStrategyOverride = cacheStrategy;
     this.onInitMapEntityColumns();
     this.detectDialect();
 
@@ -54,6 +69,9 @@ export class DrizzleCrudService<T extends Record<string, unknown>> extends CrudS
         this.throwBadRequestException(msg);
       },
       joinResolver: this.joinResolver,
+      cacheStrategy: this._resolveCacheStrategy(),
+      entityName: this.tableName,
+      logger: this.logger,
     });
 
     this.logger.debug?.(`CrudService initialized: ${this.tableName}`);
@@ -61,8 +79,14 @@ export class DrizzleCrudService<T extends Record<string, unknown>> extends CrudS
 
   // === PUBLIC CRUD VERBS ===
 
-  public async getMany(req: CrudRequest): Promise<GetManyDefaultResponse<T> | T[]> {
+  public async getMany(req: CrudRequest): Promise<GetManyDefaultResponse<T> | CursorPaginatedResponse<T> | T[]> {
     const { parsed, options } = req;
+    const mode = this.getPaginationMode(options);
+
+    if (mode === 'cursor') {
+      return this.doGetManyCursor(parsed, options);
+    }
+
     const selectMap = this.translator.getSelect(parsed, options.query);
     const query = this.db.select(selectMap).from(this.table).$dynamic();
 
@@ -76,7 +100,8 @@ export class DrizzleCrudService<T extends Record<string, unknown>> extends CrudS
       return this.createPageInfo(data, total, take || total, skip || 0);
     }
 
-    return (await query) as T[];
+    // Non-paginated: route through the FetchHelper cache wrap path.
+    return this.translator.executeMany<T>(query, parsed, options);
   }
 
   public async getOne(req: CrudRequest): Promise<T> {
@@ -92,6 +117,7 @@ export class DrizzleCrudService<T extends Record<string, unknown>> extends CrudS
     }
 
     const saved = await this.insertReturning(entity);
+    await this._invalidateCache();
 
     if (options.routes.createOneBase.returnShallow) {
       return saved;
@@ -135,6 +161,7 @@ export class DrizzleCrudService<T extends Record<string, unknown>> extends CrudS
       return inserted;
     });
 
+    await this._invalidateCache();
     return results;
   }
 
@@ -142,33 +169,39 @@ export class DrizzleCrudService<T extends Record<string, unknown>> extends CrudS
     // Wrap read-modify-write in db.transaction at READ COMMITTED.
     // All reads + writes go through scopedTranslator — service never calls
     // tx.update/insert/delete directly (SQLi guard stays in QueryComposer).
-    return this.db.transaction(
+    const result = await this.db.transaction(
       async (tx: DrizzleClient) => {
         const scopedTranslator = this.translator.cloneFor(tx);
         return this.doUpdateOneInternal(req, dto, scopedTranslator);
       },
       { isolationLevel: 'read committed' },
     );
+    await this._invalidateCache();
+    return result;
   }
 
   public async replaceOne(req: CrudRequest, dto: T | Partial<T>): Promise<T> {
-    return this.db.transaction(
+    const result = await this.db.transaction(
       async (tx: DrizzleClient) => {
         const scopedTranslator = this.translator.cloneFor(tx);
         return this.doReplaceOneInternal(req, dto, scopedTranslator);
       },
       { isolationLevel: 'read committed' },
     );
+    await this._invalidateCache();
+    return result;
   }
 
   public async deleteOne(req: CrudRequest): Promise<void | T> {
-    return this.db.transaction(
+    const result = await this.db.transaction(
       async (tx: DrizzleClient) => {
         const scopedTranslator = this.translator.cloneFor(tx);
         return this.doDeleteOneInternal(req, scopedTranslator);
       },
       { isolationLevel: 'read committed' },
     );
+    await this._invalidateCache();
+    return result;
   }
 
   public async recoverOne(req: CrudRequest): Promise<void | T> {
@@ -184,6 +217,7 @@ export class DrizzleCrudService<T extends Record<string, unknown>> extends CrudS
       .set({ [this.getSoftDeleteColumnName()]: null })
       .where(pkCondition);
 
+    await this._invalidateCache();
     req.parsed.search = this.entityPrimaryColumns.reduce((acc, p) => ({ ...acc, [p]: (found as any)[p] }), {});
     return this.getOneOrFail(req);
   }
@@ -192,6 +226,32 @@ export class DrizzleCrudService<T extends Record<string, unknown>> extends CrudS
 
   protected get tableName(): string {
     return getTableName(this.table);
+  }
+
+  /**
+   * Resolves the effective cache strategy: ctor override takes precedence,
+   * falling back to the global strategy registered via CrudConfigService.
+   * Called lazily at request time so CrudConfigService.load() after app bootstrap works.
+   */
+  protected _resolveCacheStrategy(): CacheStrategy | undefined {
+    return this.cacheStrategyOverride ?? CrudConfigService.config.query?.cacheStrategy;
+  }
+
+  /**
+   * Invalidates all cache entries prefixed with `<tableName>:`.
+   * Called automatically after every successful write. Errors are swallowed
+   * with a warning so a Redis outage does not break write paths.
+   */
+  protected async _invalidateCache(): Promise<void> {
+    const strategy = this._resolveCacheStrategy();
+    if (!strategy) return;
+    try {
+      await strategy.invalidate(`${this.tableName}:`);
+    } catch (err) {
+      this.logger.warn?.(
+        `CacheStrategy.invalidate failed for ${this.tableName}: ${err instanceof Error ? err.name : 'UnknownError'}`,
+      );
+    }
   }
 
   protected onInitMapEntityColumns() {
@@ -369,6 +429,81 @@ export class DrizzleCrudService<T extends Record<string, unknown>> extends CrudS
   }
 
   // === PRIVATE HELPERS ===
+
+  private async doGetManyCursor(
+    parsed: ParsedRequestParams,
+    options: CrudRequestOptions,
+  ): Promise<CursorPaginatedResponse<T>> {
+    this.logger.debug?.('cursor pagination: bypassing cache wrap');
+    // single-sort-field requirement
+    if (!parsed.sort || parsed.sort.length !== 1) {
+      this.throwBadRequestException(
+        `Cursor pagination supports a single sort field; got: ${parsed.sort?.map((s) => s.field).join(', ') || '0'}`,
+      );
+    }
+    const sort = parsed.sort[0];
+
+    // Decode incoming cursor (null on first page)
+    const decoded = parsed.cursor ? CursorCodec.decode(parsed.cursor) : null;
+
+    // sortField mismatch guard
+    if (decoded && decoded.sortField !== sort.field) {
+      this.throwBadRequestException(`Cursor sort field mismatch: expected '${sort.field}', got '${decoded.sortField}'`);
+    }
+
+    // D-06a: missing-limit terminal → 400
+    const take = this.getTake(parsed, options.query);
+    if (take == null) {
+      this.throwBadRequestException(
+        'Cursor pagination requires a limit — set @Crud({ query: { limit | maxLimit } }) or pass ?limit=N',
+      );
+    }
+
+    const idField = this.entityPrimaryColumns[0];
+    const sortField = sort.field;
+
+    const selectMap = this.translator.getSelect(parsed, options.query);
+    const query = this.db.select(selectMap).from(this.table).$dynamic();
+
+    // applyToQuery applies search WHERE + soft-delete + (default) sort/limit/offset.
+    // applyCursor then OVERRIDES the ORDER BY (sort + PK tie-breaker) and adds the
+    // keyset WHERE only for non-first pages.
+    this.translator.applyToQuery(query, parsed, options);
+    this.translator.applyCursor(query, decoded, sort);
+
+    // Peek one extra row for end-of-stream detection. Drizzle's chainable
+    // .limit() overrides the limit set inside applyToQuery's pagination branch.
+    query.limit((take as number) + 1);
+
+    // D-05: cursor mode BYPASSES cache wrap — call await query directly,
+    //       NOT translator.executeMany (which goes through cacheStrategy.wrap).
+    const rows = (await query) as T[];
+
+    const hasMore = rows.length > (take as number);
+    if (hasMore) rows.pop();
+    if (decoded?.dir === 'prev') rows.reverse();
+
+    const next =
+      hasMore && rows.length
+        ? CursorCodec.encode({
+            sortField,
+            sortValue: (rows[rows.length - 1] as any)[sortField],
+            id: (rows[rows.length - 1] as any)[idField],
+            dir: 'next',
+          })
+        : null;
+
+    const prev = decoded
+      ? CursorCodec.encode({
+          sortField,
+          sortValue: (rows[0] as any)[sortField],
+          id: (rows[0] as any)[idField],
+          dir: 'prev',
+        })
+      : null;
+
+    return { data: rows, count: rows.length, cursor: { next, prev } };
+  }
 
   private async doUpdateOneInternal(req: CrudRequest, dto: T | Partial<T>, t: DrizzleQueryTranslator<T>): Promise<T> {
     const { parsed, options } = req;

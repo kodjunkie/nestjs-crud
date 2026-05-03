@@ -27,6 +27,28 @@ export interface CrudOptions {
   validation?: ValidationPipeOptions | false;
   /** Controller-scoped Swagger/OpenAPI metadata overrides applied to every generated route. */
   swagger?: CrudSwaggerOptions;
+
+  /**
+   * Name of the controller property that holds the CrudService instance.
+   * Default: `'service'`. Set this when your controller injects the service
+   * under a domain-specific name (e.g., `usersService`, `usersRepo`).
+   * Reserved keys (`'__proto__'`, `'constructor'`, `'prototype'`) are rejected at decoration time.
+   */
+  serviceProperty?: string;
+
+  /**
+   * Pagination mode for `getManyBase` (controller-level default).
+   * - 'offset' (default): existing offset/page response shape `{ data, count, total, page, pageCount }`.
+   * - 'cursor': opt-in cursor pagination — response shape `{ data, count, cursor: { next, prev } }`.
+   *
+   * Per-route override available via `query.pagination` on `QueryOptions`.
+   * Cursor mode requires a single explicit sort field and a `limit`; cursor
+   * tokens are opaque base64url JSON, NOT signed (authorization stays in
+   * `@CrudAuth`).
+   *
+   * @since 2.2.0
+   */
+  pagination?: 'offset' | 'cursor';
 }
 
 export interface MergedCrudOptions extends CrudOptions {

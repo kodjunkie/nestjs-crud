@@ -5,7 +5,21 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 ## [Unreleased]
 
-_(No unreleased changes.)_
+### Added
+
+- Cursor pagination support: `PrismaQueryComposer.applyCursor` emits OR-decomposed `where` merged with the existing where via `AND` (preserving `@CrudAuth` filters and soft-delete predicates), with primary-key tie-breaker `orderBy`. Prisma's built-in `cursor:` argument is intentionally bypassed — it is single-column unique-key only and cannot accept the `(sortField, id)` tuple. `getMany` honors `@Crud({ query: { pagination: 'cursor' } })`; cursor mode bypasses the query cache wrap (both Redis and Accelerate strategies). The `sortField` decoded from the cursor flows through the same `entityColumns` allowlist used for offset-mode `?sort=`.
+- `PrismaRedisCacheStrategy` — bring-your-own Redis-backed `CacheStrategy` implementation. Accepts node-redis v5, ioredis, or any custom `RedisLike` client; auto-connects on first cache operation. Same SCAN+DEL invalidation pattern as the other adapters. Provides single-flight de-duplication. `PrismaAccelerateCacheStrategy` is unaffected.
+- `ioredis: ^5.0.0` declared as an optional `peerDependency` (joining the existing `redis: ^5.0.0` optional peer). Consumers using only Accelerate (or neither Redis strategy) do not need either installed.
+- `PrismaAccelerateCacheStrategy` — Prisma Accelerate-backed `CacheStrategy`. Attaches `cacheStrategy: { ttl }` to the per-query Prisma delegate args via shared async-context, so the cache lives at the Accelerate gateway. Converts ttl from milliseconds to seconds via `Math.ceil(ttl / 1000)` to match Accelerate's per-query API. `invalidate(prefix)` calls `$accelerate.invalidate({ tags: [prefix] })`.
+- `PrismaCrudServiceConfig<T>` accepts an optional `cacheStrategy` field. The `getDelegate()` thunk is preserved inside cache closures so per-`$transaction` scoping still holds under cache hits.
+- All six CrudService write methods auto-invalidate the entity-prefix cache after a successful commit.
+- `PrismaFetchHelper` throws `CrudCacheNotConfiguredError` when `@Crud({ query: { cache } })` is set without a wired `cacheStrategy`. Mirrors the TypeORM fail-fast behavior for cache misconfiguration.
+- Honors `cacheErrorPolicy` from `CrudConfigService.config.query` — set to `'fallback-to-source'` for graceful degradation when Redis or Accelerate is down.
+
+### Changed
+
+- `@prisma/extension-accelerate` is now declared as an optional `peerDependency` (`^3.0.0`) on `@nestjs-crud/prisma` (modeled on `@nestjs-crud/core`'s `@nestjs/swagger` optional peer pattern). Consumers without Accelerate install cleanly; instantiating `PrismaAccelerateCacheStrategy` against a client missing the extension throws a clear error.
+- `redis` is declared as an optional `peerDependency` (`^5.0.0`) on `@nestjs-crud/prisma`. `ioredis` is now also declared as an optional `peerDependency` (`^5.0.0`). Consumers using only Accelerate (or neither Redis strategy) do not need either installed.
 
 ## [2.1.0] (2026-04-23) — @prisma/client ^7.0.0 peer bump
 

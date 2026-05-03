@@ -36,6 +36,7 @@ export class RequestQueryBuilder {
       offset: 'offset',
       page: 'page',
       cache: 'cache',
+      cursor: 'cursor',
       includeDeleted: 'include_deleted',
     },
   };
@@ -158,6 +159,20 @@ export class RequestQueryBuilder {
     return this;
   }
 
+  /**
+   * Set an opaque cursor token on the outgoing query (cursor pagination mode).
+   *
+   * Empty strings are ignored — same guard shape as `setLimit/setOffset/setPage`.
+   *
+   * @since 2.2.0
+   */
+  setCursor(token: string): this {
+    if (typeof token === 'string' && token.length > 0) {
+      this.queryObject[this.paramNames.cursor] = token;
+    }
+    return this;
+  }
+
   resetCache(): this {
     this.setNumeric(0, 'cache');
     return this;
@@ -203,6 +218,7 @@ export class RequestQueryBuilder {
     this.setOffset(params.offset);
     this.setPage(params.page);
     this.sortBy(params.sort);
+    if (params.cursor) this.setCursor(params.cursor);
     if (params.resetCache) {
       this.resetCache();
     }

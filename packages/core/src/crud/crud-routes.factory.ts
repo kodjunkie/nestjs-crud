@@ -49,6 +49,12 @@ export class CrudRoutesFactory {
     options: CrudOptions,
   ) {
     this.options = options;
+    const reserved = new Set(['__proto__', 'constructor', 'prototype']);
+    if (this.options.serviceProperty && reserved.has(this.options.serviceProperty)) {
+      throw new Error(
+        `@Crud: serviceProperty "${this.options.serviceProperty}" is a reserved key — pick a different field name.`,
+      );
+    }
     this.create();
   }
 
@@ -80,6 +86,17 @@ export class CrudRoutesFactory {
       replaceOneBase: CrudActions.ReplaceOne,
       recoverOneBase: CrudActions.RecoverOne,
     };
+  }
+
+  protected resolveService(controller: any): any {
+    const prop = this.options.serviceProperty ?? 'service';
+    const svc = controller[prop];
+    if (!svc) {
+      throw new Error(
+        `@Crud: controller property "${prop}" is undefined — did you forget to inject the CrudService field?`,
+      );
+    }
+    return svc;
   }
 
   protected create() {
@@ -239,50 +256,58 @@ export class CrudRoutesFactory {
   }
 
   protected getManyBase(name: BaseRouteName) {
+    const resolve = this.resolveService.bind(this);
     this.targetProto[name] = function getManyBase(req: CrudRequest) {
-      return this.service.getMany(req);
+      return resolve(this).getMany(req);
     };
   }
 
   protected getOneBase(name: BaseRouteName) {
+    const resolve = this.resolveService.bind(this);
     this.targetProto[name] = function getOneBase(req: CrudRequest) {
-      return this.service.getOne(req);
+      return resolve(this).getOne(req);
     };
   }
 
   protected createOneBase(name: BaseRouteName) {
+    const resolve = this.resolveService.bind(this);
     this.targetProto[name] = function createOneBase(req: CrudRequest, dto: any) {
-      return this.service.createOne(req, dto);
+      return resolve(this).createOne(req, dto);
     };
   }
 
   protected createManyBase(name: BaseRouteName) {
+    const resolve = this.resolveService.bind(this);
     this.targetProto[name] = function createManyBase(req: CrudRequest, dto: any) {
-      return this.service.createMany(req, dto);
+      return resolve(this).createMany(req, dto);
     };
   }
 
   protected updateOneBase(name: BaseRouteName) {
+    const resolve = this.resolveService.bind(this);
     this.targetProto[name] = function updateOneBase(req: CrudRequest, dto: any) {
-      return this.service.updateOne(req, dto);
+      return resolve(this).updateOne(req, dto);
     };
   }
 
   protected replaceOneBase(name: BaseRouteName) {
+    const resolve = this.resolveService.bind(this);
     this.targetProto[name] = function replaceOneBase(req: CrudRequest, dto: any) {
-      return this.service.replaceOne(req, dto);
+      return resolve(this).replaceOne(req, dto);
     };
   }
 
   protected deleteOneBase(name: BaseRouteName) {
+    const resolve = this.resolveService.bind(this);
     this.targetProto[name] = function deleteOneBase(req: CrudRequest) {
-      return this.service.deleteOne(req);
+      return resolve(this).deleteOne(req);
     };
   }
 
   protected recoverOneBase(name: BaseRouteName) {
+    const resolve = this.resolveService.bind(this);
     this.targetProto[name] = function recoverOneBase(req: CrudRequest) {
-      return this.service.recoverOne(req);
+      return resolve(this).recoverOne(req);
     };
   }
 

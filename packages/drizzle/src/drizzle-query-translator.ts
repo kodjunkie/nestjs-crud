@@ -1,5 +1,6 @@
 import { CrudRequestOptions, QueryTranslator } from '@nestjs-crud/core';
-import { ParsedRequestParams, SCondition } from '@nestjs-crud/request';
+import type { CursorPayload } from '@nestjs-crud/core/cursor';
+import { ParsedRequestParams, QuerySort, SCondition } from '@nestjs-crud/request';
 import { Column, SQL, Table } from 'drizzle-orm';
 
 import { DrizzleClient } from './interfaces/drizzle-client.interface';
@@ -37,7 +38,6 @@ export class DrizzleQueryTranslator<T extends Record<string, unknown>> implement
 
   private readonly queryComposer: DrizzleQueryComposer;
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   private readonly fetchHelper: DrizzleFetchHelper;
 
   /** Stored for `cloneFor(tx)` — allows creating a tx-scoped copy. */
@@ -70,6 +70,9 @@ export class DrizzleQueryTranslator<T extends Record<string, unknown>> implement
     });
     this.fetchHelper = new DrizzleFetchHelper({
       onNotFound: defaultOnNotFound,
+      cacheStrategy: config.cacheStrategy,
+      entityName: config.entityName,
+      logger: config.logger,
     });
   }
 
@@ -128,5 +131,33 @@ export class DrizzleQueryTranslator<T extends Record<string, unknown>> implement
 
   public getSkip(query: ParsedRequestParams, take: number): number | null {
     return this.queryComposer.getSkip(query, take);
+  }
+
+  /**
+   * Execute a prepared query through the FetchHelper, applying the cache-wrap
+   * (when `cacheStrategy` is wired and the request opts have a positive TTL).
+   *
+   * Called by `DrizzleCrudService.getMany` for the non-paginated path so that
+   * the cache wrap fires on the same request-context objects that carry the
+   * TTL from `@Crud({ query: { cache } })`.
+   */
+  public executeMany<R = unknown>(
+    qb: AnyDrizzleSelect,
+    parsed: ParsedRequestParams,
+    options: CrudRequestOptions,
+  ): Promise<R[]> {
+    return this.fetchHelper.executeMany<R>(qb, parsed, options);
+  }
+
+  /**
+   * Apply keyset cursor WHERE + ORDER BY (with PK tie-breaker) on top of the
+   * already-composed query. One-line delegation to the underlying
+   * `DrizzleQueryComposer.applyCursor`. SQLi guard + OR-decomposed keyset shape
+   * live there.
+   *
+   * @since 2.2.0
+   */
+  public applyCursor(query: AnyDrizzleSelect, decoded: CursorPayload | null, sort: QuerySort): AnyDrizzleSelect {
+    return this.queryComposer.applyCursor(query, decoded, sort);
   }
 }

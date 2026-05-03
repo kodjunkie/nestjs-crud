@@ -2,8 +2,13 @@ import { DynamicModule, Module } from '@nestjs/common';
 import { MikroOrmModule } from '@mikro-orm/nestjs';
 
 import { UserSchema, CompanySchema, ProjectSchema } from '../entities';
+import { UsersCachedController } from './users-cached.controller';
 import { UsersController } from './users.controller';
+import { UsersCursorController } from './users-cursor.controller';
+import { UsersCursorNoLimitController } from './users-cursor-no-limit.controller';
+import { UsersRepoController } from './users-repo.controller';
 import { UsersService } from './users.service';
+import { UsersRepoService } from './users-repo.service';
 
 @Module({})
 export class AppModule {
@@ -14,9 +19,15 @@ export class AppModule {
     return {
       module: AppModule,
       imports: [MikroOrmModule.forRoot(config), MikroOrmModule.forFeature([UserSchema, CompanySchema, ProjectSchema])],
-      controllers: [UsersController],
-      providers: [UsersService],
-      exports: [UsersService],
+      controllers: [
+        UsersController,
+        UsersRepoController,
+        UsersCachedController,
+        UsersCursorController,
+        UsersCursorNoLimitController,
+      ],
+      providers: [UsersService, UsersRepoService],
+      exports: [UsersService, UsersRepoService],
     };
   }
 }

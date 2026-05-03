@@ -1,18 +1,25 @@
 import {
   CreateManyDto,
+  CrudConfigService,
   CrudRequest,
+  CrudRequestOptions,
   CrudService,
   GetManyDefaultResponse,
   InputSanitizer,
   prepareEntityBeforeSave as prepareEntityBeforeSaveUtil,
 } from '@nestjs-crud/core';
+import type { CacheStrategy } from '@nestjs-crud/core/cache';
+import { CursorCodec } from '@nestjs-crud/core/cursor';
+import type { CursorPaginatedResponse } from '@nestjs-crud/core/cursor';
+import { ParsedRequestParams } from '@nestjs-crud/request';
 import { Logger, LoggerService, NotFoundException } from '@nestjs/common';
 import { ClassType, hasLength, isArrayFull, isNil, isObject } from '@nestjs-crud/util';
 import {
-  EntityManager,
   EntityClass,
+  EntityManager,
   EntityMetadata,
   EntityProperty,
+  EntityRepository,
   IsolationLevel,
   RequestContext,
 } from '@mikro-orm/core';
@@ -22,6 +29,8 @@ import { MikroOrmJoinResolver } from './mikro-orm-join-resolver';
 import { MikroOrmQueryTranslator } from './mikro-orm-query-translator';
 
 export class MikroOrmCrudService<T extends object> extends CrudService<T> {
+  protected em: EntityManager;
+
   protected dbDialect: DbDialect;
 
   protected metadata: EntityMetadata<T>;
@@ -44,13 +53,24 @@ export class MikroOrmCrudService<T extends object> extends CrudService<T> {
 
   protected joinResolver: MikroOrmJoinResolver;
 
+  protected readonly cacheStrategyOverride?: CacheStrategy;
+
   constructor(
-    protected em: EntityManager,
+    emOrRepo: EntityManager | EntityRepository<T>,
     protected entityClass: EntityClass<T>,
     logger?: LoggerService,
+    cacheStrategy?: CacheStrategy,
   ) {
     super();
+    // Property-based type guard: 'in' over `instanceof EntityRepository` for ESM
+    // class-identity safety (per @mikro-orm/core v7 ESM-pure migration).
+    // EntityRepository#getEntityManager() returns the same ALS-backed em proxy
+    // MikroORM injects via @InjectRepository, so unwrapping preserves request-scope
+    // identity-map isolation. The translator continues to read `() => this.em`
+    // as a thunk (line below), never a captured reference.
+    this.em = 'getEntityManager' in emOrRepo ? emOrRepo.getEntityManager() : emOrRepo;
     this.logger = logger ?? new Logger(MikroOrmCrudService.name);
+    this.cacheStrategyOverride = cacheStrategy;
     this.metadata = this.em.getMetadata().get(this.entityClass);
     this.onInitMapEntityColumns();
     this.detectDialect();
@@ -81,6 +101,9 @@ export class MikroOrmCrudService<T extends object> extends CrudService<T> {
         this.throwBadRequestException(msg);
       },
       joinResolver: this.joinResolver,
+      cacheStrategy: this._resolveCacheStrategy(),
+      entityName: this.entityClass.name,
+      logger: this.logger,
     });
 
     this.logger.debug?.(`CrudService initialized: ${(this.entityClass as any)?.name ?? 'unknown'}`);
@@ -98,22 +121,31 @@ export class MikroOrmCrudService<T extends object> extends CrudService<T> {
     return this.em;
   }
 
-  public async getMany(req: CrudRequest): Promise<GetManyDefaultResponse<T> | T[]> {
+  public async getMany(req: CrudRequest): Promise<GetManyDefaultResponse<T> | CursorPaginatedResponse<T> | T[]> {
     const { parsed, options } = req;
+    const mode = this.getPaginationMode(options);
+
+    if (mode === 'cursor') {
+      return this.doGetManyCursor(parsed, options);
+    }
+
+    // T-06-02: fresh em per call via createQueryBuilder on the proxy.
     const qb = (this.em as any).createQueryBuilder(this.entityClass);
     this.translator.applyToQuery(qb, parsed, options);
 
     if (this.decidePagination(parsed, options)) {
       const countQb = (this.em as any).createQueryBuilder(this.entityClass);
       this.translator.applyToQuery(countQb, parsed, options);
+      // Pagination bypasses the cache wrap (count + data would need separate keys;
+      // correctness trade-off: only non-paginated getMany benefits from cache).
       const [data, total] = [await qb.getResult(), await this.translator.count(countQb)];
       const take = this.translator.getTake(parsed, options.query);
       const skip = this.translator.getSkip(parsed, take as number);
       return this.createPageInfo(data as T[], total, take || total, skip || 0);
     }
 
-    const data = await qb.getResult();
-    return data as T[];
+    // Non-paginated: route through the FetchHelper cache wrap path.
+    return (this.translator as any).executeMany(qb, parsed, options) as Promise<T[]>;
   }
 
   public async getOne(req: CrudRequest): Promise<T> {
@@ -130,6 +162,7 @@ export class MikroOrmCrudService<T extends object> extends CrudService<T> {
 
     const created = this.em.create(this.entityClass, entity as any);
     await this.em.flush();
+    await this._invalidateCache();
 
     if (options.routes.createOneBase.returnShallow) {
       return created as T;
@@ -159,6 +192,7 @@ export class MikroOrmCrudService<T extends object> extends CrudService<T> {
 
     const entities = bulk.map((data) => this.em.create(this.entityClass, data as any));
     await this.em.flush();
+    await this._invalidateCache();
 
     return entities as T[];
   }
@@ -170,7 +204,7 @@ export class MikroOrmCrudService<T extends object> extends CrudService<T> {
     // FetchHelper thunk (getEm: () => EntityManager) is therefore unchanged
     // (getEm thunk contract preserved).
     const em = this.getEm();
-    return em.transactional(
+    const result = await em.transactional(
       async (txEm) => {
         return RequestContext.create(txEm, async () => {
           const { parsed, options } = req;
@@ -207,11 +241,13 @@ export class MikroOrmCrudService<T extends object> extends CrudService<T> {
       },
       { isolationLevel: IsolationLevel.READ_COMMITTED },
     );
+    await this._invalidateCache();
+    return result;
   }
 
   public async replaceOne(req: CrudRequest, dto: T | Partial<T>): Promise<T> {
     const em = this.getEm();
-    return em.transactional(
+    const result = await em.transactional(
       async (txEm) => {
         return RequestContext.create(txEm, async () => {
           const { parsed, options } = req;
@@ -259,11 +295,13 @@ export class MikroOrmCrudService<T extends object> extends CrudService<T> {
       },
       { isolationLevel: IsolationLevel.READ_COMMITTED },
     );
+    await this._invalidateCache();
+    return result;
   }
 
   public async deleteOne(req: CrudRequest): Promise<void | T> {
     const em = this.getEm();
-    return em.transactional(
+    const result = await em.transactional(
       async (txEm) => {
         return RequestContext.create(txEm, async () => {
           const { options } = req;
@@ -293,6 +331,8 @@ export class MikroOrmCrudService<T extends object> extends CrudService<T> {
       },
       { isolationLevel: IsolationLevel.READ_COMMITTED },
     );
+    await this._invalidateCache();
+    return result;
   }
 
   public async recoverOne(req: CrudRequest): Promise<void | T> {
@@ -304,6 +344,7 @@ export class MikroOrmCrudService<T extends object> extends CrudService<T> {
 
     this.em.assign(found as any, { [this.softDeleteColumn!]: null } as any);
     await this.em.flush();
+    await this._invalidateCache();
 
     req.parsed.search = this.entityPrimaryColumns.reduce((acc, p) => ({ ...acc, [p]: (found as any)[p] }), {});
     return this.getOneOrFail(req);
@@ -384,6 +425,106 @@ export class MikroOrmCrudService<T extends object> extends CrudService<T> {
 
   protected getSoftDeleteColumnName(): string {
     return this.softDeleteColumn || 'deletedAt';
+  }
+
+  /**
+   * Resolves the effective cache strategy: ctor override takes precedence,
+   * falling back to the global strategy registered via CrudConfigService.
+   * Called lazily at request time so CrudConfigService.load() after app bootstrap works.
+   */
+  protected _resolveCacheStrategy(): CacheStrategy | undefined {
+    return this.cacheStrategyOverride ?? CrudConfigService.config.query?.cacheStrategy;
+  }
+
+  /**
+   * Invalidates all cache entries prefixed with `<entityClass.name>:`.
+   * Called automatically after every successful write. Errors are swallowed
+   * with a warning so a Redis outage does not break write paths.
+   */
+  protected async _invalidateCache(): Promise<void> {
+    const strategy = this._resolveCacheStrategy();
+    if (!strategy) return;
+    try {
+      await strategy.invalidate(`${this.entityClass.name}:`);
+    } catch (err) {
+      this.logger.warn?.(
+        `CacheStrategy.invalidate failed for ${this.entityClass.name}: ${err instanceof Error ? err.name : 'UnknownError'}`,
+      );
+    }
+  }
+
+  private async doGetManyCursor(
+    parsed: ParsedRequestParams,
+    options: CrudRequestOptions,
+  ): Promise<CursorPaginatedResponse<T>> {
+    this.logger.debug?.('cursor pagination: bypassing cache wrap');
+    // single-sort-field requirement
+    if (!parsed.sort || parsed.sort.length !== 1) {
+      this.throwBadRequestException(
+        `Cursor pagination supports a single sort field; got: ${parsed.sort?.map((s) => s.field).join(', ') || '0'}`,
+      );
+    }
+    const sort = parsed.sort[0];
+
+    // Decode incoming cursor (null on first page)
+    const decoded = parsed.cursor ? CursorCodec.decode(parsed.cursor) : null;
+
+    // sortField mismatch guard
+    if (decoded && decoded.sortField !== sort.field) {
+      this.throwBadRequestException(`Cursor sort field mismatch: expected '${sort.field}', got '${decoded.sortField}'`);
+    }
+
+    // D-06a: missing-limit terminal → 400
+    const take = this.getTake(parsed, options.query);
+    if (take == null) {
+      this.throwBadRequestException(
+        'Cursor pagination requires a limit — set @Crud({ query: { limit | maxLimit } }) or pass ?limit=N',
+      );
+    }
+
+    const idField = this.entityPrimaryColumns[0];
+    const sortField = sort.field;
+
+    // T-06-02: fresh em per call via createQueryBuilder on the proxy — same
+    // shape as the offset branch above. DO NOT capture this.em into a variable
+    // that survives the method.
+    const qb = (this.em as any).createQueryBuilder(this.entityClass);
+    this.translator.applyToQuery(qb, parsed, options);
+    // applyCursor sets ORDER BY (sort ASC/DESC + PK tie-breaker) and adds keyset
+    // WHERE only for non-first pages. Overwrites the default ORDER BY from applyToQuery.
+    this.translator.applyCursor(qb, decoded, sort);
+
+    // Peek one extra row for end-of-stream detection
+    qb.limit((take as number) + 1);
+
+    // D-05: cursor mode BYPASSES cache wrap — call qb.getResult() directly,
+    //       NOT translator.executeMany (which goes through cacheStrategy.wrap).
+    const rows = (await qb.getResult()) as T[];
+
+    const hasMore = rows.length > (take as number);
+    if (hasMore) rows.pop();
+    if (decoded?.dir === 'prev') rows.reverse();
+
+    const next =
+      hasMore && rows.length
+        ? CursorCodec.encode({
+            sortField,
+            sortValue: (rows[rows.length - 1] as any)[sortField],
+            id: (rows[rows.length - 1] as any)[idField],
+            dir: 'next',
+          })
+        : null;
+
+    const prev = decoded
+      ? CursorCodec.encode({
+          sortField,
+          sortValue: (rows[0] as any)[sortField],
+          id: (rows[0] as any)[idField],
+          dir: 'prev',
+        })
+      : null;
+
+    return { data: rows, count: rows.length, cursor: { next, prev } };
   }
 
   private detectDialect() {

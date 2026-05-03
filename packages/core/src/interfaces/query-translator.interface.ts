@@ -1,5 +1,6 @@
-import { ParsedRequestParams, SCondition } from '@nestjs-crud/request';
+import { ParsedRequestParams, QuerySort, SCondition } from '@nestjs-crud/request';
 
+import type { CursorPayload } from '../cursor/cursor-payload.interface';
 import { CrudRequestOptions } from './crud-options.interface';
 
 /**
@@ -57,4 +58,16 @@ export interface QueryTranslator<Q, W> {
    * @since 2.0.0
    */
   count(query: Q): Promise<number>;
+
+  /**
+   * Apply keyset cursor WHERE + ORDER BY (with PK tie-breaker) on top of the
+   * already-composed query. Delegates to the underlying `QueryComposer.applyCursor`
+   * so service code can call `this.translator.applyCursor(...)` without the
+   * `as any` cast / direct composer access.
+   *
+   * Skipped silently when `decoded` is null (first page).
+   *
+   * @since 2.2.0
+   */
+  applyCursor(query: Q, decoded: CursorPayload | null, sort: QuerySort): Q;
 }

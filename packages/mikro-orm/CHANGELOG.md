@@ -3,6 +3,24 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [Unreleased]
+
+### Added
+
+- Cursor pagination support: `MikroOrmQueryComposer.applyCursor` emits smart-query `andWhere({ $or: [...] })` with primary-key tie-breaker. The composer remains `em`-free; the service freshly resolves `em` per call so request-scope identity-map isolation continues to hold. `getMany` honors `@Crud({ query: { pagination: 'cursor' } })`; cursor mode bypasses the query cache wrap. The `sortField` decoded from the cursor flows through the same `propertiesMap` allowlist used for offset-mode `?sort=`.
+- `MikroOrmCrudService<T>` constructor now accepts `EntityManager | EntityRepository<T>`. Consumers using `@InjectRepository(User)` from `@mikro-orm/nestjs` can pass the repository directly to `super()` instead of unwrapping with `repo.getEntityManager()`. The library performs the unwrap internally via a property-based type guard, preserving the ALS-backed em proxy so request-scope identity-map isolation is unchanged.
+- `MikroOrmCacheStrategy` — bring-your-own Redis-backed `CacheStrategy` implementation. Accepts node-redis v5, ioredis, or any custom `RedisLike` client; auto-connects on first cache operation. Bypasses MikroORM's Result Cache (no prefix scan support there); the strategy's own SCAN+DEL gives uniform entity-prefix invalidation matching the other adapters. Provides single-flight de-duplication.
+- `ioredis: ^5.0.0` declared as an optional `peerDependency` (joining the existing `redis: ^5.0.0` optional peer). Consumers using neither do not need either installed.
+- `MikroOrmCrudService` constructor accepts an optional fourth `cacheStrategy` argument (after `emOrRepo`, `entityClass`, `logger?`). Existing constructor signatures continue to work unchanged.
+- The `EntityManager` thunk (`getEm()`) is preserved — the cache wrap goes around the em-resolved fetch, so request-scope identity-map isolation continues to hold even under cache hits.
+- All six write methods auto-invalidate the entity-prefix cache after a successful commit.
+- `MikroOrmFetchHelper` now throws `CrudCacheNotConfiguredError` when `@Crud({ query: { cache } })` is set without a wired `cacheStrategy`. Mirrors the TypeORM fail-fast behavior.
+- Honors `cacheErrorPolicy` from `CrudConfigService.config.query` — set to `'fallback-to-source'` for graceful degradation when Redis is down.
+
+### Changed
+
+- `redis` is declared as an optional `peerDependency` (`^5.0.0`) on `@nestjs-crud/mikro-orm`. `ioredis` is now also declared as an optional `peerDependency` (`^5.0.0`). Consumers using neither do not need either installed; `MikroOrmCacheStrategy` throws `TypeError` on an unrecognized client shape.
+
 ## [2.0.1](https://github.com/kodjunkie/nestjs-crud/compare/v2.0.0...v2.0.1) (2026-04-23)
 
 

@@ -344,6 +344,72 @@ describe('#request-query', () => {
           expect(test.cache).toBe(expected);
         });
       });
+
+      describe('#parse options.cache (bypass-read flag with strict-known + silent-ignore-unknown semantics)', () => {
+        it('?cache=0 → options.cache === false', () => {
+          const query = { cache: '0' };
+          const test = qp.parseQuery(query);
+          expect(test.options?.cache).toBe(false);
+        });
+
+        it('?cache=1 → options.cache === true', () => {
+          const query = { cache: '1' };
+          const test = qp.parseQuery(query);
+          expect(test.options?.cache).toBe(true);
+        });
+
+        it('?cache=false → options.cache === false', () => {
+          const query = { cache: 'false' };
+          const test = qp.parseQuery(query);
+          expect(test.options?.cache).toBe(false);
+        });
+
+        it('?cache=true → options.cache === true', () => {
+          const query = { cache: 'true' };
+          const test = qp.parseQuery(query);
+          expect(test.options?.cache).toBe(true);
+        });
+
+        it('absent ?cache → options.cache === undefined', () => {
+          const query = { limit: '10' };
+          const test = qp.parseQuery(query);
+          expect(test.options?.cache).toBeUndefined();
+        });
+
+        it('numeric TTL ?cache=300000 → options.cache === undefined (NOT bypass) AND parsed.cache === 300000 (TTL preserved)', () => {
+          const query = { cache: '300000' };
+          const test = qp.parseQuery(query);
+          expect(test.options?.cache).toBeUndefined();
+          expect(test.cache).toBe(300000);
+        });
+
+        // silent-ignore unknown values (do NOT 400; preserves backward-compat)
+        it('?cache=evil → options.cache === undefined (silent-ignore, no 400)', () => {
+          const query = { cache: 'evil' };
+          const test = qp.parseQuery(query);
+          expect(test.options?.cache).toBeUndefined();
+        });
+
+        it('?cache=foo → options.cache === undefined (silent-ignore)', () => {
+          const query = { cache: 'foo' };
+          const test = qp.parseQuery(query);
+          expect(test.options?.cache).toBeUndefined();
+        });
+
+        it('?cache= (empty) → options.cache === undefined (silent-ignore)', () => {
+          const query = { cache: '' };
+          const test = qp.parseQuery(query);
+          expect(test.options?.cache).toBeUndefined();
+        });
+
+        it('getParsed() includes options field', () => {
+          const query = { cache: '0' };
+          qp.parseQuery(query);
+          const parsed = qp.getParsed();
+          expect(parsed.options).toBeDefined();
+          expect(parsed.options?.cache).toBe(false);
+        });
+      });
     });
 
     describe('#parse search', () => {
@@ -537,6 +603,34 @@ describe('#request-query', () => {
         };
         const test = qp.getParsed();
         expect(test).toMatchObject(expected);
+      });
+    });
+
+    describe('#parse cursor', () => {
+      it('stores opaque cursor string when ?cursor=<token> present', () => {
+        const query = { cursor: 'eyJzb3J0RmllbGQiOiJpZCJ9' };
+        const test = qp.parseQuery(query);
+        expect(test.cursor).toBe('eyJzb3J0RmllbGQiOiJpZCJ9');
+      });
+
+      it('returns parsed.cursor === undefined when ?cursor absent', () => {
+        const test = qp.parseQuery({});
+        expect(test.cursor).toBeUndefined();
+      });
+
+      it('throws RequestQueryException on cursor + offset (mutex)', () => {
+        const query = { cursor: 'X', offset: '10' };
+        expect(() => qp.parseQuery(query)).toThrow(RequestQueryException);
+      });
+
+      it('throws RequestQueryException on cursor + page (mutex)', () => {
+        const query = { cursor: 'X', page: '2' };
+        expect(() => qp.parseQuery(query)).toThrow(RequestQueryException);
+      });
+
+      it('does not throw on empty cursor + offset (empty cursor treated as absent)', () => {
+        const query = { cursor: '', offset: '10' };
+        expect(() => qp.parseQuery(query)).not.toThrow();
       });
     });
   });

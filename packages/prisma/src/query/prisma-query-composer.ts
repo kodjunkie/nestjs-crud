@@ -1,7 +1,8 @@
 import { getAllowedColumns } from '@nestjs-crud/core';
+import type { CursorPayload } from '@nestjs-crud/core/cursor';
 import type { QueryComposer, WhereBuilder } from '@nestjs-crud/core/query';
 import type { CrudRequestOptions, JoinOptions, JoinResolver } from '@nestjs-crud/core';
-import type { ParsedRequestParams } from '@nestjs-crud/request';
+import type { ParsedRequestParams, QuerySort } from '@nestjs-crud/request';
 
 /**
  * @internal — subject to change without semver-major.
@@ -123,6 +124,45 @@ export class PrismaQueryComposer implements QueryComposer<any> {
 
   public getSkip(query: ParsedRequestParams, take: number): number | null {
     return query.page && take ? take * (query.page - 1) : query.offset ? query.offset : null;
+  }
+
+  /**
+   * Apply keyset cursor WHERE + ORDER BY (with PK tie-breaker) on top of the
+   * already-composed Prisma arg-object. Skipped silently when `decoded` is null.
+   *
+   * SQLi guard: validates `sort.field` via the same `entityColumns` allowlist
+   * used by `compileSort`.
+   *
+   * Bypasses Prisma's built-in `cursor:` arg — that argument is single-column
+   * unique-key only and cannot accept `(sortField, id)` tuple semantics.
+   *
+   * @since 2.2.0
+   */
+  public applyCursor(out: any, decoded: CursorPayload | null, sort: QuerySort): any {
+    if (!decoded) return out;
+
+    if (!this.entityColumns.includes(sort.field)) {
+      this.onBadRequest(`Invalid sort field: '${sort.field}'`);
+    }
+
+    const isAsc = sort.order === 'ASC';
+    const isForward = decoded.dir === 'next';
+    const op = isAsc === isForward ? 'gt' : 'lt';
+    const dir: 'asc' | 'desc' = isAsc === isForward ? 'asc' : 'desc';
+    const idField = this.entityPrimaryColumns[0];
+
+    const cursorWhere = {
+      OR: [
+        { [sort.field]: { [op]: decoded.sortValue } },
+        { AND: [{ [sort.field]: decoded.sortValue }, { [idField]: { [op]: decoded.id } }] },
+      ],
+    };
+
+    // Compose with existing where (keep AUTH + soft-delete + search) — never overwrite.
+    out.where = out.where ? { AND: [out.where, cursorWhere] } : cursorWhere;
+    out.orderBy = [{ [sort.field]: dir }, { [idField]: dir }];
+
+    return out;
   }
 
   /**

@@ -1,7 +1,7 @@
 {
   "name": "@nestjs-crud/typeorm",
   "description": "NestJs CRUD for RESTful APIs - TypeORM",
-  "version": "2.1.1",
+  "version": "2.2.0",
   "license": "MIT",
   "main": "lib/index.js",
   "typings": "lib/index.d.ts",
@@ -53,6 +53,16 @@
     "@nestjs-crud/core": "^2.0.0",
     "@nestjs/common": "^10.0.0 || ^11.0.0",
     "@nestjs/typeorm": "^10.0.0 || ^11.0.0",
+    "ioredis": "^5.0.0",
+    "redis": "^5.0.0",
     "typeorm": "^0.3.0"
+  },
+  "peerDependenciesMeta": {
+    "ioredis": {
+      "optional": true
+    },
+    "redis": {
+      "optional": true
+    }
   }
 }

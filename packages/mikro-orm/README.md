@@ -36,18 +36,21 @@ Then create a **service**:
 
 ```typescript
 import { Injectable } from '@nestjs/common';
-import { EntityManager } from '@mikro-orm/core';
+import { InjectRepository } from '@mikro-orm/nestjs';
+import { EntityRepository } from '@mikro-orm/core';
 import { MikroOrmCrudService } from '@nestjs-crud/mikro-orm';
 
 import { Company } from './company.entity';
 
 @Injectable()
 export class CompaniesService extends MikroOrmCrudService<Company> {
-  constructor(private em: EntityManager) {
-    super(em, Company);
+  constructor(@InjectRepository(Company) public companiesRepo: EntityRepository<Company>) {
+    super(companiesRepo, Company);
   }
 }
 ```
+
+The constructor accepts `EntityManager | EntityRepository<T>` (v2.2.0+). `super(companiesRepo, Company)` unwraps via `repo.getEntityManager()` internally — resulting `em` is the same ALS-backed proxy MikroORM injects, so request-scope identity-map isolation is preserved. To pass `EntityManager` directly: `constructor(em: EntityManager) { super(em, Company); }` — same behavior.
 
 Then provide your service in a **controller**:
 
@@ -72,6 +75,6 @@ export class CompaniesController implements CrudController<Company> {
 ## See also
 
 - [Wiki: ServiceMikroOrm](https://github.com/kodjunkie/nestjs-crud/wiki/ServiceMikroOrm) — full MikroORM adapter API
-- [Wiki: Logging](https://github.com/kodjunkie/nestjs-crud/wiki/Logging) — optional `LoggerService` ctor parameter (v2.0.0)
-- [Wiki: Caching](https://github.com/kodjunkie/nestjs-crud/wiki/Caching) — current state for MikroORM (consumer-owned)
+- [Wiki: Logging](https://github.com/kodjunkie/nestjs-crud/wiki/Logging) — optional `LoggerService` constructor parameter (v2.0.0)
+- [Wiki: Caching](https://github.com/kodjunkie/nestjs-crud/wiki/Caching) — `@Crud({ query: { cache } })` honored via `MikroOrmCacheStrategy` (v2.2.0+)
 - [v2 Migration guide](https://github.com/kodjunkie/nestjs-crud/wiki/v2-Migration) — including the typed public method signatures migration

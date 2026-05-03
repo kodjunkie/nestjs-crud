@@ -9,7 +9,24 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
-_(No unreleased changes.)_
+### Added
+
+- Opt-in cursor pagination via `@Crud({ query: { pagination: 'cursor' } })`. New cursor-mode response shape `{ data, count, cursor: { next, prev } }` on `getManyBase`. Default `'offset'` mode preserved unchanged. Honored across all four adapters (TypeORM, MikroORM, Drizzle, Prisma) via per-adapter `QueryComposer.applyCursor` emitting OR-decomposed keyset WHERE with primary-key tie-breaker. The cursor token is opaque base64-url-encoded JSON `{sortField, sortValue, id, dir}` — opaque to consumers but NOT signed; authorization stays in `@CrudAuth`. Cursor mode bypasses the unified query cache (per-cursor key cardinality is unbounded). Per-route override via `query.pagination`; controller-level default via `CrudOptions.pagination`. Multi-sort with cursor, sortField mismatch between request and decoded cursor, missing limit, and invalid or oversized cursor all return `400 Bad Request`.
+- `@Crud({ serviceProperty })` decorator option to configure the controller field that holds the CrudService. Default `'service'` preserves existing behavior; consumers can name their field `usersService`, `customerService`, etc., without violating the `CrudController<T>` contract. Reserved keys (`'__proto__'`, `'constructor'`, `'prototype'`) are rejected at decoration time to prevent prototype-pollution shapes. A clear error is thrown at request time if the configured property is undefined on the controller instance.
+- `MikroOrmCrudService<T>` constructor now accepts `EntityManager | EntityRepository<T>`. Consumers using `@InjectRepository(User)` from `@mikro-orm/nestjs` can pass the repository directly to `super()` instead of unwrapping with `repo.getEntityManager()`. The library performs the unwrap internally via a property-based type guard, preserving the ALS-backed em proxy so request-scope identity-map isolation is unchanged.
+- Unified `CacheStrategy` interface in `@nestjs-crud/core/cache` and per-adapter implementations: `TypeOrmCacheStrategy`, `MikroOrmCacheStrategy`, `DrizzleCacheStrategy`, `PrismaRedisCacheStrategy`, and `PrismaAccelerateCacheStrategy`. `@Crud({ query: { cache: <ttl-ms> } })` is now honored end-to-end across all four adapters when a strategy is wired via `CrudConfigService.load({ query: { cacheStrategy } })` or the CrudService constructor. All `ttl` arguments are uniformly in milliseconds.
+- Auto-invalidate-on-write: every CrudService write method (`createOne`, `createMany`, `updateOne`, `replaceOne`, `deleteOne`, `recoverOne`) calls `cacheStrategy.invalidate('<entityName>:')` after a successful commit. Per-request `?cache=0` opt-out works across all four adapters. `MockCacheStrategy` (Map-backed, with single-flight de-dup) ships from `@nestjs-crud/core` for tests.
+- New `CacheErrorPolicy` knob (`'fail-fast' | 'fallback-to-source'`, default `'fail-fast'`) on `CrudConfigService.config.query.cacheErrorPolicy` — opt into graceful degradation when Redis or Accelerate is down. All shipped Redis-backed strategies (TypeORM, MikroORM, Drizzle, Prisma) implement single-flight de-duplication to prevent thundering-herd amplification on cold caches.
+
+### Changed
+
+- Cache strategies now accept both `redis` (node-redis v5) and `ioredis` clients via a narrow `RedisLike` interface exported from `@nestjs-crud/core/cache`. Auto-detection chooses the correct adapter; clients auto-connect on the first cache operation so explicit `await redis.connect()` before passing the client is no longer required. Custom backends are supported by implementing the four `RedisLike` methods (`set`, `get`, `del`, `scanPrefix`). `ioredis: ^5.0.0` is now declared as an optional `peerDependency` on all four adapter packages.
+- Replaced the `@zmotivat0r/mrepo` build orchestrator with native `lerna` + TypeScript composite project references (`tsc -b`). `yarn build` now invokes `tsc -b tsconfig.json` directly; `yarn test` chains the 4 per-adapter Postgres scripts plus the root jest run for `core`/`request`/`util`; `yarn release` invokes `lerna publish` directly. Dev-tooling change only — no consumer API change. Local incremental rebuilds now use `*.tsbuildinfo` files (gitignored).
+- Moved `@nestjs/swagger` and `swagger-ui-express` from root `dependencies` to root `devDependencies`. They were dev-tooling-only (test fixtures + Swagger generation in dev workflows). Consumers continue to install Swagger tooling in their own `dependencies` per the optional peerDependency declaration on `@nestjs-crud/core` shipped in 2.1.1.
+
+### Removed
+
+- Removed the unwired `CrudActions.DeleteAll` enum value (`'Delete-All'`) from `@nestjs-crud/core`. It was a pre-v2 holdover with no `deleteAllBase` route in `BaseRouteName` and no entry in `CrudRoutesFactory.actionsMap`, so `getAction(handler)` from a guard on any generated route never returned it. Consumers with `case CrudActions.DeleteAll:` in exhaustive `switch (action)` ACL blocks should drop the case; no behavior change at runtime.
 
 ---
 

@@ -9,9 +9,12 @@ describe('CrudCacheNotConfiguredError', () => {
     expect(err.name).toBe('CrudCacheNotConfiguredError');
   });
 
-  it('message names the cache provider misconfiguration', () => {
+  it('message names both wiring paths and the @Crud cache option', () => {
     const err = new CrudCacheNotConfiguredError();
-    expect(err.message).toContain('cache provider');
+    // Acceptance: message must reference both the global path AND ctor injection
+    expect(err.message).toContain('CrudConfigService.load');
+    expect(err.message).toContain('constructor');
+    // Existing assertion preserved (legacy TypeORM fallback hint)
     expect(err.message).toContain('DataSource');
     expect(err.message).toContain('@Crud');
   });

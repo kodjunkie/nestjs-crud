@@ -5,9 +5,28 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 ## [Unreleased]
 
+### Added
+
+- Cursor pagination support: new `@nestjs-crud/core/cursor` subpath exporting `CursorCodec`, `CursorPayload`, and the `CursorPaginatedResponse<T>` response type. New `pagination: 'offset' | 'cursor'` knob on `CrudOptions` and `QueryOptions` (default `'offset'` — non-breaking). New required `applyCursor(query, decoded, sort)` method on the `QueryComposer<Q>` and `QueryTranslator<Q,W>` interfaces; all four bundled adapters implement it. Cursor codec performs a 1024-character length check before base64 decode (DoS guard), and any payload deviation throws `BadRequestException('Invalid cursor')`.
+- `@Crud({ serviceProperty })` decorator option to configure the controller field that holds the CrudService. Default `'service'` preserves existing behavior; consumers can name their field `usersService`, `customerService`, etc., without violating the `CrudController<T>` contract. Reserved keys (`'__proto__'`, `'constructor'`, `'prototype'`) are rejected at decoration time to prevent prototype-pollution shapes. A clear error is thrown at request time if the configured property is undefined on the controller instance.
+- `CrudController<T>.service` is now optional. Consumers using `serviceProperty` to declare a custom field name no longer need to provide a `service` field to satisfy the interface contract. Existing `implements CrudController<T>` consumers continue to compile unchanged.
+- `CacheStrategy` interface (`wrap`, `get`, `set`, `invalidate`) at `@nestjs-crud/core/cache`. All `ttl` arguments are uniformly in milliseconds across the contract.
+- `MockCacheStrategy` — `Map`-backed in-memory implementation for tests. Uses `Date.now()` expiry checks (no `setTimeout` leaks under jest) and provides single-flight de-duplication: concurrent `wrap()` calls for the same key invoke `fetchFn` exactly once.
+- `buildCacheKey(entityName, parsed)` utility — deterministic SHA-1 fingerprint of the parsed request. Same logical inputs produce the same key regardless of object key insertion order; different `authPersist` values produce different keys (multi-tenant isolation; PII safety — plaintext auth context never appears in cache keys).
+- `CrudConfigService.config.query.cacheStrategy` field for global wiring.
+- `CrudConfigService.config.query.cacheErrorPolicy` field plus exported `CacheErrorPolicy` union type (`'fail-fast' | 'fallback-to-source'`, default `'fail-fast'`) — controls behavior when `cacheStrategy.wrap()` rejects.
+- `CrudConfigService.reset()` static method to restore the default config (test ergonomics).
+- `CrudCacheNotConfiguredError` message generalized: now references both `CrudConfigService.load` and constructor wiring paths, plus the legacy `DataSource.cache` fallback for TypeORM consumers. Class shape unchanged (still extends `Error`, name preserved); backward-compatible.
+- `RequestQueryParser` now surfaces `?cache=0` / `?cache=1` / `?cache=true` / `?cache=false` as a boolean on `parsed.options.cache` (alongside the existing numeric `parsed.cache` TTL-override field). Adapter `FetchHelper` implementations consume the boolean to decide whether to bypass the cache wrap. Unrecognized values silent-ignore (treats as if absent — preserves backward-compat).
+
 ### Changed
 
+- Added `RedisLike` interface and `toRedisLike()` / `isRedisLike()` adapter utilities to `@nestjs-crud/core/cache`. Auto-detects node-redis v5 vs ioredis client shape; lazy-once auto-connect deduplicates concurrent first-op connect calls to a single `client.connect()`. Custom backends can implement the four `RedisLike` methods directly.
 - Peer-dependency ranges for `class-transformer` and `class-validator` narrowed from `"*"` to `"^0.5.0"` and `"^0.14.0"` respectively. Tested versions are `class-transformer@0.5.1` and `class-validator@0.14.3`. Consumers pinned within `^0.5.x` / `^0.14.x` are unaffected.
+
+### Removed
+
+- Removed the unwired `CrudActions.DeleteAll` enum value (`'Delete-All'`). Pre-v2 holdover — no `deleteAllBase` route exists in `BaseRouteName` and `CrudRoutesFactory.actionsMap` never mapped it, so `getAction(handler)` on any generated route never returned it. The corresponding entry in `CrudResponseInterceptor`'s `actionToDtoNameMap` is also removed (the mapped type now requires only the 8 wired actions). Consumers with `case CrudActions.DeleteAll:` in exhaustive `switch (action)` ACL blocks should drop the case; runtime behavior unchanged.
 
 
 ## [2.1.1]

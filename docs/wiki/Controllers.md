@@ -632,6 +632,18 @@ _Optional._
 
 If `true`, `GET many` always returns a paginated object (instead of a bare array). Can also be set [globally](#global-options).
 
+#### pagination
+
+```typescript
+{
+  pagination: 'offset' | 'cursor';
+}
+```
+
+_Optional. Default `'offset'`._
+
+Switches `getManyBase` between offset pagination (default) and opt-in cursor pagination. Cursor mode requires a single sort field plus a configured `limit` (or `?limit=N`); see [Cursor Pagination](https://github.com/kodjunkie/nestjs-crud/wiki/CursorPagination) for the response shape, navigation pattern, security caveats, and per-adapter notes.
+
 ### dto
 
 ```typescript
@@ -673,6 +685,35 @@ _Optional._
 Response-serialization DTO classes. Pass `false` for any route to skip serialization on that route.
 
 See [Response serialization](#response-serialization).
+
+### Custom service property name
+
+By default, `@Crud()` expects the controller to expose its CrudService on a field named `service`. When a controller injects multiple services or prefers a domain-specific name, set `serviceProperty` to point to the desired field:
+
+```typescript
+import { Controller } from '@nestjs/common';
+import { Crud } from '@nestjs-crud/core';
+
+import { User } from './entities/user.entity';
+import { UsersService } from './users.service';
+import { MailService } from './mail.service';
+
+@Crud({
+  model: { type: User },
+  serviceProperty: 'usersService',
+})
+@Controller('users')
+export class UsersController {
+  constructor(
+    public usersService: UsersService,
+    public mailService: MailService,
+  ) {}
+}
+```
+
+The default `'service'` is unchanged — existing controllers continue to work without setting this option. Reserved keys (`'__proto__'`, `'constructor'`, `'prototype'`) are rejected at decoration time to prevent prototype-pollution shapes. The library throws a clear error at request time if the configured property is undefined on the controller instance.
+
+Consumers implementing `CrudController<T>` directly will note that the `service` field is now optional on the interface — the runtime contract (which field holds the service) is enforced by `serviceProperty`, not by the type itself.
 
 ## Global options
 
@@ -1111,6 +1152,7 @@ enum CrudActions {
   UpdateOne = 'Update-One',
   ReplaceOne = 'Replace-One',
   DeleteOne = 'Delete-One',
+  RecoverOne = 'Recover-One',
 }
 ```
 

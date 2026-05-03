@@ -1,5 +1,6 @@
 import { CrudRequestOptions, QueryTranslator } from '@nestjs-crud/core';
-import { ParsedRequestParams, SCondition } from '@nestjs-crud/request';
+import type { CursorPayload } from '@nestjs-crud/core/cursor';
+import { ParsedRequestParams, QuerySort, SCondition } from '@nestjs-crud/request';
 import { EntityClass, EntityManager, FilterQuery } from '@mikro-orm/core';
 import type { QueryBuilder } from '@mikro-orm/knex';
 
@@ -51,7 +52,13 @@ export class MikroOrmQueryTranslator<T extends object> implements QueryTranslato
       joinResolver,
       whereBuilder: this.whereBuilder,
     });
-    this.fetchHelper = new MikroOrmFetchHelper<T>({ onNotFound: defaultOnNotFound, getEm });
+    this.fetchHelper = new MikroOrmFetchHelper<T>({
+      onNotFound: defaultOnNotFound,
+      getEm,
+      cacheStrategy: config.cacheStrategy,
+      entityName: config.entityName,
+      logger: config.logger,
+    });
   }
 
   public buildWhere(search: SCondition): FilterQuery<T> | undefined {
@@ -83,10 +90,32 @@ export class MikroOrmQueryTranslator<T extends object> implements QueryTranslato
   ): Promise<T> {
     const qb = this.fetchHelper.createQueryBuilder(opts.entityClass);
     this.composer.applyToQuery(qb, parsed, options);
-    (qb as any).limit(1);
-    const result = await (qb as any).getSingleResult();
+
+    // Route through FetchHelper so the cache wrap path is honoured for getOne.
+    // The extended `findOneOrFail(qb, opts, parsed, options)` signature triggers
+    // the cache-aware `wrapRead` path when a strategy is wired.
+    const result = (await (this.fetchHelper as any).findOneOrFail(
+      qb,
+      { onNotFound: () => undefined },
+      parsed,
+      options,
+    )) as T | null | undefined;
     if (!result) throw opts.onNotFound();
-    return result as T;
+    return result;
+  }
+
+  /**
+   * Execute the composed query through the FetchHelper cache wrap path.
+   * When a `cacheStrategy` is wired (via ctor config or CrudConfigService global),
+   * the result is wrapped in the strategy — cache-hit returns early, cache-miss
+   * executes the QB and sets the result. Bypassed when `?cache=0` or no strategy.
+   */
+  public async executeMany<R = T>(
+    qb: QueryBuilder<T>,
+    parsed: ParsedRequestParams,
+    options: CrudRequestOptions,
+  ): Promise<R[]> {
+    return this.fetchHelper.executeMany<R>(qb, parsed, options);
   }
 
   public getSelect(parsed: ParsedRequestParams, options: CrudRequestOptions['query']): string[] {
@@ -103,5 +132,18 @@ export class MikroOrmQueryTranslator<T extends object> implements QueryTranslato
 
   public getSkip(query: ParsedRequestParams, take: number): number | null {
     return this.composer.getSkip(query, take);
+  }
+
+  /**
+   * Apply keyset cursor WHERE + ORDER BY (with PK tie-breaker) on top of the
+   * already-composed query. Skipped silently when `decoded` is null (first page).
+   *
+   * One-line delegation to the composer — the composer holds the SQLi guard
+   * (`propertiesMap` allowlist) and the smart-query OR-decomposition.
+   *
+   * @since 2.2.0
+   */
+  public applyCursor(query: QueryBuilder<T>, decoded: CursorPayload | null, sort: QuerySort): QueryBuilder<T> {
+    return this.composer.applyCursor(query, decoded, sort);
   }
 }

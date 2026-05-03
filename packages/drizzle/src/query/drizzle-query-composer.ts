@@ -1,8 +1,9 @@
 import { CrudRequestOptions, getAllowedColumns, JoinResolver } from '@nestjs-crud/core';
+import type { CursorPayload } from '@nestjs-crud/core/cursor';
 import type { QueryComposer, WhereBuilder } from '@nestjs-crud/core/query';
 import { ParsedRequestParams, QuerySort } from '@nestjs-crud/request';
 import { objKeys } from '@nestjs-crud/util';
-import { and, Column, isNull as drizzleIsNull, SQL, sql, Table } from 'drizzle-orm';
+import { and, asc, Column, desc, eq, gt, isNull as drizzleIsNull, lt, or, SQL, sql, Table } from 'drizzle-orm';
 
 // Type debt: Drizzle's $dynamic select-builder type surface is unstable.
 type AnyDrizzleSelect = any;
@@ -207,6 +208,52 @@ export class DrizzleQueryComposer implements QueryComposer<AnyDrizzleSelect> {
   }
 
   /**
+   * Apply keyset cursor WHERE + ORDER BY (with PK tie-breaker) on top of the
+   * already-composed query. Skipped silently when `decoded` is null (first page).
+   *
+   * Emits the canonical OR-decomposed keyset shape from Drizzle's official
+   * cursor-pagination guide:
+   *   `(sortCol cmp v) OR (sortCol = v AND idCol cmp id)`
+   * with `cmp = gt` for forward+ASC and back+DESC, `lt` for the inverse.
+   * ORDER BY uses `asc/desc` helpers and adds the PK tie-breaker so ties on the
+   * sort column resolve deterministically.
+   *
+   * SQLi guard: validates `sort.field` via the same `columnsMap` allowlist used
+   * by `mapSort` (D-05b invariant). Unknown fields short-circuit through
+   * `onBadRequest` which throws BadRequestException.
+   *
+   * @since 2.2.0
+   */
+  public applyCursor(q: AnyDrizzleSelect, decoded: CursorPayload | null, sort: QuerySort): AnyDrizzleSelect {
+    if (!decoded) return q;
+
+    const sortCol = this.columnsMap[sort.field];
+    const idField = this.entityPrimaryColumns[0];
+    const idCol = this.columnsMap[idField];
+    if (!sortCol) this.onBadRequest(`Invalid sort field: '${sort.field}'`);
+
+    const isAsc = sort.order === 'ASC';
+    const isForward = decoded.dir === 'next';
+    const cmp = isAsc === isForward ? gt : lt;
+    const dirFn = isAsc === isForward ? asc : desc;
+
+    // `as any` casts bridge runtime cursor payload values (`unknown` after JSON
+    // decode) into Drizzle's column-typed operator signatures. The runtime types
+    // round-trip through CursorCodec; the values are bound through Drizzle's
+    // parameterization, so SQLi exposure is on `sortField` (guarded above), not
+    // on these values.
+    q.where(
+      or(
+        cmp(sortCol, decoded.sortValue as any),
+        and(eq(sortCol, decoded.sortValue as any), cmp(idCol, decoded.id as any)),
+      ),
+    );
+    q.orderBy(dirFn(sortCol), dirFn(idCol));
+
+    return q;
+  }
+
+  /**
    * SQLi invariant: dotted-path sort fields MUST round-trip through
    * `joinResolver.getAllowedColumnsFor(relation)` before reaching the ORDER BY
    * clause. Single-segment fields assert against `columnsMap`.
@@ -233,10 +280,7 @@ export class DrizzleQueryComposer implements QueryComposer<AnyDrizzleSelect> {
         );
       } else {
         const col = this.columnsMap[s.field];
-        if (!col) {
-          this.onBadRequest(`Invalid sort field: '${s.field}'`);
-          continue;
-        }
+        if (!col) this.onBadRequest(`Invalid sort field: '${s.field}'`);
         clauses.push(s.order === 'DESC' ? sql`${col} DESC` : sql`${col} ASC`);
       }
     }

@@ -45,5 +45,6 @@
 ### Features
 
 - [Caching](https://github.com/kodjunkie/nestjs-crud/wiki/Caching)
+- [Cursor pagination](https://github.com/kodjunkie/nestjs-crud/wiki/CursorPagination)
 - [Relation load strategy](https://github.com/kodjunkie/nestjs-crud/wiki/RelationLoadStrategy)
 - [Logging](https://github.com/kodjunkie/nestjs-crud/wiki/Logging)

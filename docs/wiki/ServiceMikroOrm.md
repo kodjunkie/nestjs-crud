@@ -88,6 +88,38 @@ The internal `FetchHelper` receives `getEm: () => EntityManager` as a thunk and 
 
 Pass an optional `LoggerService` as the constructor's third argument. See [Logging](https://github.com/kodjunkie/nestjs-crud/wiki/Logging).
 
+## Using EntityRepository (recommended for @mikro-orm/nestjs users)
+
+The `MikroOrmCrudService<T>` constructor accepts either an `EntityManager` or an `EntityRepository<T>`. Consumers using `@mikro-orm/nestjs`'s `@InjectRepository(User)` injection pattern can pass the repository directly:
+
+```typescript
+import { Injectable } from '@nestjs/common';
+import { InjectRepository } from '@mikro-orm/nestjs';
+import { EntityRepository } from '@mikro-orm/core';
+
+import { MikroOrmCrudService } from '@nestjs-crud/mikro-orm';
+import { User } from './entities/user.entity';
+
+@Injectable()
+export class UsersService extends MikroOrmCrudService<User> {
+  constructor(@InjectRepository(User) usersRepo: EntityRepository<User>) {
+    super(usersRepo, User);
+  }
+}
+```
+
+Internally, the library unwraps the repository via `repo.getEntityManager()`, which returns the same ALS-backed `EntityManager` proxy that `@mikro-orm/nestjs` injects. Request-scope identity-map isolation is preserved — no behavior change vs the EntityManager-direct constructor.
+
+The `EntityManager` form continues to work for consumers not using `@mikro-orm/nestjs`:
+
+```typescript
+constructor(em: EntityManager) {
+  super(em, User);
+}
+```
+
+> **MikroORM-only:** This constructor union is specific to the MikroORM adapter. The TypeORM adapter expects `Repository<T>`, the Drizzle adapter expects a `DrizzleClient`-shaped object, and the Prisma adapter expects a `PrismaClient` — none of those signatures change.
+
 ## See also
 
 - [v2 Migration guide](https://github.com/kodjunkie/nestjs-crud/wiki/v2-Migration)

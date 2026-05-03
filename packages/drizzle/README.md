@@ -64,6 +64,6 @@ export class CompaniesController {
 ## See also
 
 - [Wiki: ServiceDrizzle](https://github.com/kodjunkie/nestjs-crud/wiki/ServiceDrizzle) — full Drizzle adapter API
-- [Wiki: Logging](https://github.com/kodjunkie/nestjs-crud/wiki/Logging) — optional `LoggerService` ctor parameter (v2.0.0)
-- [Wiki: Caching](https://github.com/kodjunkie/nestjs-crud/wiki/Caching) — current state for Drizzle (consumer-owned)
+- [Wiki: Logging](https://github.com/kodjunkie/nestjs-crud/wiki/Logging) — optional `LoggerService` constructor parameter (v2.0.0)
+- [Wiki: Caching](https://github.com/kodjunkie/nestjs-crud/wiki/Caching) — `@Crud({ query: { cache } })` honored via `DrizzleCacheStrategy` (v2.2.0+)
 - [v2 Migration guide](https://github.com/kodjunkie/nestjs-crud/wiki/v2-Migration) — including the typed `DrizzleClient` constructor migration

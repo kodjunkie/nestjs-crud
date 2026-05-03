@@ -3,6 +3,7 @@ import { ParsedRequestParams } from '@nestjs-crud/request';
 import { objKeys } from '@nestjs-crud/util';
 
 import { CreateManyDto, CrudRequest, CrudRequestOptions, GetManyDefaultResponse, QueryOptions } from '../interfaces';
+import type { CursorPaginatedResponse } from '../cursor/cursor-paginated-response.interface';
 import { getAllowedColumns as getAllowedColumnsUtil } from '../util/get-allowed-columns';
 
 export abstract class CrudService<T> {
@@ -50,6 +51,14 @@ export abstract class CrudService<T> {
   }
 
   /**
+   * Resolve pagination mode for the current request — `'offset'` (default) or `'cursor'`.
+   * @param options
+   */
+  getPaginationMode(options: CrudRequestOptions): 'offset' | 'cursor' {
+    return options.query.pagination ?? 'offset';
+  }
+
+  /**
    * Get number of resources to be fetched
    * @param query
    * @param options
@@ -89,7 +98,7 @@ export abstract class CrudService<T> {
     return getAllowedColumnsUtil(columns, options);
   }
 
-  abstract getMany(req: CrudRequest): Promise<GetManyDefaultResponse<T> | T[]>;
+  abstract getMany(req: CrudRequest): Promise<GetManyDefaultResponse<T> | CursorPaginatedResponse<T> | T[]>;
 
   abstract getOne(req: CrudRequest): Promise<T>;
 

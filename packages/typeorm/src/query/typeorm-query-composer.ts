@@ -1,4 +1,6 @@
-import { CrudCacheNotConfiguredError, getAllowedColumns, JoinResolver } from '@nestjs-crud/core';
+import { CrudCacheNotConfiguredError, CrudConfigService, getAllowedColumns, JoinResolver } from '@nestjs-crud/core';
+import type { CacheStrategy } from '@nestjs-crud/core/cache';
+import type { CursorPayload } from '@nestjs-crud/core/cursor';
 import type { QueryComposer, WhereBuilder } from '@nestjs-crud/core/query';
 import { ParsedRequestParams, QuerySort } from '@nestjs-crud/request';
 import { objKeys } from '@nestjs-crud/util';
@@ -13,6 +15,15 @@ export interface TypeOrmQueryComposerConfig<T extends ObjectLiteral> {
   onBadRequest: (msg: string) => void;
   joinResolver: JoinResolver<SelectQueryBuilder<T>>;
   whereBuilder: WhereBuilder<SelectQueryBuilder<T>, Brackets>;
+  /**
+   * When set, step 7 (TypeORM-native `query.cache(ttl)`) is skipped.
+   * The cache wrap happens in `TypeOrmFetchHelper` instead — preventing
+   * double-caching where stale entries in `DataSource.cache` survive
+   * prefix-invalidate.
+   *
+   * @since 2.2.0
+   */
+  cacheStrategy?: CacheStrategy;
 }
 
 /**
@@ -43,7 +54,10 @@ export class TypeOrmQueryComposer<T extends ObjectLiteral> implements QueryCompo
 
   private readonly whereBuilder: WhereBuilder<SelectQueryBuilder<T>, Brackets>;
 
+  private readonly config: TypeOrmQueryComposerConfig<T>;
+
   constructor(config: TypeOrmQueryComposerConfig<T>) {
+    this.config = config;
     this.repo = config.repo;
     this.entityColumnsHash = config.entityColumnsHash;
     this.entityHasDeleteColumn = config.entityHasDeleteColumn;
@@ -120,16 +134,73 @@ export class TypeOrmQueryComposer<T extends ObjectLiteral> implements QueryCompo
       query.skip(skip as number);
     }
 
-    // 7. Cache (fail-fast on missing DataSource cache provider)
-    if (queryOptions.cache && parsed.cache !== 0) {
+    /**
+     * 7. Cache (legacy TypeORM-native pass-through).
+     *
+     * Skipped when `CacheStrategy` is wired (FetchHelper handles caching). The
+     * fail-fast throw still runs for legacy `DataSource.cache` consumers who have
+     * NOT migrated to the unified `CacheStrategy` interface.
+     *
+     * @deprecated since 2.2.0 — prefer `CacheStrategy` via
+     * `CrudConfigService.load({ query: { cacheStrategy } })` or the CrudService
+     * constructor. The native `query.cache(ttl)` pass-through is on a removal
+     * track for v3.x; new consumers should wire a `CacheStrategy` from day one.
+     */
+    const resolvedStrategy = this.config.cacheStrategy ?? CrudConfigService.config.query?.cacheStrategy;
+    if (queryOptions.cache && parsed.cache !== 0 && !resolvedStrategy) {
       const cacheProvider = this.repo.manager.connection?.queryResultCache;
       if (!cacheProvider) {
         throw new CrudCacheNotConfiguredError();
       }
-      query.cache(queryOptions.cache);
+      query.cache(queryOptions.cache); // queryOptions.cache is already milliseconds
     }
 
     return query;
+  }
+
+  /**
+   * Apply keyset cursor WHERE + ORDER BY (with PK tie-breaker) on top of the
+   * already-composed query. Skipped silently when `decoded` is null (first page).
+   *
+   * SQLi guard: validates `sort.field` via the same `entityColumnsHash`
+   * allowlist used by `mapSort` for single-segment sort fields.
+   *
+   * @since 2.2.0
+   */
+  public applyCursor(qb: SelectQueryBuilder<T>, decoded: CursorPayload | null, sort: QuerySort): SelectQueryBuilder<T> {
+    // SQLi guard — single-segment allowlist (same as mapSort else branch)
+    if (!this.entityColumnsHash[sort.field]) {
+      this.onBadRequest(`Invalid sort field: '${sort.field}'`);
+    }
+
+    const isAsc = sort.order === 'ASC';
+    // For forward navigation: ASC keeps >, DESC keeps <.
+    // For backward navigation: invert the comparison direction.
+    const isForward = !decoded || decoded.dir === 'next';
+    const cmp = isAsc === isForward ? '>' : '<';
+    const dir: 'ASC' | 'DESC' = isAsc === isForward ? 'ASC' : 'DESC';
+    const idField = this.entityPrimaryColumns[0];
+    // Build sort params using same format as mapSort (object with alias.property keys)
+    const sortParams = this.mapSort([
+      { field: sort.field, order: dir },
+      { field: idField, order: dir },
+    ]);
+    // Always apply ORDER BY with PK tie-breaker — critical for correctness when sort field
+    // has ties across page boundaries (ensures consistent row order on ALL pages).
+    qb.orderBy(sortParams);
+
+    // Add keyset WHERE only for non-first pages (decoded carries cursor position)
+    if (decoded) {
+      // Use alias.property strings — TypeORM resolves these in andWhere template expressions.
+      const sortColRef = `${this.alias}.${sort.field}`;
+      const idColRef = `${this.alias}.${idField}`;
+      qb.andWhere(
+        `(${sortColRef} ${cmp} :__cursor_v) OR (${sortColRef} = :__cursor_v AND ${idColRef} ${cmp} :__cursor_id)`,
+        { __cursor_v: decoded.sortValue, __cursor_id: decoded.id },
+      );
+    }
+
+    return qb;
   }
 
   private get alias(): string {

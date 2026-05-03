@@ -34,7 +34,7 @@ This fork adds / modifies (non-exhaustive):
 - **Drizzle ORM adapter** (`@nestjs-crud/drizzle`) — new
 - **MikroORM adapter** (`@nestjs-crud/mikro-orm`) — new
 - **NestJS v11** compatibility and dependency modernization
-- **TypeScript 5.x** composite project refs via `@zmotivat0r/mrepo`
+- **TypeScript 5.x** composite project refs (`tsc -b`) via Yarn 4 workspaces + Lerna 9
 - **Jest 30** migration
 - Correctness fixes, test coverage expansion, and documentation refresh
 

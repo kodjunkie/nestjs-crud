@@ -1,8 +1,20 @@
+import type { CacheStrategy } from '@nestjs-crud/core/cache';
+import { buildCacheKey } from '@nestjs-crud/core/cache';
+import { CrudConfigService } from '@nestjs-crud/core';
+import type { CrudRequestOptions } from '@nestjs-crud/core';
 import type { FetchHelper, FetchHelperFindOneOpts } from '@nestjs-crud/core/query';
+import type { ParsedRequestParams } from '@nestjs-crud/request';
+import { Logger, LoggerService } from '@nestjs/common';
 import { ObjectLiteral, SelectQueryBuilder } from 'typeorm';
 
 export interface TypeOrmFetchHelperConfig {
   onNotFound: (alias: string) => void;
+  /** Optional cache backend; resolved by the translator from ctor or CrudConfigService global. */
+  cacheStrategy?: CacheStrategy;
+  /** Entity name for cache-key prefix. Required when cacheStrategy is set. */
+  entityName?: string;
+  /** Optional logger used by `withCacheErrorPolicy` to record fallback-to-source events. */
+  logger?: LoggerService;
 }
 
 /**
@@ -18,36 +30,126 @@ export interface TypeOrmFetchHelperConfig {
 export class TypeOrmFetchHelper<T extends ObjectLiteral> implements FetchHelper<SelectQueryBuilder<T>> {
   private readonly onNotFound: (alias: string) => void;
 
-  constructor(config: TypeOrmFetchHelperConfig) {
+  private readonly logger: LoggerService;
+
+  constructor(private readonly config: TypeOrmFetchHelperConfig) {
     this.onNotFound = config.onNotFound;
+    this.logger = config.logger ?? new Logger(TypeOrmFetchHelper.name);
   }
 
   public count(qb: SelectQueryBuilder<T>): Promise<number> {
     return qb.getCount();
   }
 
-  public async findOneOrFail<R = T>(qb: SelectQueryBuilder<T>, opts: FetchHelperFindOneOpts): Promise<R> {
+  public async findOneOrFail<R = T>(
+    qb: SelectQueryBuilder<T>,
+    opts: FetchHelperFindOneOpts,
+    parsed?: ParsedRequestParams,
+    options?: CrudRequestOptions,
+  ): Promise<R> {
     const { withDeleted = false, onNotFound } = opts;
-    const found = withDeleted ? await qb.withDeleted().getOne() : await qb.getOne();
+    const fetchFn = (): Promise<T | null> => (withDeleted ? qb.withDeleted().getOne() : qb.getOne());
 
+    const found = await this.wrapRead(fetchFn, parsed, options);
     if (!found) {
       const notify = onNotFound ?? this.onNotFound;
       notify(qb.alias);
     }
-
     return found as unknown as R;
   }
 
   public async executeMany<R = T>(
     qb: SelectQueryBuilder<T>,
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    _parsed: import('@nestjs-crud/request').ParsedRequestParams,
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    _options: import('@nestjs-crud/core').CrudRequestOptions,
+    parsed: ParsedRequestParams,
+    options: CrudRequestOptions,
   ): Promise<R[]> {
-    // Reserved for future parity. The TypeOrmCrudService currently
-    // owns `doGetMany` (pagination-aware). Keeping this method declared so
-    // `FetchHelper<Q>` is fully implemented; not yet wired into the facade.
-    return (await qb.getMany()) as unknown as R[];
+    const fetchFn = (): Promise<T[]> => qb.getMany();
+    const strategy = this.resolveStrategy();
+    if (!strategy || !this.shouldCache(parsed, options, strategy)) {
+      return (await fetchFn()) as unknown as R[];
+    }
+    const ttl = this.getEffectiveTtl(options)!;
+    const key = buildCacheKey(this.config.entityName!, parsed);
+    return (await this.withCacheErrorPolicy(() => strategy.wrap(key, fetchFn, ttl), fetchFn)) as unknown as R[];
+  }
+
+  /**
+   * Internal cache wrapper used by both `executeMany` and `findOneOrFail`.
+   * Both methods derive the cache key from the SAME `buildCacheKey(entityName, parsed)`
+   * util (D-06 — full request fingerprint). TTL sourced from `options.query.cache`
+   * via `getEffectiveTtl` (D-10 — no hard-coded TTL fallback).
+   *
+   * If `parsed` or `options` is undefined (e.g. legacy callers without request
+   * context), the wrap is skipped — fetchFn runs directly.
+   */
+  private async wrapRead<R>(
+    fetchFn: () => Promise<R>,
+    parsed?: ParsedRequestParams,
+    options?: CrudRequestOptions,
+  ): Promise<R> {
+    if (!parsed || !options) return fetchFn();
+    const strategy = this.resolveStrategy();
+    if (!strategy || !this.shouldCache(parsed, options, strategy)) return fetchFn();
+    const ttl = this.getEffectiveTtl(options)!;
+    const key = buildCacheKey(this.config.entityName!, parsed);
+    return this.withCacheErrorPolicy(() => strategy.wrap(key, fetchFn, ttl), fetchFn);
+  }
+
+  /**
+   * Resolve cache strategy at request time (lazy).
+   * Priority: ctor-injected config field > CrudConfigService global > undefined.
+   * Lazy resolution allows test `beforeEach` to wire a strategy via
+   * `CrudConfigService.load({ query: { cacheStrategy } })` after app bootstrap.
+   */
+  private resolveStrategy(): CacheStrategy | undefined {
+    return this.config.cacheStrategy ?? CrudConfigService.config.query?.cacheStrategy;
+  }
+
+  /**
+   * Apply `cacheErrorPolicy` from CrudConfigService.config.query.cacheErrorPolicy.
+   * - `'fail-fast'` (default): propagate the wrap error.
+   * - `'fallback-to-source'`: log a warning and call `fetchFn()` directly so the
+   *   request still succeeds when Redis (or whatever backend) is down.
+   *
+   * Pattern shared verbatim across all 4 adapter FetchHelpers (TypeORM/MikroORM/
+   * Drizzle/Prisma) — keep the implementation in lock-step.
+   */
+  private async withCacheErrorPolicy<R>(wrapped: () => Promise<R>, fetchFn: () => Promise<R>): Promise<R> {
+    try {
+      return await wrapped();
+    } catch (err) {
+      const policy = CrudConfigService.config.query?.cacheErrorPolicy ?? 'fail-fast';
+      if (policy === 'fallback-to-source') {
+        this.logger.warn?.(
+          `cache backend error, falling back to source: ${err instanceof Error ? err.message : String(err)}`,
+        );
+        return fetchFn();
+      }
+      throw err;
+    }
+  }
+
+  /**
+   * Extract the per-request TTL from `options.query.cache` (sole production source per D-10).
+   * Returns `undefined` when the option is unset, false, or non-positive. Units = MILLISECONDS.
+   */
+  private getEffectiveTtl(options: CrudRequestOptions): number | undefined {
+    const optsCache = options?.query?.cache;
+    if (typeof optsCache === 'number' && optsCache > 0) return optsCache;
+    return undefined;
+  }
+
+  /**
+   * Cache predicate: requires a strategy, an entityName, a positive TTL,
+   * and that the per-request bypass flag is NOT explicitly false (D-13).
+   * The legacy numeric `parsed.cache === 0` check is preserved as a fallback
+   * for clients that haven't migrated to the new `parsed.options.cache` boolean.
+   */
+  private shouldCache(parsed: ParsedRequestParams, options: CrudRequestOptions, strategy: CacheStrategy): boolean {
+    if (!strategy || !this.config.entityName) return false;
+    if (this.getEffectiveTtl(options) === undefined) return false;
+    if (parsed.options?.cache === false) return false; // D-13 bypass-read
+    if (parsed.cache === 0) return false; // legacy numeric bypass
+    return true;
   }
 }
