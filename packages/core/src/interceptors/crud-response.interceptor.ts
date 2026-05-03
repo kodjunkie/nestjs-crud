@@ -16,7 +16,6 @@ const actionToDtoNameMap: {
   [CrudActions.CreateOne]: 'create',
   [CrudActions.UpdateOne]: 'update',
   [CrudActions.ReplaceOne]: 'replace',
-  [CrudActions.DeleteAll]: 'delete',
   [CrudActions.DeleteOne]: 'delete',
   [CrudActions.RecoverOne]: 'recover',
 };

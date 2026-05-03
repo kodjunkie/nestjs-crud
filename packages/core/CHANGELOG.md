@@ -24,6 +24,10 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 - Added `RedisLike` interface and `toRedisLike()` / `isRedisLike()` adapter utilities to `@nestjs-crud/core/cache`. Auto-detects node-redis v5 vs ioredis client shape; lazy-once auto-connect deduplicates concurrent first-op connect calls to a single `client.connect()`. Custom backends can implement the four `RedisLike` methods directly.
 - Peer-dependency ranges for `class-transformer` and `class-validator` narrowed from `"*"` to `"^0.5.0"` and `"^0.14.0"` respectively. Tested versions are `class-transformer@0.5.1` and `class-validator@0.14.3`. Consumers pinned within `^0.5.x` / `^0.14.x` are unaffected.
 
+### Removed
+
+- Removed the unwired `CrudActions.DeleteAll` enum value (`'Delete-All'`). Pre-v2 holdover — no `deleteAllBase` route exists in `BaseRouteName` and `CrudRoutesFactory.actionsMap` never mapped it, so `getAction(handler)` on any generated route never returned it. The corresponding entry in `CrudResponseInterceptor`'s `actionToDtoNameMap` is also removed (the mapped type now requires only the 8 wired actions). Consumers with `case CrudActions.DeleteAll:` in exhaustive `switch (action)` ACL blocks should drop the case; runtime behavior unchanged.
+
 
 ## [2.1.1]
 
