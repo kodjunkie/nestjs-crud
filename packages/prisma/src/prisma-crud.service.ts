@@ -3,8 +3,11 @@ import { Logger } from '@nestjs/common';
 import { CrudConfigService, CrudService } from '@nestjs-crud/core';
 
 import type { CacheStrategy } from '@nestjs-crud/core/cache';
+import { CursorCodec } from '@nestjs-crud/core/cursor';
+import type { CursorPaginatedResponse } from '@nestjs-crud/core/cursor';
 
-import type { CreateManyDto, CrudRequest, GetManyDefaultResponse } from '@nestjs-crud/core';
+import type { CreateManyDto, CrudRequest, CrudRequestOptions, GetManyDefaultResponse } from '@nestjs-crud/core';
+import type { ParsedRequestParams } from '@nestjs-crud/request';
 
 import { PrismaClientLike, PrismaQueryTranslatorConfig } from './interfaces';
 
@@ -45,9 +48,17 @@ export class PrismaCrudService<T extends Record<string, unknown>> extends CrudSe
 
   // === PUBLIC CRUD VERBS ===
 
-  public async getMany(req: CrudRequest): Promise<GetManyDefaultResponse<T> | T[]> {
+  public async getMany(
+    req: CrudRequest,
+  ): Promise<GetManyDefaultResponse<T> | CursorPaginatedResponse<T> | T[]> {
     try {
       const { parsed, options } = req;
+      const mode = options.query?.pagination ?? (options as any).pagination ?? 'offset';
+
+      if (mode === 'cursor') {
+        return await this.doGetManyCursor(parsed, options);
+      }
+
       const q = this.translator.applyToQuery(this.translator.newQuery(), parsed, options);
 
       if (this.decidePagination(parsed, options)) {
@@ -284,5 +295,82 @@ export class PrismaCrudService<T extends Record<string, unknown>> extends CrudSe
         `CacheStrategy.invalidate failed for ${this.modelName}: ${err instanceof Error ? err.name : 'UnknownError'}`,
       );
     }
+  }
+
+  private async doGetManyCursor(
+    parsed: ParsedRequestParams,
+    options: CrudRequestOptions,
+  ): Promise<CursorPaginatedResponse<T>> {
+    // D-01a: single-sort-field requirement
+    if (!parsed.sort || parsed.sort.length !== 1) {
+      this.throwBadRequestException(
+        `Cursor pagination supports a single sort field; got: ${parsed.sort?.map((s) => s.field).join(', ') || '0'}`,
+      );
+    }
+    const sort = parsed.sort[0];
+
+    // Decode incoming cursor (null on first page)
+    const decoded = parsed.cursor ? CursorCodec.decode(parsed.cursor) : null;
+
+    // sortField mismatch guard
+    if (decoded && decoded.sortField !== sort.field) {
+      this.throwBadRequestException(
+        `Cursor sort field mismatch: expected '${sort.field}', got '${decoded.sortField}'`,
+      );
+    }
+
+    // D-06a: missing-limit terminal → 400
+    const take = this.getTake(parsed, options.query);
+    if (take == null) {
+      this.throwBadRequestException(
+        'Cursor pagination requires a limit — set @Crud({ query: { limit | maxLimit } }) or pass ?limit=N',
+      );
+    }
+
+    const idField = this.serviceConfig.entityPrimaryColumns[0];
+    const sortField = sort.field;
+
+    // Build Prisma arg-object: applyToQuery composes search/soft-delete WHERE +
+    // (default) sort/select/include/take/skip. applyCursor then OVERRIDES the
+    // ORDER BY (sort + PK tie-breaker) and AND-merges the keyset WHERE on top
+    // of the existing where for non-first pages.
+    const q = this.translator.applyToQuery(this.translator.newQuery(), parsed, options);
+    this.translator.applyCursor(q, decoded, sort);
+
+    // Peek one extra row for end-of-stream detection. Overrides the take set
+    // by applyToQuery's pagination branch.
+    q.take = (take as number) + 1;
+    // Cursor mode is a single-page keyset walk — drop any offset/skip.
+    delete q.skip;
+
+    // D-05: cursor mode BYPASSES cache wrap — call delegate.findMany(q) direct,
+    //       NOT translator.executeMany (which goes through cacheStrategy.wrap).
+    const delegate = this.getDelegate();
+    const rows = (await delegate.findMany(q)) as T[];
+
+    const hasMore = rows.length > (take as number);
+    if (hasMore) rows.pop();
+    if (decoded?.dir === 'prev') rows.reverse();
+
+    const next =
+      hasMore && rows.length
+        ? CursorCodec.encode({
+            sortField,
+            sortValue: (rows[rows.length - 1] as any)[sortField],
+            id: (rows[rows.length - 1] as any)[idField],
+            dir: 'next',
+          })
+        : null;
+
+    const prev = decoded
+      ? CursorCodec.encode({
+          sortField,
+          sortValue: (rows[0] as any)[sortField],
+          id: (rows[0] as any)[idField],
+          dir: 'prev',
+        })
+      : null;
+
+    return { data: rows, count: rows.length, cursor: { next, prev } };
   }
 }

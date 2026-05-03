@@ -105,13 +105,13 @@ export class PrismaQueryTranslator<T extends Record<string, unknown>> implements
   }
 
   /**
-   * Cursor pagination stub — full implementation in Plan 05.
-   * Satisfies the required `QueryTranslator<Q,W>.applyCursor` contract.
+   * Apply keyset cursor WHERE + ORDER BY on the Prisma arg-object. Delegates to
+   * the composer which owns the OR-decomposed `where` merge, PK tie-breaker
+   * `orderBy`, and SQLi guard.
    *
    * @since 2.2.0
    */
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   public applyCursor(query: any, decoded: CursorPayload | null, sort: QuerySort): any {
-    return (this.queryComposer as any).applyCursor(query, decoded, sort);
+    return this.queryComposer.applyCursor(query, decoded, sort);
   }
 }

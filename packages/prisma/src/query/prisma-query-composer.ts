@@ -127,14 +127,42 @@ export class PrismaQueryComposer implements QueryComposer<any> {
   }
 
   /**
-   * Cursor pagination stub — full implementation in Plan 05.
-   * Satisfies the required `QueryComposer<Q>.applyCursor` contract.
+   * Apply keyset cursor WHERE + ORDER BY (with PK tie-breaker) on top of the
+   * already-composed Prisma arg-object. Skipped silently when `decoded` is null.
+   *
+   * SQLi guard: validates `sort.field` via the same `entityColumns` allowlist
+   * used by `compileSort`.
+   *
+   * Bypasses Prisma's built-in `cursor:` arg — that argument is single-column
+   * unique-key only and cannot accept `(sortField, id)` tuple semantics.
    *
    * @since 2.2.0
    */
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  public applyCursor(qb: any, _decoded: CursorPayload | null, _sort: QuerySort): any {
-    throw new Error('Prisma cursor pagination not yet implemented — pending Plan 05');
+  public applyCursor(out: any, decoded: CursorPayload | null, sort: QuerySort): any {
+    if (!decoded) return out;
+
+    if (!this.entityColumns.includes(sort.field)) {
+      this.onBadRequest(`Invalid sort field: '${sort.field}'`);
+    }
+
+    const isAsc = sort.order === 'ASC';
+    const isForward = decoded.dir === 'next';
+    const op = isAsc === isForward ? 'gt' : 'lt';
+    const dir: 'asc' | 'desc' = isAsc === isForward ? 'asc' : 'desc';
+    const idField = this.entityPrimaryColumns[0];
+
+    const cursorWhere = {
+      OR: [
+        { [sort.field]: { [op]: decoded.sortValue } },
+        { AND: [{ [sort.field]: decoded.sortValue }, { [idField]: { [op]: decoded.id } }] },
+      ],
+    };
+
+    // Compose with existing where (keep AUTH + soft-delete + search) — never overwrite.
+    out.where = out.where ? { AND: [out.where, cursorWhere] } : cursorWhere;
+    out.orderBy = [{ [sort.field]: dir }, { [idField]: dir }];
+
+    return out;
   }
 
   /**
