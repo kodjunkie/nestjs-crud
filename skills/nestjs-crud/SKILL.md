@@ -1,42 +1,40 @@
 ---
 name: nestjs-crud
 description: >-
-  Use when integrating `@nestjs-crud/*` (v2.x) — wiring TypeORM/Drizzle/MikroORM/Prisma adapters, configuring `@Crud()`/`@CrudAuth()`/`@Override()`, writing DTOs with `CrudValidationGroups`, opting into split-query relation loading, debugging `RequestQueryException`, `CrudCacheNotConfiguredError`, `EBADENGINE` (Node <22), validation-fails-on-update, MikroORM stale-em, savepoint semantics on overridden writes.
+  Use when integrating `@nestjs-crud/*` (v2.2+) — wiring TypeORM/Drizzle/MikroORM/Prisma adapters,
+  configuring `@Crud()`/`@CrudAuth()`/`@Override()`, opt-in cursor pagination, DTOs with
+  `CrudValidationGroups`, split-query relation loading, debugging `RequestQueryException`,
+  `CrudCacheNotConfiguredError`, `EBADENGINE` (Node <22), validation-fails-on-update,
+  MikroORM stale-em, savepoints on overridden writes.
 ---
 
 # @nestjs-crud
 
-Auto-generates RESTful CRUD endpoints for NestJS controllers from a single `@Crud()` decorator. Four adapters: TypeORM, Drizzle, MikroORM, Prisma. Node 22+. [CHANGELOG](https://github.com/kodjunkie/nestjs-crud/blob/master/CHANGELOG.md).
+Auto-generates RESTful CRUD endpoints from `@Crud()`. Four adapters: TypeORM, Drizzle, MikroORM, Prisma. Node 22+. [CHANGELOG](https://github.com/kodjunkie/nestjs-crud/blob/master/CHANGELOG.md).
 
 ## Install
 
 ```bash
-# Pick one or more adapters
-npm install @nestjs-crud/core @nestjs-crud/typeorm
-npm install @nestjs-crud/core @nestjs-crud/drizzle
-npm install @nestjs-crud/core @nestjs-crud/mikro-orm
+npm install @nestjs-crud/core @nestjs-crud/<adapter>     # typeorm | drizzle | mikro-orm | prisma
+npm install @nestjs-crud/request                         # optional frontend QB
 
-# Prisma (v2.1.0+ requires a Prisma 7 driver adapter):
-npm install @nestjs-crud/core @nestjs-crud/prisma @prisma/adapter-pg pg          # Postgres
-npm install @nestjs-crud/core @nestjs-crud/prisma @prisma/adapter-mariadb mariadb # MySQL
-npm install -D prisma                                                             # CLI
-
-# Optional frontend query builder
-npm install @nestjs-crud/request
+# Prisma 7 needs a driver adapter:
+npm install @prisma/adapter-pg pg                        # Postgres
+npm install @prisma/adapter-mariadb mariadb              # MySQL
+npm install -D prisma                                    # CLI
 ```
 
-Peers declared on every package; `npm install` warns if missing. Node 22+ enforced via `engines.node`. Swagger optional — install `@nestjs/swagger` to enable metadata; library null-guards every Swagger path when absent.
+Swagger optional — install `@nestjs/swagger` to enable metadata; library null-guards every Swagger path when absent.
 
 ## Quickstart
 
-Controller + `@Crud()` identical across adapters. Only service constructor differs.
+`@Crud()` block + `@Controller()` are identical across adapters. Only service ctor differs.
 
 ```typescript
 @Crud({
   model: { type: User },
   query: {
-    limit: 25,
-    maxLimit: 100,
+    limit: 25, maxLimit: 100,
     join: { profile: { eager: true }, posts: { allow: ['id', 'title'] } },
   },
 })
@@ -76,15 +74,15 @@ import { EntityRepository } from '@mikro-orm/core';
 
 @Injectable()
 export class UsersService extends MikroOrmCrudService<User> {
-  constructor(@InjectRepository(User) public usersRepo: EntityRepository<User>) {
+  constructor(@InjectRepository(User) usersRepo: EntityRepository<User>) {
     super(usersRepo, User);
   }
 }
 ```
 
-Constructor accepts `EntityManager | EntityRepository<T>` (v2.2.0+). `super(usersRepo, User)` unwraps via `repo.getEntityManager()` internally — resulting em is the same ALS-backed proxy MikroORM injects, so request-scope identity-map isolation is preserved. To pass `EntityManager` directly instead: `constructor(em: EntityManager) { super(em, User); }` — same behavior.
+Constructor accepts `EntityManager | EntityRepository<T>` (v2.2+). `super(usersRepo, User)` unwraps via `repo.getEntityManager()` internally. The DI-injected em proxy resolves to the per-request forked em via `RequestContext` — request-scope identity-map isolation preserved without effort. To pass `EntityManager` directly: `constructor(em: EntityManager) { super(em, User); }` — same behavior.
 
-### Prisma service (v2.1.0+ with Prisma 7)
+### Prisma service (v2.1+ with Prisma 7)
 
 ```typescript
 const prisma = new PrismaClient({
@@ -103,117 +101,120 @@ export class UsersService extends PrismaCrudService<User> {
 }
 ```
 
-Prisma 7 removed env-URL path — driver adapter required. Schema rewrite covered in [v2.1 Migration wiki](https://github.com/kodjunkie/nestjs-crud/wiki/v2.1-Migration). Swap `@prisma/adapter-pg` for `@prisma/adapter-mariadb` on MySQL. 3rd constructor arg = `PrismaCrudServiceConfig` object (logger lives inside).
+Prisma 7 removed the env-URL path — driver adapter required. Schema rewrite covered in [v2.1 Migration wiki](https://github.com/kodjunkie/nestjs-crud/wiki/v2.1-Migration). Swap `@prisma/adapter-pg` for `@prisma/adapter-mariadb` on MySQL. 3rd ctor arg = `PrismaCrudServiceConfig` (logger lives inside).
 
 ## Generated Endpoints
 
 | Method | Path | Handler |
 |--------|------|---------|
-| `GET` | `/users` | `getManyBase` |
-| `GET` | `/users/:id` | `getOneBase` |
-| `POST` | `/users` | `createOneBase` |
-| `POST` | `/users/bulk` | `createManyBase` |
-| `PATCH` | `/users/:id` | `updateOneBase` |
-| `PUT` | `/users/:id` | `replaceOneBase` |
-| `DELETE` | `/users/:id` | `deleteOneBase` |
-| `POST` | `/users/:id/recover` | `recoverOneBase` |
-
-## Global Defaults — `CrudConfigService.load()`
-
-Set project-wide defaults in `main.ts` BEFORE `NestFactory.create`. Every `@Crud()` deep-merges; controller scalars win, arrays replace.
-
-```typescript
-CrudConfigService.load({
-  query: { limit: 25, maxLimit: 100, alwaysPaginate: true, cache: 2000 },
-  routes: { updateOneBase: { allowParamsOverride: false } },
-  params: { id: { field: 'id', type: 'number', primary: true } },
-  serialize: { getMany: false },
-  auth: { property: 'user' },
-});
-```
-
-## Query Params (Frontend → Backend)
-
-```typescript
-const qb = RequestQueryBuilder.create()
-  .setFilter({ field: 'isActive', operator: CondOperator.EQUALS, value: true })
-  .setOr({ field: 'role', operator: CondOperator.IN, value: ['admin', 'mod'] })
-  .setJoin({ field: 'profile' })
-  .sortBy({ field: 'createdAt', order: 'DESC' })
-  .setLimit(20)
-  .setPage(2);
-
-fetch(`/users?${qb.query()}`);
-```
-
-**23 operators** (`CondOperator` enum):
-
-- Equality / comparison: `$eq`, `$ne`, `$gt`, `$gte`, `$lt`, `$lte`
-- Range / null: `$between`, `$isnull`, `$notnull`
-- Set: `$in`, `$notin`
-- String match: `$cont`, `$excl`, `$starts`, `$ends`
-- Case-insensitive variants: `$eqL`, `$neL`, `$inL`, `$notinL`, `$contL`, `$exclL`, `$startsL`, `$endsL`
-
-Raw form: `?filter=name||$cont||john&sort=createdAt,DESC&join=profile&limit=25&page=2`
+| GET | `/users` | `getManyBase` |
+| GET | `/users/:id` | `getOneBase` |
+| POST | `/users` | `createOneBase` |
+| POST | `/users/bulk` | `createManyBase` |
+| PATCH | `/users/:id` | `updateOneBase` |
+| PUT | `/users/:id` | `replaceOneBase` |
+| DELETE | `/users/:id` | `deleteOneBase` |
+| POST | `/users/:id/recover` | `recoverOneBase` (requires `query.softDelete: true`) |
 
 ## `@Crud()` Key Options
 
 ```typescript
 @Crud({
-  model: { type: Entity },                                // required
-
-  dto: { create: CreateDto, update: UpdateDto, replace: ReplaceDto },
-  serialize: { getMany: ListResponse, get: ItemResponse },
+  model: { type: Entity },                                 // required
+  dto:        { create, update, replace },                 // optional — see DTOs
+  serialize:  { getMany, get },                            // per-route response DTOs
 
   query: {
     limit: 25, maxLimit: 100,
-    cache: 2000,                                          // ms — see §Caching
+    pagination: 'offset' | 'cursor',                       // v2.2+ — default 'offset'
+    cache: 2000,                                           // ms
     alwaysPaginate: false,
-    softDelete: false,                                    // enables recoverOneBase
-    relationLoadStrategy: 'join',                         // TypeORM only — see §Split-Query
-    join: { rel: { eager: true, allow: ['id', 'name'], exclude: ['secret'], required: false } },
-    filter: [{ field: 'deletedAt', operator: '$isnull' }],
-    sort: [{ field: 'id', order: 'ASC' }],
+    softDelete: false,                                     // enables recoverOneBase
+    relationLoadStrategy: 'join' | 'query',                // TypeORM only
+    join:    { rel: { eager, allow, exclude, required } },
+    filter:  [{ field, operator, value }],
+    sort:    [{ field, order }],
     exclude: ['password'],
   },
 
-  routes: { exclude: ['createManyBase'], updateOneBase: { allowParamsOverride: false } },
-  params: { id: { field: 'id', type: 'uuid', primary: true } },
-  swagger: { tag: 'Users', tagWithVersion: true },
-  validation: { whitelist: true },
-  serviceProperty: 'usersService',                        // v2.2.0+ — defaults 'service'
+  routes:  { exclude: ['createManyBase'], updateOneBase: { allowParamsOverride: false } },
+  params:  { id: { field: 'id', type: 'uuid', primary: true } },
+  serviceProperty: 'usersService',                         // v2.2+ — defaults 'service'
 })
 ```
 
-`recoverOneBase` requires `query.softDelete: true` + soft-delete column on entity. Full reference: [Controllers wiki](https://github.com/kodjunkie/nestjs-crud/wiki/Controllers).
+Full reference: [Controllers wiki](https://github.com/kodjunkie/nestjs-crud/wiki/Controllers).
 
-## Scoping Requests Per User (`@CrudAuth`)
+## Cursor Pagination (v2.2+, opt-in)
+
+```typescript
+@Crud({ query: { pagination: 'cursor', limit: 25 } })
+```
+
+Switches `getManyBase` to keyset cursor mode. Response: `{ data, count, cursor: { next, prev } }`. Default `'offset'` preserved (non-breaking).
+
+- Cursor = opaque base64url JSON `{sortField, sortValue, id, dir}`. **NOT signed** — authorization stays in `@CrudAuth`. Cursor opacity ≠ access boundary.
+- `@CrudAuth` filter applies BEFORE cursor (auth merges into `parsed.search` at the interceptor; cursor `WHERE` ANDs on top at the service). Cursor pages are subsets of the `@CrudAuth`-filtered result set — same isolation guarantees as offset mode.
+- Single sort field + auto-PK tail; multi-sort + cursor → 400. Requires `limit` or `maxLimit` (missing → 400). Tampered/wrong-sort cursor → 400.
+- Cursor mode bypasses cache wrap (per-cursor-key cardinality unbounded). On hot endpoints, pair with `@nestjs/throttler`.
+- Honored across all 4 adapters via per-adapter `QueryComposer.applyCursor`. Prisma's built-in `cursor:` arg intentionally bypassed (single-column unique-key only).
+
+[Cursor Pagination wiki](https://github.com/kodjunkie/nestjs-crud/wiki/CursorPagination).
+
+## Query Params (Frontend → Backend)
+
+```typescript
+RequestQueryBuilder.create()
+  .setFilter({ field: 'isActive', operator: CondOperator.EQUALS, value: true })
+  .setOr({ field: 'role', operator: CondOperator.IN, value: ['admin'] })
+  .setJoin({ field: 'profile' })
+  .sortBy({ field: 'createdAt', order: 'DESC' })
+  .setLimit(20).setPage(2)
+  .query();
+```
+
+**23 operators (`CondOperator`):** `$eq $ne $gt $gte $lt $lte $between $isnull $notnull $in $notin $cont $excl $starts $ends` + 8 case-insensitive `*L` variants.
+
+Raw form: `?filter=name||$cont||john&sort=createdAt,DESC&join=profile&limit=25&page=2&cursor=<opaque>`
+
+## Global Defaults
+
+Set project-wide defaults in `main.ts` BEFORE `NestFactory.create`. Every `@Crud()` deep-merges; controller scalars win, arrays replace.
+
+```typescript
+CrudConfigService.load({
+  query:       { limit: 25, maxLimit: 100, alwaysPaginate: true, cache: 2000, softDelete: false },
+  routes:      { updateOneBase: { allowParamsOverride: false, returnShallow: false }, deleteOneBase: { returnDeleted: false } },
+  params:      { id: { field: 'id', type: 'number', primary: true } },
+  serialize:   { getMany: false },                            // disable serialize globally for list responses
+  queryParser: { delimiter: ',' },                            // passed to RequestQueryBuilder.setOptions
+  auth:        { property: 'user' },                          // default user property for @CrudAuth
+});
+```
+
+## `@CrudAuth` — Per-User Scoping
 
 ```typescript
 @Crud({ model: { type: Post } })
 @CrudAuth({
   property: 'user',
-  filter: (user: User) => ({ authorId: { $eq: user.id } }),
-  persist: (user: User) => ({ authorId: user.id }),
+  filter:  (u: User) => ({ authorId: { $eq: u.id } }),    // appended to every read
+  persist: (u: User) => ({ authorId: u.id }),             // set on every write
+  or:      false,                                          // OR-merge filter into search; default false (AND-merge)
 })
 @UseGuards(JwtAuthGuard)
 @Controller('posts')
-export class PostsController implements CrudController<Post> {
-  constructor(public service: PostsService) {}
-}
+export class PostsController { constructor(public service: PostsService) {} }
 ```
 
-- `filter` — appended to every read
-- `persist` — set on every write (prevents spoofing); keys validated at runtime against `entityColumnsHash`; typos throw `RequestQueryException` → 400
-- `property` — where to find user on `req` (default `'user'`)
+`persist` keys validated against entity columns at runtime — typos throw `RequestQueryException` → 400.
 
-**Guard ordering:** `@UseGuards()` MUST come before `@CrudAuth()` reads `req.user` — place auth guard on the controller class.
+**Guard ordering:** `@UseGuards()` MUST be on the controller class (runs before `CrudRequestInterceptor` reads `req.user`).
 
-## Overriding Generated Routes (`@Override`)
+## `@Override()` — Custom Handlers
 
 ```typescript
 @Override('getOneBase')
-@UseInterceptors(MyInterceptor)
 getUser(@ParsedRequest() req: CrudRequest, @Param('id') id: string) {
   return this.service.getOne(req);
 }
@@ -224,63 +225,55 @@ createUser(@ParsedRequest() req: CrudRequest, @ParsedBody() dto: User) {
 }
 ```
 
-Use `@ParsedBody()` not `@Body()` — `@Body()` bypasses `class-validator` group selection (CREATE and UPDATE collapse to identical validation).
+`@Override` accepts: `'getManyBase'`, `'getOneBase'`, `'createOneBase'`, `'createManyBase'`, `'updateOneBase'`, `'replaceOneBase'`, `'deleteOneBase'`, `'recoverOneBase'`.
 
-## IntelliSense — TS errors on generated handlers
-
-`@Crud()` wires handlers at runtime; TypeScript can't see them.
-
-1. **`service` field is untyped** without `implements CrudController<T>` — interface restores typing.
-2. **`this.getManyBase(req)` fails typecheck.** Workaround — `base` getter casting `this`:
-
-```typescript
-get base(): CrudController<User> { return this; }
-```
-
-Most code shouldn't need `base`. Calling `this.service.getMany(req)` from inside `@Override()` is fully typed and idiomatic. Reach for `base` only when composing two generated handlers in one override.
+Use `@ParsedBody()` not `@Body()` in write overrides — `@Body()` bypasses `class-validator` group selection (CREATE and UPDATE validation become identical).
 
 ## DTOs — Two Patterns
 
-**Pattern A: Entity-as-DTO (default).** `class-validator` groups on entity:
+**Pattern A (default): Entity-as-DTO** with `class-validator` groups:
 
 ```typescript
 const { CREATE, UPDATE } = CrudValidationGroups;
 
-@Entity()
-export class User {
-  @IsOptional({ groups: [UPDATE] })
-  @IsNotEmpty({ groups: [CREATE] })
-  @IsString({ always: true })
-  @Column()
-  name: string;
-}
+@IsOptional({ groups: [UPDATE] })
+@IsNotEmpty({ groups: [CREATE] })
+@IsString({ always: true })
+name: string;
 ```
 
-`CREATE` runs on POST + PUT; `UPDATE` on PATCH; `{ always: true }` on both.
+`CREATE` → POST + PUT; `UPDATE` → PATCH; `{ always: true }` → both.
 
-**Pattern B: Dedicated DTO classes** via `@Crud({ dto: { create, update, replace } })`. Use when write shape differs meaningfully from entity. With `dto`, `CrudValidationGroups` is NOT used — controller validates against DTO class directly.
+**Pattern B: Dedicated DTOs** via `@Crud({ dto: { create, update, replace } })`. With `dto`, `CrudValidationGroups` not used — controller validates against the DTO class directly. Combine entity-in (A) + DTO-out (`@Crud({ serialize })`) freely.
 
-Output serialization is separate. Combine entity-in (Pattern A) + DTO-out (`@Crud({ serialize: {...} })`) freely.
+### Validation groups: factory vs hand-rolled controllers
 
-**Hand-rolled controllers** (no `@Crud()`) get default ValidationPipe — group decorators silently skip. Wire group pipe explicitly:
+`CrudValidationGroups.CREATE` / `UPDATE` only fire when the validator runs with matching `groups`. The `@Crud()` factory binds `new ValidationPipe({ groups: [CREATE | UPDATE], ... })` per generated route automatically. Hand-rolled controllers built without `@Crud()` get the **default** pipe (`groups: undefined`); group-scoped decorators silently skip — required-field validators don't fire.
 
 ```typescript
-@Body(new ValidationPipe({ groups: [CrudValidationGroups.CREATE], whitelist: true })) user: User
+// ✗ Hand-rolled — group-scoped decorators silently skip
+@Controller('special')
+export class SpecialController {
+  @Post('/users')
+  createSpecial(@Body() user: User) { ... }  // CREATE-group validators DO NOT run
+}
+
+// ✓ Hand-rolled — wire the group pipe explicitly
+@Post('/users')
+createSpecial(
+  @Body(new ValidationPipe({ groups: [CrudValidationGroups.CREATE], whitelist: true })) user: User,
+) { ... }
 ```
 
-## Strict Field Allowlist (BREAKING in v2)
+Many such routes? Factor a helper. Alternative: switch to dedicated DTOs (Pattern B) without group decorators — they validate identically everywhere.
 
-Every field in `?sort=`, `?filter=`, `?search=`, `?fields=`, `?join=` MUST be entity column OR relation listed in `@Crud({ query: { join: {...} } })`. Otherwise:
+## Strict Field Allowlist (v2 BREAKING)
 
-```
-RequestQueryException: Invalid field 'foo' for entity 'User'
-```
-
-Mapped to 400. No opt-out. Common breakages: TypeORM `@VirtualColumn`/`@Formula` fields; client-side aliases; dotted paths against unjoined relations.
+Every field in `?sort/?filter/?search/?fields/?join` MUST be entity column OR allow-listed relation. Otherwise: `RequestQueryException: Invalid field 'X'` → 400. No opt-out. Common breakages: TypeORM `@VirtualColumn`/`@Formula`, client-side aliases, dotted paths against unjoined relations.
 
 ## Caching
 
-`@Crud({ query: { cache: <ttl-ms> } })` honored by all four adapters when a `CacheStrategy` is wired (TypeORM-only pre-2.2.0). TTL is milliseconds.
+`@Crud({ query: { cache: <ttl-ms> } })` honored by all 4 adapters when a `CacheStrategy` is wired (TypeORM-only pre-v2.2). TTL is milliseconds.
 
 ```ts
 import { createClient } from 'redis';
@@ -293,80 +286,73 @@ CrudConfigService.load({
 });
 ```
 
-Strategies (`TypeOrm | MikroOrm | Drizzle | PrismaRedis | PrismaAccelerate`) accept `redis` (node-redis v5) or `ioredis` clients with lazy-once auto-connect — no explicit `connect()` required. Custom backends: implement `RedisLike` (`set / get / del / scanPrefix`) from `@nestjs-crud/core/cache`. Writes auto-invalidate by entity prefix. `?cache=0` bypasses per-request. `MockCacheStrategy` for tests.
+Per-CrudService override available via constructor. Per-route override via `@Crud({ query: { cache } })`. Per-request bypass via `?cache=0`.
 
-`@Crud cache` set without strategy (and no TypeORM `DataSource.cache` fallback) → next cached read throws `CrudCacheNotConfiguredError` (plain `Error`). Setup, security, production tuning: [Caching wiki](https://github.com/kodjunkie/nestjs-crud/wiki/Caching).
+Strategies: `TypeOrm | MikroOrm | Drizzle | PrismaRedis | PrismaAccelerate`. Accept `redis` (node-redis v5) or `ioredis` clients with lazy-once auto-connect — no explicit `connect()` required. Custom backends: implement `RedisLike` (`set / get / del / scanPrefix`) from `@nestjs-crud/core/cache`. Writes auto-invalidate by entity prefix.
 
-## Logger
+`@Crud cache` set without strategy (and no TypeORM `DataSource.cache` fallback) → `CrudCacheNotConfiguredError` on next cached read. Setup, security, tuning: [Caching wiki](https://github.com/kodjunkie/nestjs-crud/wiki/Caching).
 
-All 4 adapters default to `new Logger(<ServiceName>)` when omitted. TypeORM/Drizzle/MikroORM accept `logger?: LoggerService` as last positional constructor arg. Prisma's logger lives inside `serviceConfig` as `{ error, warn?, debug? }`.
+**Cursor mode bypasses cache wrap entirely** (per-cursor-key cardinality unbounded — see §Cursor Pagination). If you opt a route into `pagination: 'cursor'`, the `cache` knob on that route becomes a no-op; pair with `@nestjs/throttler` instead.
 
-## Transactions on write overrides
+## Transactions on Write Overrides
 
-`updateOne` / `replaceOne` / `deleteOne` wrap read-modify-write in transaction at **READ COMMITTED** on all 4 adapters — closes lost-update race. Scope: these 3 ops only (`recoverOne` excluded — no prior read).
+`updateOne` / `replaceOne` / `deleteOne` wrap read-modify-write in tx at READ COMMITTED — closes lost-update race. `recoverOne` excluded (no prior read). If you wrap an `@Override()` in your own outer tx, adapter's inner tx becomes a savepoint inside yours; higher outer isolation NOT downgraded; rollbacks cascade up.
 
-If you `@Override()` one of these and open your own outer tx, adapter's inner tx becomes a **savepoint** inside yours. Inner READ COMMITTED is best-effort — higher outer isolation (SERIALIZABLE) is NOT downgraded. Rollbacks cascade up.
+## TypeORM Split-Query Relation Loading
 
-## Split-Query Relation Loading (TypeORM only)
-
-```typescript
-@Crud({
-  query: {
-    join: { company: { eager: false }, 'company.projects': { eager: false } },
-    relationLoadStrategy: 'query', // default: 'join'
-  },
-})
-```
+`@Crud({ query: { relationLoadStrategy: 'query' } })` — separate query per relation via `setFindOptions`. **Footgun:** `JoinOption.allow` is ignored; relations load all columns. Don't opt in if you use `allow` to hide sensitive columns. Other adapters use split queries natively; opt-in is no-op.
 
 | Strategy | Behavior | When to pick |
 |---|---|---|
-| `'join'` | Single SQL via manual `leftJoin`/`innerJoin` | Shallow joins; or you depend on `JoinOption.allow` |
+| `'join'` | Single SQL via `leftJoin`/`innerJoin` | Shallow joins; or you depend on `JoinOption.allow` |
 | `'query'` | Separate query per relation via `setFindOptions` | Deep multi-relation reads where JOIN cross-products inflate payload |
-
-**Footgun:** under `'query'`, `JoinOption.allow` is ignored — relations load all columns. Don't opt in if you use `allow` to hide sensitive columns. Other adapters (Drizzle, MikroORM, Prisma) use split queries natively — opt-in is no-op.
 
 ## Swagger Customization
 
-`@Crud({ swagger: {...} })` controls operation text, tags, examples, error responses, version-aware grouping. Default: imperative summaries, multi-line descriptions, 400/401-if-auth/404 emission, auto `@ApiTags`, auto request-body examples from `@ApiProperty`.
+`@Crud({ swagger: {...} })` controls operation text, tags, examples, error responses, version-aware grouping. Defaults: imperative summaries, multi-line descriptions, 400/401-if-auth/404 emission, auto `@ApiTags`, auto request-body examples from `@ApiProperty`.
 
-Constraints: `operationId` not overridable; default 401 emission keys off `@CrudAuth` (set `swagger.errorResponses.unauthorized: true` for `APP_GUARD` setups); `synthExample` consumer fn wins over metadata; `@Override()` + manual `@ApiOperation()` wins over `swagger.operations[...]`. Full reference: [Swagger wiki](https://github.com/kodjunkie/nestjs-crud/wiki/Swagger).
+**Constraints:** `operationId` not overridable; default 401 emission keys off `@CrudAuth` (set `swagger.errorResponses.unauthorized: true` for `APP_GUARD` setups); `synthExample` consumer fn wins over metadata; `@Override()` + manual `@ApiOperation()` wins over `swagger.operations[...]`. Full reference: [Swagger wiki](https://github.com/kodjunkie/nestjs-crud/wiki/Swagger).
 
-## Typed signatures (v2 type tightening)
+## Logger
 
-- **Drizzle:** `protected db: DrizzleClient` (was `any`). Subclass re-declarations conflict — delete and inherit.
-- **MikroORM:** 15 `any` sites replaced with `FilterQuery<T>`, `RequiredEntityData<T>`, `EntityMetadata<T>`, `QueryOrderMap<T>`. Untyped callsites need annotations.
-- **Core:** `SwaggerEnumType` inlined — no more internal `@nestjs/swagger/dist` imports.
+All 4 adapters default to `new Logger(<ServiceName>)`. TypeORM/Drizzle/MikroORM accept `logger?: LoggerService` as last positional ctor arg. Prisma's logger lives inside `serviceConfig` as `{ error, warn?, debug? }`.
+
+**Emission convention:** `debug` for query traces; `warn` for SQLi rejections + tx rollbacks; `error` for uncaught DB errors. **NEVER interpolate `err.message`** — DB drivers leak SQL parameter values into messages; emit `err.name` as the message and pass `err.stack` as second arg.
+
+## IntelliSense
+
+`@Crud()` wires handlers at runtime; TS can't see them. `implements CrudController<T>` restores `service` typing. From inside `@Override()`, `this.service.getMany(req)` is fully typed and idiomatic. Composing two generated handlers in one override: `get base(): CrudController<User> { return this; }`.
 
 ## Best Practices
 
-- Use `CondOperator` enum, not raw operator strings (`'$cont'` silently misspells)
-- Use `CrudValidationGroups` constants, not magic strings
+- Use `CondOperator` enum, not raw strings (`'$cont'` silently misspells)
 - Always `exclude` sensitive fields in `query` config (`?fields=password` returns it without)
 - Always `allow`-list join fields on sensitive relations
-- Use `search` for AND/OR composition; `filter` is AND-only
-- Set `maxLimit` server-side — never trust client `limit` alone
+- `search` for AND/OR composition; `filter` is AND-only
+- Set `maxLimit` server-side — never trust client `limit`
+- Cursor mode on hot endpoints → pair with `@nestjs/throttler` (cache bypass = unbounded cardinality)
 
 ## Common Issues
 
-| Symptom | Cause + Fix |
-|---------|-------------|
+| Symptom | Fix |
+|---------|-----|
 | Relations not loading | Add to `query.join`. Without it, client join requests silently ignored. |
 | `maxLimit` exceeded → 400 | Raise `maxLimit` or set `alwaysPaginate: false`. |
 | Validation always fails on update | Fields need `@IsOptional({ groups: [UPDATE] })`. |
-| `@CrudAuth` filter not applying | Auth guard must run BEFORE `CrudRequestInterceptor`. Place `@UseGuards()` on class. |
-| Flat array instead of `{ data, count, total, page, pageCount }` | Set `alwaysPaginate: true` inside `query:` (NOT top-level). |
-| `RequestQueryException: Invalid field 'X'` → 400 | Strict allowlist. Add to entity columns, whitelist via `@Crud({ query: { allow: [...] } })`, or join the relation. |
-| `RequestQueryException: Invalid persist key 'X'` → 400 | Typo in `@CrudAuth({ persist: {...} })` against entity column. |
+| `Cannot find module 'typeorm'` / `repo.createQueryBuilder is not a function` | Adapter peer not installed. `npm install typeorm` (or the relevant peer). |
+| Swagger metadata empty | `@nestjs/swagger` not installed. Library skips Swagger setup; install + restart. |
+| `@CrudAuth` filter not applying | `@UseGuards()` must be on controller class (runs before interceptor). |
+| Flat array instead of `{ data, count, total, page }` | `alwaysPaginate: true` inside `query:` (NOT top-level). |
+| `RequestQueryException: Invalid field 'X'` → 400 | Add to entity columns or `query.join` allow-list. |
+| `RequestQueryException: Invalid persist key 'X'` → 400 | Typo in `@CrudAuth({ persist })` against entity column. |
 | `EBADENGINE` on `npm install` | Node <22. Upgrade or pin to `^1.0.2`. |
 | `CrudCacheNotConfiguredError` | `@Crud cache` set but no `CacheStrategy` wired (and no TypeORM `DataSource.cache` fallback). |
-| `Cannot find module 'typeorm'` / `repo.createQueryBuilder is not a function` | Adapter peer not installed. |
-| Swagger metadata empty | `@nestjs/swagger` not installed. Library null-guards skip Swagger setup; install + restart. |
-| Unexpected SERIALIZABLE inside outer tx, or rollback cascade | Consumer `@Override()` wrapped in outer tx; adapter adds inner savepoint at READ COMMITTED. Decide: remove the wrap, or accept savepoint nesting. |
-| Split-query: relation columns include columns NOT in `JoinOption.allow` | Documented divergence — `setFindOptions` doesn't expose alias-level select control. Stay on `'join'` for sensitive relations. |
-| Prisma: `Unknown argument 'where'` on `include: { rel: { where: ... } }` | Prisma rejects `where` inside `include` for to-one relations. Filter at parent `where`. Adapter handles SCondition dotted paths on to-one this way automatically. |
-| Prisma: deep includes feel slow / N+1-looking logs | Prisma default is query decomposition. Opt into Prisma's `relationJoins` preview on your own `PrismaClient`. |
-| Prisma: `createMany` returns fewer fields than TypeORM equivalent | Adapter uses `$transaction([create, ...])` array form for full-record parity. If you see v1 behavior, verify v2. |
-| MikroORM: stale entity across requests / `em.flush()` doesn't persist | Subclass cached `em` at constructor time. `MikroOrmFetchHelper` takes `getEm: () => EntityManager` thunk — always call `this.getEm()` fresh; never store `em` as field. |
+| Swagger metadata empty | `@nestjs/swagger` not installed. Library skips Swagger setup; install + restart. |
+| Cursor: `Cursor pagination supports a single sort field` → 400 | Multi-sort + cursor not supported. Use one sort field. |
+| Cursor: `Cursor pagination requires a limit` → 400 | Cursor mode needs `query.limit` or `maxLimit`. |
+| Cursor: `Invalid cursor` → 400 | Tampered, expired schema, or wrong sort field on this route. |
+| MikroORM: stale entity / `em.flush()` doesn't persist | Subclass cached `em` in ctor. Use `getEm()` thunk; never store `em` as field. |
 | MikroORM: Jest ESM error | Use `yarn test:mikro-orm` — has `NODE_OPTIONS=--experimental-vm-modules` inline. Direct `npx jest` fails. |
-| TS: `Argument of type 'any' is not assignable to parameter of type 'X'` | MikroORM type tightening. Add explicit annotation (`FilterQuery<T>`, `RequiredEntityData<T>`). |
-| TS: `Type 'any' is not assignable to type 'DrizzleClient'` | Remove `protected db: any` re-declaration; inherit typed field from base. |
+| Prisma: `Unknown argument 'where'` on `include` | Prisma rejects `where` on to-one `include`. Filter at parent `where`. Adapter handles SCondition dotted paths automatically. |
+| Outer tx + `@Override()` write: SERIALIZABLE persists, rollback cascades | Adapter inner tx is savepoint inside yours. Decide: remove the wrap or accept savepoint nesting. |
+| Split-query: relation loads all columns despite `allow` | `setFindOptions` doesn't expose alias-level select. Stay on `'join'` for sensitive relations. |
