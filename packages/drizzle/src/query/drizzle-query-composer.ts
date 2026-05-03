@@ -3,7 +3,7 @@ import type { CursorPayload } from '@nestjs-crud/core/cursor';
 import type { QueryComposer, WhereBuilder } from '@nestjs-crud/core/query';
 import { ParsedRequestParams, QuerySort } from '@nestjs-crud/request';
 import { objKeys } from '@nestjs-crud/util';
-import { and, Column, isNull as drizzleIsNull, SQL, sql, Table } from 'drizzle-orm';
+import { and, asc, Column, desc, eq, gt, isNull as drizzleIsNull, lt, or, SQL, sql, Table } from 'drizzle-orm';
 
 // Type debt: Drizzle's $dynamic select-builder type surface is unstable.
 type AnyDrizzleSelect = any;
@@ -208,15 +208,51 @@ export class DrizzleQueryComposer implements QueryComposer<AnyDrizzleSelect> {
   }
 
   /**
-   * Cursor pagination stub — full implementation in Plan 03.
-   * Satisfies the required `QueryComposer<Q>.applyCursor` contract
-   * from the core interface so the build passes while Plan 03 is pending.
+   * Apply keyset cursor WHERE + ORDER BY (with PK tie-breaker) on top of the
+   * already-composed query. Skipped silently when `decoded` is null (first page).
+   *
+   * Emits the canonical OR-decomposed keyset shape from Drizzle's official
+   * cursor-pagination guide:
+   *   `(sortCol cmp v) OR (sortCol = v AND idCol cmp id)`
+   * with `cmp = gt` for forward+ASC and back+DESC, `lt` for the inverse.
+   * ORDER BY uses `asc/desc` helpers and adds the PK tie-breaker so ties on the
+   * sort column resolve deterministically.
+   *
+   * SQLi guard: validates `sort.field` via the same `columnsMap` allowlist used
+   * by `mapSort` (D-05b invariant). Unknown fields short-circuit through
+   * `onBadRequest` which throws BadRequestException.
    *
    * @since 2.2.0
    */
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  public applyCursor(_qb: AnyDrizzleSelect, _decoded: CursorPayload | null, _sort: QuerySort): AnyDrizzleSelect {
-    throw new Error('Drizzle cursor pagination not yet implemented — pending Plan 03');
+  public applyCursor(
+    q: AnyDrizzleSelect,
+    decoded: CursorPayload | null,
+    sort: QuerySort,
+  ): AnyDrizzleSelect {
+    if (!decoded) return q;
+
+    const sortCol = this.columnsMap[sort.field];
+    const idField = this.entityPrimaryColumns[0];
+    const idCol = this.columnsMap[idField];
+    if (!sortCol) {
+      this.onBadRequest(`Invalid sort field: '${sort.field}'`);
+      return q;
+    }
+
+    const isAsc = sort.order === 'ASC';
+    const isForward = decoded.dir === 'next';
+    const cmp = isAsc === isForward ? gt : lt;
+    const dirFn = isAsc === isForward ? asc : desc;
+
+    q.where(
+      or(
+        cmp(sortCol, decoded.sortValue as any),
+        and(eq(sortCol, decoded.sortValue as any), cmp(idCol, decoded.id as any)),
+      ),
+    );
+    q.orderBy(dirFn(sortCol), dirFn(idCol));
+
+    return q;
   }
 
   /**

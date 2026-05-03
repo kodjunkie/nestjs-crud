@@ -15,17 +15,16 @@ class UserModel {
 }
 
 /**
- * Fixture controller for cursor-pagination integration spec — Wave 0.
+ * Fixture controller for cursor-pagination integration spec.
  *
- * Mounted at `/users-cursor` to avoid colliding with `/users`. Wave 0 ships
- * with `query: { limit: 5 }` for forward/back-nav cells. Plan 03 adds
- * `pagination: 'cursor'` to this @Crud block as part of wiring the
- * integration spec — kept out of Wave 0 so the fixture compiles before
- * the `pagination` knob lands in Plan 01.
+ * Mounted at `/users-cursor` to avoid colliding with `/users`. Declares the
+ * cursor mode so DrizzleCrudService.getMany routes through doGetManyCursor.
+ * `limit: 5` ensures pagination cells have multiple pages across the
+ * canonical 10-user seed.
  */
 @Crud({
   model: { type: UserModel },
-  query: { limit: 5 },
+  query: { pagination: 'cursor', limit: 5 },
 })
 @Controller('users-cursor')
 export class UsersCursorController {

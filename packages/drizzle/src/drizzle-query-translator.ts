@@ -150,12 +150,13 @@ export class DrizzleQueryTranslator<T extends Record<string, unknown>> implement
   }
 
   /**
-   * Cursor pagination stub — full implementation in Plan 03.
-   * Satisfies the required `QueryTranslator<Q,W>.applyCursor` contract.
+   * Apply keyset cursor WHERE + ORDER BY (with PK tie-breaker) on top of the
+   * already-composed query. One-line delegation to the underlying
+   * `DrizzleQueryComposer.applyCursor`. SQLi guard + OR-decomposed keyset shape
+   * live there.
    *
    * @since 2.2.0
    */
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   public applyCursor(query: AnyDrizzleSelect, decoded: CursorPayload | null, sort: QuerySort): AnyDrizzleSelect {
     return this.queryComposer.applyCursor(query, decoded, sort);
   }

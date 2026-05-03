@@ -1,5 +1,15 @@
-import { CrudConfigService, CrudService, CrudRequest, CreateManyDto, GetManyDefaultResponse } from '@nestjs-crud/core';
+import {
+  CrudConfigService,
+  CrudService,
+  CrudRequest,
+  CrudRequestOptions,
+  CreateManyDto,
+  GetManyDefaultResponse,
+} from '@nestjs-crud/core';
 import type { CacheStrategy } from '@nestjs-crud/core/cache';
+import { CursorCodec } from '@nestjs-crud/core/cursor';
+import type { CursorPaginatedResponse } from '@nestjs-crud/core/cursor';
+import { ParsedRequestParams } from '@nestjs-crud/request';
 import { Logger, LoggerService, NotFoundException } from '@nestjs/common';
 import { hasLength, isArrayFull, isNil, isObject, objKeys } from '@nestjs-crud/util';
 import { Table, Column, SQL, and, eq, sql, getTableColumns, getTableName } from 'drizzle-orm';
@@ -69,8 +79,14 @@ export class DrizzleCrudService<T extends Record<string, unknown>> extends CrudS
 
   // === PUBLIC CRUD VERBS ===
 
-  public async getMany(req: CrudRequest): Promise<GetManyDefaultResponse<T> | T[]> {
+  public async getMany(req: CrudRequest): Promise<GetManyDefaultResponse<T> | CursorPaginatedResponse<T> | T[]> {
     const { parsed, options } = req;
+    const mode = options.query?.pagination ?? (options as any).pagination ?? 'offset';
+
+    if (mode === 'cursor') {
+      return this.doGetManyCursor(parsed, options);
+    }
+
     const selectMap = this.translator.getSelect(parsed, options.query);
     const query = this.db.select(selectMap).from(this.table).$dynamic();
 
@@ -413,6 +429,82 @@ export class DrizzleCrudService<T extends Record<string, unknown>> extends CrudS
   }
 
   // === PRIVATE HELPERS ===
+
+  private async doGetManyCursor(
+    parsed: ParsedRequestParams,
+    options: CrudRequestOptions,
+  ): Promise<CursorPaginatedResponse<T>> {
+    // D-01a: single-sort-field requirement
+    if (!parsed.sort || parsed.sort.length !== 1) {
+      this.throwBadRequestException(
+        `Cursor pagination supports a single sort field; got: ${parsed.sort?.map((s) => s.field).join(', ') || '0'}`,
+      );
+    }
+    const sort = parsed.sort[0];
+
+    // Decode incoming cursor (null on first page)
+    const decoded = parsed.cursor ? CursorCodec.decode(parsed.cursor) : null;
+
+    // sortField mismatch guard
+    if (decoded && decoded.sortField !== sort.field) {
+      this.throwBadRequestException(
+        `Cursor sort field mismatch: expected '${sort.field}', got '${decoded.sortField}'`,
+      );
+    }
+
+    // D-06a: missing-limit terminal → 400
+    const take = this.getTake(parsed, options.query);
+    if (take == null) {
+      this.throwBadRequestException(
+        'Cursor pagination requires a limit — set @Crud({ query: { limit | maxLimit } }) or pass ?limit=N',
+      );
+    }
+
+    const idField = this.entityPrimaryColumns[0];
+    const sortField = sort.field;
+
+    const selectMap = this.translator.getSelect(parsed, options.query);
+    const query = this.db.select(selectMap).from(this.table).$dynamic();
+
+    // applyToQuery applies search WHERE + soft-delete + (default) sort/limit/offset.
+    // applyCursor then OVERRIDES the ORDER BY (sort + PK tie-breaker) and adds the
+    // keyset WHERE only for non-first pages.
+    this.translator.applyToQuery(query, parsed, options);
+    this.translator.applyCursor(query, decoded, sort);
+
+    // Peek one extra row for end-of-stream detection. Drizzle's chainable
+    // .limit() overrides the limit set inside applyToQuery's pagination branch.
+    query.limit((take as number) + 1);
+
+    // D-05: cursor mode BYPASSES cache wrap — call await query directly,
+    //       NOT translator.executeMany (which goes through cacheStrategy.wrap).
+    const rows = (await query) as T[];
+
+    const hasMore = rows.length > (take as number);
+    if (hasMore) rows.pop();
+    if (decoded?.dir === 'prev') rows.reverse();
+
+    const next =
+      hasMore && rows.length
+        ? CursorCodec.encode({
+            sortField,
+            sortValue: (rows[rows.length - 1] as any)[sortField],
+            id: (rows[rows.length - 1] as any)[idField],
+            dir: 'next',
+          })
+        : null;
+
+    const prev = decoded
+      ? CursorCodec.encode({
+          sortField,
+          sortValue: (rows[0] as any)[sortField],
+          id: (rows[0] as any)[idField],
+          dir: 'prev',
+        })
+      : null;
+
+    return { data: rows, count: rows.length, cursor: { next, prev } };
+  }
 
   private async doUpdateOneInternal(req: CrudRequest, dto: T | Partial<T>, t: DrizzleQueryTranslator<T>): Promise<T> {
     const { parsed, options } = req;
