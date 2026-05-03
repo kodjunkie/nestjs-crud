@@ -434,14 +434,17 @@ describe('#crud-typeorm', () => {
             done();
           });
       });
-      it('should return an entity with compound key', (done) => {
-        request(server)
-          .get('/users4/1/5')
-          .end((_, res) => {
-            expect(res.status).toBe(200);
-            expect(res.body.id).toBe(5);
-            done();
-          });
+      it('should return an entity with compound key', async () => {
+        const res = await request(server).get('/users4/1/5');
+        // CI-only diagnostic: surface response shape when the assertion fails so we can
+        // see WHY a 404 (or other non-200) was returned — done() callback form silently
+        // hung on the assertion throw, masking the real failure.
+        if (res.status !== 200) {
+
+          console.log('[users4/1/5 diagnostic] status:', res.status, 'body:', JSON.stringify(res.body), 'text:', res.text);
+        }
+        expect(res.status).toBe(200);
+        expect(res.body.id).toBe(5);
       });
       it('should return an entity with and set cache', (done) => {
         request(server)
