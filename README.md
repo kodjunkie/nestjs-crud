@@ -1,5 +1,8 @@
 <h1 align="center">
-  <img src="img/logo.svg" alt="nestjs-crud" height="56" />
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="img/logo-dark.svg">
+    <img src="img/logo-light.svg" alt="nestjs-crud" height="56" />
+  </picture>
 </h1>
 
 <p align="center">

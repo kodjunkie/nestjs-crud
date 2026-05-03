@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 310 80" role="img" aria-labelledby="logo-title">
+  <title id="logo-title">nestjs-crud</title>
+  <!-- Dark variant: slate squares swapped for white; red kept (visible on dark bg) -->
+  <g transform="translate(14 14)">
+    <rect x="0" y="0" width="22" height="22" rx="5" fill="#E0234E"/>
+    <rect x="30" y="0" width="22" height="22" rx="5" fill="none" stroke="#E0234E" stroke-width="3"/>
+    <rect x="0" y="30" width="22" height="22" rx="5" fill="#F1F5F9"/>
+    <rect x="30" y="30" width="22" height="22" rx="5" fill="none" stroke="#F1F5F9" stroke-width="3"/>
+  </g>
+  <text x="88" y="52" fill="#F1F5F9" font-family="'JetBrains Mono','SF Mono',Menlo,Consolas,monospace" font-size="32" font-weight="600" letter-spacing="-0.5">nestjs-crud</text>
+</svg>

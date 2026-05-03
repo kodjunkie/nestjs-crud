@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-labelledby="icon-title">
+  <title id="icon-title">nestjs-crud</title>
+  <g transform="translate(20 20)">
+    <rect x="0" y="0" width="40" height="40" rx="8" fill="#E0234E"/>
+    <rect x="48" y="0" width="40" height="40" rx="8" fill="none" stroke="#E0234E" stroke-width="4"/>
+    <rect x="0" y="48" width="40" height="40" rx="8" fill="#F1F5F9"/>
+    <rect x="48" y="48" width="40" height="40" rx="8" fill="none" stroke="#F1F5F9" stroke-width="4"/>
+  </g>
+</svg>
