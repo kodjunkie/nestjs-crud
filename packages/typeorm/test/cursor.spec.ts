@@ -123,10 +123,20 @@ const runSuite = !dialect || dialect === 'mysql' || dialect === 'postgres';
 
   // Cell 9: Soft-delete still applies in cursor mode — deleted row absent from cursor pages
   it('soft-delete still applies in cursor mode', async () => {
-    // First get the initial page to find an id to delete
-    const initial = (await request(server).get(`/users-cursor?sort=id,ASC`).expect(200)).body;
-    expect(initial.data.length).toBeGreaterThan(0);
-    const targetId = initial.data[initial.data.length - 1].id;
+    // POST a throwaway user instead of targeting a seeded row. The seeded users
+    // (ids 1..21, including user 5 with companyId=1, profileId=5) are shared by
+    // every typeorm spec via the live DB — hard-deleting one here pollutes
+    // c.basic-crud's compound-key route test (`GET /users4/1/5`).
+    const ts = Date.now();
+    const throwaway = {
+      email: `cursor-delete-${ts}@test.local`,
+      isActive: true,
+      companyId: 1,
+      name: { first: 'cursor', last: 'delete' },
+      profile: { name: `cursor-delete-${ts}` },
+    };
+    const created = (await request(server).post('/users-cursor').send(throwaway).expect(201)).body;
+    const targetId = created.id;
 
     // Delete via /users-cursor (no softDelete config, so hard delete via TypeORM remove)
     await request(server).delete(`/users-cursor/${targetId}`).expect(200);
