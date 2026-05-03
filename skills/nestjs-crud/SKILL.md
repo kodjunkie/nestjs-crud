@@ -19,6 +19,10 @@ Auto-generates RESTful CRUD endpoints from `@Crud()`. Four adapters: TypeORM, Dr
 npm install @nestjs-crud/core @nestjs-crud/<adapter>     # typeorm | drizzle | mikro-orm | prisma
 npm install @nestjs-crud/request                         # optional frontend QB
 
+# All four adapters declare the DB driver as an optional peer — install whichever your backend uses:
+npm install pg                                           # Postgres   (typeorm/drizzle/mikro-orm)
+npm install mysql2                                       # MySQL      (typeorm/drizzle/mikro-orm)
+
 # Prisma 7 needs a driver adapter:
 npm install @prisma/adapter-pg pg                        # Postgres
 npm install @prisma/adapter-mariadb mariadb              # MySQL
@@ -344,7 +348,7 @@ All 4 adapters default to `new Logger(<ServiceName>)`. TypeORM/Drizzle/MikroORM 
 | Relations not loading | Add to `query.join`. Without it, client join requests silently ignored. |
 | `maxLimit` exceeded → 400 | Raise `maxLimit` or set `alwaysPaginate: false`. |
 | Validation always fails on update | Fields need `@IsOptional({ groups: [UPDATE] })`. |
-| `Cannot find module 'typeorm'` / `repo.createQueryBuilder is not a function` | Adapter peer not installed. `npm install typeorm` (or the relevant peer). |
+| `Cannot find module 'typeorm'` / `Cannot find module 'pg'` / `Cannot find module 'mysql2'` / `repo.createQueryBuilder is not a function` | Adapter ORM or DB driver peer not installed. `npm install typeorm pg` (Postgres) or `npm install typeorm mysql2` (MySQL). All four adapters declare DB drivers as optional peers — pick the one your backend uses. |
 | Swagger metadata empty | `@nestjs/swagger` not installed. Library skips Swagger setup; install + restart. |
 | `@CrudAuth` filter not applying | `@UseGuards()` must be on controller class (runs before interceptor). |
 | Flat array instead of `{ data, count, total, page }` | `alwaysPaginate: true` inside `query:` (NOT top-level). |
