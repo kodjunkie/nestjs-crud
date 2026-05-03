@@ -1773,8 +1773,8 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@nestjs-crud/core@workspace:packages/core"
   dependencies:
-    "@nestjs-crud/request": "npm:^2.1.1"
-    "@nestjs-crud/util": "npm:^2.1.1"
+    "@nestjs-crud/request": "npm:^2.2.0"
+    "@nestjs-crud/util": "npm:^2.2.0"
     deepmerge: "npm:^4.3.1"
     pluralize: "npm:^8.0.0"
   peerDependencies:
@@ -1795,6 +1795,13 @@ __metadata:
     "@nestjs-crud/core": ^2.0.0
     "@nestjs/common": ^10.0.0 || ^11.0.0
     drizzle-orm: ">=0.45.2"
+    ioredis: ^5.0.0
+    redis: ^5.0.0
+  peerDependenciesMeta:
+    ioredis:
+      optional: true
+    redis:
+      optional: true
   languageName: unknown
   linkType: soft
 
@@ -1810,6 +1817,13 @@ __metadata:
     "@nestjs-crud/request": ^2.0.0
     "@nestjs-crud/util": ^2.0.0
     "@nestjs/common": ^10.0.0 || ^11.0.0
+    ioredis: ^5.0.0
+    redis: ^5.0.0
+  peerDependenciesMeta:
+    ioredis:
+      optional: true
+    redis:
+      optional: true
   languageName: unknown
   linkType: soft
 
@@ -1820,14 +1834,24 @@ __metadata:
     "@nestjs-crud/core": ^2.0.0
     "@nestjs/common": ^10.0.0 || ^11.0.0
     "@prisma/client": ^7.0.0
+    "@prisma/extension-accelerate": ^3.0.0
+    ioredis: ^5.0.0
+    redis: ^5.0.0
+  peerDependenciesMeta:
+    "@prisma/extension-accelerate":
+      optional: true
+    ioredis:
+      optional: true
+    redis:
+      optional: true
   languageName: unknown
   linkType: soft
 
-"@nestjs-crud/request@npm:^2.1.1, @nestjs-crud/request@workspace:packages/request":
+"@nestjs-crud/request@npm:^2.2.0, @nestjs-crud/request@workspace:packages/request":
   version: 0.0.0-use.local
   resolution: "@nestjs-crud/request@workspace:packages/request"
   dependencies:
-    "@nestjs-crud/util": "npm:^2.1.1"
+    "@nestjs-crud/util": "npm:^2.2.0"
     qs: "npm:^6.15.0"
   languageName: unknown
   linkType: soft
@@ -1839,11 +1863,18 @@ __metadata:
     "@nestjs-crud/core": ^2.0.0
     "@nestjs/common": ^10.0.0 || ^11.0.0
     "@nestjs/typeorm": ^10.0.0 || ^11.0.0
+    ioredis: ^5.0.0
+    redis: ^5.0.0
     typeorm: ^0.3.0
+  peerDependenciesMeta:
+    ioredis:
+      optional: true
+    redis:
+      optional: true
   languageName: unknown
   linkType: soft
 
-"@nestjs-crud/util@npm:^2.1.1, @nestjs-crud/util@workspace:packages/util":
+"@nestjs-crud/util@npm:^2.2.0, @nestjs-crud/util@workspace:packages/util":
   version: 0.0.0-use.local
   resolution: "@nestjs-crud/util@workspace:packages/util"
   languageName: unknown

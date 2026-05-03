@@ -1,7 +1,7 @@
 {
   "name": "@nestjs-crud/drizzle",
   "description": "NestJs CRUD for RESTful APIs - Drizzle ORM",
-  "version": "2.1.1",
+  "version": "2.2.0",
   "license": "MIT",
   "main": "lib/index.js",
   "typings": "lib/index.d.ts",
@@ -47,14 +47,14 @@
     "@nestjs-crud/core": "^2.0.0",
     "@nestjs/common": "^10.0.0 || ^11.0.0",
     "drizzle-orm": ">=0.45.2",
-    "redis": "^5.0.0",
-    "ioredis": "^5.0.0"
+    "ioredis": "^5.0.0",
+    "redis": "^5.0.0"
   },
   "peerDependenciesMeta": {
-    "redis": {
+    "ioredis": {
       "optional": true
     },
-    "ioredis": {
+    "redis": {
       "optional": true
     }
   },
