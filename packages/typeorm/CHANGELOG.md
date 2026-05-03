@@ -3,6 +3,15 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [2.2.1] — 2026-05-03
+
+No consumer source changes. Test-fixture-only fix and test-suite reliability hardening; see the [root CHANGELOG.md](../../CHANGELOG.md#221--2026-05-03) for full release details.
+
+### Fixed
+
+- `cursor.spec` cell 9 no longer hard-deletes the seeded `companyId=1, profileId=5` user, which was causing `c.basic-crud`'s `/users4/1/5` compound-primary-key route test to fail under the `release.yml` MySQL runner (it.skip-ped at v2.2.0 release time). Test-fixture-only — `TypeOrmCrudService` runtime is unchanged.
+
+
 ## [2.2.0] — 2026-05-03
 
 ### Added
