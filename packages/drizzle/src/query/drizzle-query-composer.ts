@@ -224,11 +224,7 @@ export class DrizzleQueryComposer implements QueryComposer<AnyDrizzleSelect> {
    *
    * @since 2.2.0
    */
-  public applyCursor(
-    q: AnyDrizzleSelect,
-    decoded: CursorPayload | null,
-    sort: QuerySort,
-  ): AnyDrizzleSelect {
+  public applyCursor(q: AnyDrizzleSelect, decoded: CursorPayload | null, sort: QuerySort): AnyDrizzleSelect {
     if (!decoded) return q;
 
     const sortCol = this.columnsMap[sort.field];
