@@ -169,14 +169,50 @@ export class MikroOrmQueryComposer<T extends object> implements QueryComposer<Qu
   }
 
   /**
-   * Cursor pagination stub — full implementation in Plan 04.
-   * Satisfies the required `QueryComposer<Q>.applyCursor` contract.
+   * Apply keyset cursor WHERE + ORDER BY (with PK tie-breaker) on top of the
+   * already-composed query. Skipped silently when `decoded` is null (first page).
+   *
+   * SQLi guard: validates `sort.field` via the same `propertiesMap` allowlist
+   * used by `mapSort`.
+   *
+   * **em-free:** Honors the em-thunk invariant — reads only `this.propertiesMap`
+   * and `this.entityPrimaryColumns` (both injected via config). The cursor
+   * branch in the service freshly resolves the entity manager per call via
+   * `createQueryBuilder` on the injected proxy.
    *
    * @since 2.2.0
    */
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  public applyCursor(qb: QueryBuilder<any>, _decoded: CursorPayload | null, _sort: QuerySort): QueryBuilder<any> {
-    throw new Error('MikroORM cursor pagination not yet implemented — pending Plan 04');
+  public applyCursor(
+    qb: QueryBuilder<T>,
+    decoded: CursorPayload | null,
+    sort: QuerySort,
+  ): QueryBuilder<T> {
+    if (!decoded) return qb;
+
+    if (!this.propertiesMap[sort.field]) {
+      this.onBadRequest(`Invalid sort field: '${sort.field}'`);
+    }
+
+    const isAsc = sort.order === 'ASC';
+    const isForward = decoded.dir === 'next';
+    const op = isAsc === isForward ? '$gt' : '$lt';
+    const dir: 'ASC' | 'DESC' = isAsc === isForward ? 'ASC' : 'DESC';
+    const idField = this.entityPrimaryColumns[0];
+
+    // Smart-query OR-decomposed shape — same predicate structure as
+    // TypeORM/Drizzle/Prisma adapters. MikroORM v7 QB types narrow generics
+    // in ESM-quirky ways; the existing applyToQuery body uses (qb as any)
+    // for the same reason.
+    (qb as any).andWhere({
+      $or: [
+        { [sort.field]: { [op]: decoded.sortValue } },
+        { $and: [{ [sort.field]: decoded.sortValue }, { [idField]: { [op]: decoded.id } }] },
+      ],
+    });
+    // Re-apply ORDER BY with PK tie-breaker
+    (qb as any).orderBy({ [sort.field]: dir, [idField]: dir });
+
+    return qb;
   }
 
   /**

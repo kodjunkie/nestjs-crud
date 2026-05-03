@@ -2,12 +2,16 @@ import {
   CreateManyDto,
   CrudConfigService,
   CrudRequest,
+  CrudRequestOptions,
   CrudService,
   GetManyDefaultResponse,
   InputSanitizer,
   prepareEntityBeforeSave as prepareEntityBeforeSaveUtil,
 } from '@nestjs-crud/core';
 import type { CacheStrategy } from '@nestjs-crud/core/cache';
+import { CursorCodec } from '@nestjs-crud/core/cursor';
+import type { CursorPaginatedResponse } from '@nestjs-crud/core/cursor';
+import { ParsedRequestParams } from '@nestjs-crud/request';
 import { Logger, LoggerService, NotFoundException } from '@nestjs/common';
 import { ClassType, hasLength, isArrayFull, isNil, isObject } from '@nestjs-crud/util';
 import {
@@ -117,8 +121,15 @@ export class MikroOrmCrudService<T extends object> extends CrudService<T> {
     return this.em;
   }
 
-  public async getMany(req: CrudRequest): Promise<GetManyDefaultResponse<T> | T[]> {
+  public async getMany(req: CrudRequest): Promise<GetManyDefaultResponse<T> | CursorPaginatedResponse<T> | T[]> {
     const { parsed, options } = req;
+    const mode = options.query?.pagination ?? (options as any).pagination ?? 'offset';
+
+    if (mode === 'cursor') {
+      return this.doGetManyCursor(parsed, options);
+    }
+
+    // T-06-02: fresh em per call via createQueryBuilder on the proxy.
     const qb = (this.em as any).createQueryBuilder(this.entityClass);
     this.translator.applyToQuery(qb, parsed, options);
 
@@ -440,6 +451,79 @@ export class MikroOrmCrudService<T extends object> extends CrudService<T> {
         `CacheStrategy.invalidate failed for ${this.entityClass.name}: ${err instanceof Error ? err.name : 'UnknownError'}`,
       );
     }
+  }
+
+  private async doGetManyCursor(
+    parsed: ParsedRequestParams,
+    options: CrudRequestOptions,
+  ): Promise<CursorPaginatedResponse<T>> {
+    // D-01a: single-sort-field requirement
+    if (!parsed.sort || parsed.sort.length !== 1) {
+      this.throwBadRequestException(
+        `Cursor pagination supports a single sort field; got: ${parsed.sort?.map((s) => s.field).join(', ') || '0'}`,
+      );
+    }
+    const sort = parsed.sort[0];
+
+    // Decode incoming cursor (null on first page)
+    const decoded = parsed.cursor ? CursorCodec.decode(parsed.cursor) : null;
+
+    // sortField mismatch guard
+    if (decoded && decoded.sortField !== sort.field) {
+      this.throwBadRequestException(`Cursor sort field mismatch: expected '${sort.field}', got '${decoded.sortField}'`);
+    }
+
+    // D-06a: missing-limit terminal → 400
+    const take = this.getTake(parsed, options.query);
+    if (take == null) {
+      this.throwBadRequestException(
+        'Cursor pagination requires a limit — set @Crud({ query: { limit | maxLimit } }) or pass ?limit=N',
+      );
+    }
+
+    const idField = this.entityPrimaryColumns[0];
+    const sortField = sort.field;
+
+    // T-06-02: fresh em per call via createQueryBuilder on the proxy — same
+    // shape as the offset branch above. DO NOT capture this.em into a variable
+    // that survives the method.
+    const qb = (this.em as any).createQueryBuilder(this.entityClass);
+    this.translator.applyToQuery(qb, parsed, options);
+    // applyCursor sets ORDER BY (sort ASC/DESC + PK tie-breaker) and adds keyset
+    // WHERE only for non-first pages. Overwrites the default ORDER BY from applyToQuery.
+    this.translator.applyCursor(qb, decoded, sort);
+
+    // Peek one extra row for end-of-stream detection
+    qb.limit((take as number) + 1);
+
+    // D-05: cursor mode BYPASSES cache wrap — call qb.getResult() directly,
+    //       NOT translator.executeMany (which goes through cacheStrategy.wrap).
+    const rows = (await qb.getResult()) as T[];
+
+    const hasMore = rows.length > (take as number);
+    if (hasMore) rows.pop();
+    if (decoded?.dir === 'prev') rows.reverse();
+
+    const next =
+      hasMore && rows.length
+        ? CursorCodec.encode({
+            sortField,
+            sortValue: (rows[rows.length - 1] as any)[sortField],
+            id: (rows[rows.length - 1] as any)[idField],
+            dir: 'next',
+          })
+        : null;
+
+    const prev = decoded
+      ? CursorCodec.encode({
+          sortField,
+          sortValue: (rows[0] as any)[sortField],
+          id: (rows[0] as any)[idField],
+          dir: 'prev',
+        })
+      : null;
+
+    return { data: rows, count: rows.length, cursor: { next, prev } };
   }
 
   private detectDialect() {

@@ -135,13 +135,15 @@ export class MikroOrmQueryTranslator<T extends object> implements QueryTranslato
   }
 
   /**
-   * Cursor pagination stub — full implementation in Plan 04.
-   * Satisfies the required `QueryTranslator<Q,W>.applyCursor` contract.
+   * Apply keyset cursor WHERE + ORDER BY (with PK tie-breaker) on top of the
+   * already-composed query. Skipped silently when `decoded` is null (first page).
+   *
+   * One-line delegation to the composer — the composer holds the SQLi guard
+   * (`propertiesMap` allowlist) and the smart-query OR-decomposition.
    *
    * @since 2.2.0
    */
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  public applyCursor(query: QueryBuilder<any>, decoded: CursorPayload | null, sort: QuerySort): QueryBuilder<any> {
+  public applyCursor(query: QueryBuilder<T>, decoded: CursorPayload | null, sort: QuerySort): QueryBuilder<T> {
     return this.composer.applyCursor(query, decoded, sort);
   }
 }
