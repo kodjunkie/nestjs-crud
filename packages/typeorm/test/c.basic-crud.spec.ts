@@ -435,7 +435,58 @@ describe('#crud-typeorm', () => {
           });
       });
       it('should return an entity with compound key', async () => {
+        // CI-side diagnostic: dump registered Express routes that mention `users4`,
+        // then full response shape. Goal — prove whether the route is registered
+        // at all in CI MySQL, and if so what NestJS actually returns.
+        try {
+          const router =
+            (server as any)?._events?.request?._router ??
+            (server as any)?._events?.request?.router ??
+            (server as any)?.router;
+          const stack = router?.stack ?? [];
+          const routes: string[] = [];
+          for (const layer of stack) {
+            if (layer?.route?.path) {
+              const methods = Object.keys(layer.route.methods || {}).join(',');
+              routes.push(`${methods.toUpperCase()} ${layer.route.path}`);
+            } else if (layer?.handle?.stack) {
+              for (const sub of layer.handle.stack) {
+                if (sub?.route?.path) {
+                  const methods = Object.keys(sub.route.methods || {}).join(',');
+                  routes.push(`${methods.toUpperCase()} ${sub.route.path}`);
+                }
+              }
+            }
+          }
+          const users4Routes = routes.filter((r) => r.toLowerCase().includes('users4'));
+          // eslint-disable-next-line no-console
+          console.log(
+            '[diag users4] count:',
+            users4Routes.length,
+            'sample:',
+            JSON.stringify(users4Routes.slice(0, 10)),
+            'total-routes:',
+            routes.length,
+          );
+        } catch (err) {
+          // eslint-disable-next-line no-console
+          console.log('[diag users4] introspection failed:', (err as Error).message);
+        }
+
         const res = await request(server).get('/users4/1/5');
+        if (res.status !== 200) {
+          // eslint-disable-next-line no-console
+          console.log(
+            '[diag /users4/1/5] status:',
+            res.status,
+            'body:',
+            JSON.stringify(res.body),
+            'text:',
+            res.text,
+            'headers:',
+            JSON.stringify(res.headers),
+          );
+        }
         expect(res.status).toBe(200);
         expect(res.body.id).toBe(5);
       });
