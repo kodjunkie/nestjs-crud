@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [Unreleased]
+
+### Changed
+
+- Declared `mysql2: ^3.0.0` and `pg: ^8.0.0` as optional `peerDependencies` (`peerDependenciesMeta.{mysql2,pg}.optional: true`). Consumers install only the driver their backend uses.
+
+
 ## [2.2.1] — 2026-05-03
 
 Version-only republish — no package-specific source changes. Bumped in lockstep with the rest of the monorepo. See the [root CHANGELOG.md](../../CHANGELOG.md#221--2026-05-03) for full release details.

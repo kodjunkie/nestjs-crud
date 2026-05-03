@@ -7,6 +7,15 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [Unreleased]
+
+### Changed
+
+- `@nestjs/testing`, `mysql2`, and `pg` are reclassified from root `dependencies` to root `devDependencies`. They were test-fixture-only — `@nestjs/testing` is imported by `packages/*/test/*.spec.ts`; `mysql2` and `pg` are referenced only by ORM `DataSource.type` configs in test fixtures. Stops them being pulled into consumer trees as transitive runtime requirements. Consumers using a Postgres or MySQL backend continue to install their chosen driver as a normal dependency in their own project, per the optional `peerDependency` declaration on each adapter package (see below).
+- `mysql2: ^3.0.0` and `pg: ^8.0.0` are now declared as optional `peerDependencies` on each of `@nestjs-crud/typeorm`, `@nestjs-crud/mikro-orm`, `@nestjs-crud/drizzle`, and `@nestjs-crud/prisma`. Mirrors the `@nestjs/typeorm` ecosystem norm: consumers install only the driver they actually use; no install-time `npm WARN unmet peer` noise for the unused driver.
+
+---
+
 ## [2.2.1] — 2026-05-03
 
 Maintenance release. No consumer source changes. Resolves the v2.2.0 release-notes "known issue" on the `c.basic-crud` compound-primary-key route test, plus a round of test-suite reliability hardening.
@@ -268,7 +277,9 @@ See the [v1.0.1 release](https://github.com/kodjunkie/nestjs-crud/releases/tag/v
 
 ---
 
-[Unreleased]: https://github.com/kodjunkie/nestjs-crud/compare/v2.1.0...HEAD
+[Unreleased]: https://github.com/kodjunkie/nestjs-crud/compare/v2.2.1...HEAD
+[2.2.1]: https://github.com/kodjunkie/nestjs-crud/compare/v2.2.0...v2.2.1
+[2.2.0]: https://github.com/kodjunkie/nestjs-crud/compare/v2.1.0...v2.2.0
 [2.1.0]: https://github.com/kodjunkie/nestjs-crud/compare/v2.0.1...v2.1.0
 [2.0.1]: https://github.com/kodjunkie/nestjs-crud/compare/v2.0.0...v2.0.1
 [2.0.0]: https://github.com/kodjunkie/nestjs-crud/compare/v1.0.2...v2.0.0
