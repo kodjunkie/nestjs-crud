@@ -182,11 +182,7 @@ export class MikroOrmQueryComposer<T extends object> implements QueryComposer<Qu
    *
    * @since 2.2.0
    */
-  public applyCursor(
-    qb: QueryBuilder<T>,
-    decoded: CursorPayload | null,
-    sort: QuerySort,
-  ): QueryBuilder<T> {
+  public applyCursor(qb: QueryBuilder<T>, decoded: CursorPayload | null, sort: QuerySort): QueryBuilder<T> {
     if (!decoded) return qb;
 
     if (!this.propertiesMap[sort.field]) {
