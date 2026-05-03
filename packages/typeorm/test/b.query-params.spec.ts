@@ -205,179 +205,114 @@ describe('#crud-typeorm', () => {
     });
 
     describe('#select', () => {
-      it('should throw status 400', (done) => {
+      it('should throw status 400', async () => {
         const query = qb.setFilter({ field: 'invalid', operator: 'isnull' }).query();
-        request(server)
-          .get('/companies')
-          .query(query)
-          .end((_, res) => {
-            expect(res.status).toBe(500);
-            done();
-          });
+        const res = await request(server).get('/companies').query(query);
+        expect(res.status).toBe(500);
       });
     });
 
     describe('#query filter', () => {
-      it('should return data with limit', (done) => {
+      it('should return data with limit', async () => {
         const query = qb.setLimit(4).query();
-        request(server)
-          .get('/companies')
-          .query(query)
-          .end((_, res) => {
-            expect(res.status).toBe(200);
-            expect(res.body.length).toBe(4);
-            res.body.forEach((e: Company) => {
-              expect(e.id).not.toBe(1);
-            });
-            done();
-          });
+        const res = await request(server).get('/companies').query(query);
+        expect(res.status).toBe(200);
+        expect(res.body.length).toBe(4);
+        res.body.forEach((e: Company) => {
+          expect(e.id).not.toBe(1);
+        });
       });
-      it('should return with maxLimit', (done) => {
+      it('should return with maxLimit', async () => {
         const query = qb.setLimit(7).query();
-        request(server)
-          .get('/companies')
-          .query(query)
-          .end((_, res) => {
-            expect(res.status).toBe(200);
-            expect(res.body.length).toBe(5);
-            done();
-          });
+        const res = await request(server).get('/companies').query(query);
+        expect(res.status).toBe(200);
+        expect(res.body.length).toBe(5);
       });
-      it('should return with filter and or, 1', (done) => {
+      it('should return with filter and or, 1', async () => {
         const query = qb
           .setFilter({ field: 'name', operator: 'notin', value: ['Name2', 'Name3'] })
           .setOr({ field: 'domain', operator: 'cont', value: 5 })
           .query();
-        request(server)
-          .get('/companies')
-          .query(query)
-          .end((_, res) => {
-            expect(res.status).toBe(200);
-            expect(res.body.length).toBe(5);
-            done();
-          });
+        const res = await request(server).get('/companies').query(query);
+        expect(res.status).toBe(200);
+        expect(res.body.length).toBe(5);
       });
-      it('should return with filter and or, 2', (done) => {
+      it('should return with filter and or, 2', async () => {
         const query = qb
           .setFilter({ field: 'name', operator: 'ends', value: 'foo' })
           .setOr({ field: 'name', operator: 'starts', value: 'P' })
           .setOr({ field: 'isActive', operator: 'eq', value: true })
           .query();
-        request(server)
-          .get('/projects')
-          .query(query)
-          .end((_, res) => {
-            expect(res.status).toBe(200);
-            expect(res.body.length).toBe(10);
-            done();
-          });
+        const res = await request(server).get('/projects').query(query);
+        expect(res.status).toBe(200);
+        expect(res.body.length).toBe(10);
       });
-      it('should return with filter and or, 3', (done) => {
+      it('should return with filter and or, 3', async () => {
         const query = qb
           .setOr({ field: 'companyId', operator: 'gt', value: 22 })
           .setFilter({ field: 'companyId', operator: 'gte', value: 6 })
           .setFilter({ field: 'companyId', operator: 'lt', value: 10 })
           .query();
-        request(server)
-          .get('/projects')
-          .query(query)
-          .end((_, res) => {
-            expect(res.status).toBe(200);
-            expect(res.body.length).toBe(8);
-            done();
-          });
+        const res = await request(server).get('/projects').query(query);
+        expect(res.status).toBe(200);
+        expect(res.body.length).toBe(8);
       });
-      it('should return with filter and or, 4', (done) => {
+      it('should return with filter and or, 4', async () => {
         const query = qb
           .setOr({ field: 'companyId', operator: 'in', value: [6, 10] })
           .setOr({ field: 'companyId', operator: 'lte', value: 10 })
           .setFilter({ field: 'isActive', operator: 'eq', value: false })
           .setFilter({ field: 'description', operator: 'notnull' })
           .query();
-        request(server)
-          .get('/projects')
-          .query(query)
-          .end((_, res) => {
-            expect(res.status).toBe(200);
-            expect(res.body.length).toBe(10);
-            done();
-          });
+        const res = await request(server).get('/projects').query(query);
+        expect(res.status).toBe(200);
+        expect(res.body.length).toBe(10);
       });
-      it('should return with filter and or, 6', (done) => {
+      it('should return with filter and or, 6', async () => {
         const query = qb.setOr({ field: 'companyId', operator: 'isnull' }).query();
-        request(server)
-          .get('/projects')
-          .query(query)
-          .end((_, res) => {
-            expect(res.status).toBe(200);
-            expect(res.body.length).toBe(0);
-            done();
-          });
+        const res = await request(server).get('/projects').query(query);
+        expect(res.status).toBe(200);
+        expect(res.body.length).toBe(0);
       });
-      it('should return with filter and or, 6', (done) => {
+      it('should return with filter and or, 6', async () => {
         const query = qb.setOr({ field: 'companyId', operator: 'between', value: [1, 5] }).query();
-        request(server)
-          .get('/projects')
-          .query(query)
-          .end((_, res) => {
-            expect(res.status).toBe(200);
-            expect(res.body.length).toBe(10);
-            done();
-          });
+        const res = await request(server).get('/projects').query(query);
+        expect(res.status).toBe(200);
+        expect(res.body.length).toBe(10);
       });
-      it('should return with filter, 1', (done) => {
+      it('should return with filter, 1', async () => {
         const query = qb.setOr({ field: 'companyId', operator: 'eq', value: 1 }).query();
-        request(server)
-          .get('/projects')
-          .query(query)
-          .end((_, res) => {
-            expect(res.status).toBe(200);
-            expect(res.body.length).toBe(2);
-            done();
-          });
+        const res = await request(server).get('/projects').query(query);
+        expect(res.status).toBe(200);
+        expect(res.body.length).toBe(2);
       });
     });
 
     describe('#query join', () => {
-      it('should return joined entity, 1', (done) => {
+      it('should return joined entity, 1', async () => {
         const query = qb.setJoin({ field: 'company', select: ['name'] }).query();
-        request(server)
-          .get('/projects/2')
-          .query(query)
-          .end((_, res) => {
-            expect(res.status).toBe(200);
-            expect(res.body.company).toBeDefined();
-            done();
-          });
+        const res = await request(server).get('/projects/2').query(query);
+        expect(res.status).toBe(200);
+        expect(res.body.company).toBeDefined();
       });
-      it('should return joined entity, 2', (done) => {
+      it('should return joined entity, 2', async () => {
         const query = qb.setJoin({ field: 'users', select: ['name'] }).query();
-        request(server)
-          .get('/companies/2')
-          .query(query)
-          .end((_, res) => {
-            expect(res.status).toBe(200);
-            expect(res.body.users).toBeDefined();
-            expect(res.body.users.length).not.toBe(0);
-            done();
-          });
+        const res = await request(server).get('/companies/2').query(query);
+        expect(res.status).toBe(200);
+        expect(res.body.users).toBeDefined();
+        expect(res.body.users.length).not.toBe(0);
       });
-      it('should eager join without selection', (done) => {
+      it('should eager join without selection', async () => {
         const query = qb.search({ 'userCompany.id': { $eq: 1 } }).query();
-        request(server)
-          .get('/myusers')
-          .query(query)
-          .end((_, res) => {
-            expect(res.status).toBe(200);
-            expect(res.body.length).toBe(10);
-            expect(res.body[0].company).toBeUndefined();
-            done();
-          });
+        const res = await request(server).get('/myusers').query(query);
+        expect(res.status).toBe(200);
+        expect(res.body.length).toBe(10);
+        expect(res.body[0].company).toBeUndefined();
       });
     });
 
     describe('#query nested join', () => {
-      it('should return status 400, 1', (done) => {
+      it('should return status 400, 1', async () => {
         const query = qb
           .setJoin({ field: 'company' })
           .setJoin({ field: 'company.projects' })
@@ -387,15 +322,10 @@ describe('#crud-typeorm', () => {
             value: 'invalid',
           })
           .query();
-        request(server)
-          .get('/users/1')
-          .query(query)
-          .end((_, res) => {
-            expect(res.status).toBe(500);
-            done();
-          });
+        const res = await request(server).get('/users/1').query(query);
+        expect(res.status).toBe(500);
       });
-      it('should return status 400, 2', (done) => {
+      it('should return status 400, 2', async () => {
         const query = qb
           .setJoin({ field: 'company' })
           .setJoin({ field: 'company.projects' })
@@ -405,15 +335,10 @@ describe('#crud-typeorm', () => {
             value: 'invalid',
           })
           .query();
-        request(server)
-          .get('/users/1')
-          .query(query)
-          .end((_, res) => {
-            expect(res.status).toBe(500);
-            done();
-          });
+        const res = await request(server).get('/users/1').query(query);
+        expect(res.status).toBe(500);
       });
-      it('should return status 400, 3', (done) => {
+      it('should return status 400, 3', async () => {
         const query = qb
           .setJoin({ field: 'company' })
           .setJoin({ field: 'company.projects' })
@@ -423,101 +348,66 @@ describe('#crud-typeorm', () => {
             value: 'invalid',
           })
           .query();
-        request(server)
-          .get('/users/1')
-          .query(query)
-          .end((_, res) => {
-            expect(res.status).toBe(500);
-            done();
-          });
+        const res = await request(server).get('/users/1').query(query);
+        expect(res.status).toBe(500);
       });
-      it('should return status 200', (done) => {
+      it('should return status 200', async () => {
         const query = qb.setJoin({ field: 'company' }).setJoin({ field: 'company.projectsinvalid' }).query();
-        request(server)
-          .get('/users/1')
-          .query(query)
-          .end((_, res) => {
-            expect(res.status).toBe(200);
-            done();
-          });
+        const res = await request(server).get('/users/1').query(query);
+        expect(res.status).toBe(200);
       });
-      it('should return joined entity, 1', (done) => {
+      it('should return joined entity, 1', async () => {
         const query = qb
           .setFilter({ field: 'company.name', operator: 'excl', value: 'invalid' })
           .setJoin({ field: 'company' })
           .setJoin({ field: 'company.projects' })
           .query();
-        request(server)
-          .get('/users/1')
-          .query(query)
-          .end((_, res) => {
-            expect(res.status).toBe(200);
-            expect(res.body.company).toBeDefined();
-            expect(res.body.company.projects).toBeDefined();
-            done();
-          });
+        const res = await request(server).get('/users/1').query(query);
+        expect(res.status).toBe(200);
+        expect(res.body.company).toBeDefined();
+        expect(res.body.company.projects).toBeDefined();
       });
-      it('should return joined entity, 2', (done) => {
+      it('should return joined entity, 2', async () => {
         const query = qb
           .setFilter({ field: 'company.projects.id', operator: 'notnull' })
           .setJoin({ field: 'company' })
           .setJoin({ field: 'company.projects' })
           .query();
-        request(server)
-          .get('/users/1')
-          .query(query)
-          .end((_, res) => {
-            expect(res.status).toBe(200);
-            expect(res.body.company).toBeDefined();
-            expect(res.body.company.projects).toBeDefined();
-            done();
-          });
+        const res = await request(server).get('/users/1').query(query);
+        expect(res.status).toBe(200);
+        expect(res.body.company).toBeDefined();
+        expect(res.body.company.projects).toBeDefined();
       });
-      it('should return joined entity with alias', (done) => {
+      it('should return joined entity with alias', async () => {
         const query = qb
           .setFilter({ field: 'pr.id', operator: 'notnull' })
           .setJoin({ field: 'company' })
           .setJoin({ field: 'company.projects' })
           .query();
-        request(server)
-          .get('/users2/1')
-          .query(query)
-          .end((_, res) => {
-            expect(res.status).toBe(200);
-            expect(res.body.company).toBeDefined();
-            expect(res.body.company.projects).toBeDefined();
-            done();
-          });
+        const res = await request(server).get('/users2/1').query(query);
+        expect(res.status).toBe(200);
+        expect(res.body.company).toBeDefined();
+        expect(res.body.company.projects).toBeDefined();
       });
-      it('should return joined entity with ManyToMany pivot table', (done) => {
+      it('should return joined entity with ManyToMany pivot table', async () => {
         const query = qb.setJoin({ field: 'users' }).setJoin({ field: 'userProjects' }).query();
-        request(server)
-          .get('/projects/1')
-          .query(query)
-          .end((_, res) => {
-            expect(res.status).toBe(200);
-            expect(res.body.users).toBeDefined();
-            expect(res.body.users.length).toBe(2);
-            expect(res.body.users[0].id).toBe(1);
-            expect(res.body.userProjects).toBeDefined();
-            expect(res.body.userProjects.length).toBe(2);
-            expect(res.body.userProjects[0].review).toBe('User project 1 1');
-            done();
-          });
+        const res = await request(server).get('/projects/1').query(query);
+        expect(res.status).toBe(200);
+        expect(res.body.users).toBeDefined();
+        expect(res.body.users.length).toBe(2);
+        expect(res.body.users[0].id).toBe(1);
+        expect(res.body.userProjects).toBeDefined();
+        expect(res.body.userProjects.length).toBe(2);
+        expect(res.body.userProjects[0].review).toBe('User project 1 1');
       });
     });
 
     describe('#query composite key join', () => {
-      it('should return joined relation', (done) => {
+      it('should return joined relation', async () => {
         const query = qb.setJoin({ field: 'userLicenses' }).query();
-        request(server)
-          .get('/users/1')
-          .query(query)
-          .end((_, res) => {
-            expect(res.status).toBe(200);
-            expect(res.body.userLicenses).toBeDefined();
-            done();
-          });
+        const res = await request(server).get('/users/1').query(query);
+        expect(res.status).toBe(200);
+        expect(res.body.userLicenses).toBeDefined();
       });
     });
 
@@ -564,21 +454,15 @@ describe('#crud-typeorm', () => {
         expect(res.body[0].company.projects[1].id).toBeLessThan(res.body[0].company.projects[0].id);
       });
 
-      it('should throw 400 if SQL injection has been detected', (done) => {
+      it('should throw 400 if SQL injection has been detected', async () => {
         const query = qb
           .sortBy({
             field: ' ASC; SELECT CAST( version() AS INTEGER); --',
             order: 'DESC',
           })
           .query();
-
-        request(server)
-          .get('/companies')
-          .query(query)
-          .end((_, res) => {
-            expect(res.status).toBe(400);
-            done();
-          });
+        const res = await request(server).get('/companies').query(query);
+        expect(res.status).toBe(400);
       });
     });
 

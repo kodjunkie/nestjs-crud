@@ -99,44 +99,30 @@ async function reseedDb(prisma: any, db: 'postgres' | 'mysql'): Promise<void> {
   });
 
   // Scenario 1: GET /users — returns all 10 seeded users (soft-deleted excluded by default)
-  it('S1: GET /users returns all seeded users', (done) => {
-    request(server)
-      .get('/users')
-      .end((_, res) => {
-        expect(res.status).toBe(200);
-        expect(Array.isArray(res.body)).toBe(true);
-        expect(res.body.length).toBe(TOTAL_USERS);
-        done();
-      });
+  it('S1: GET /users returns all seeded users', async () => {
+    const res = await request(server).get('/users');
+    expect(res.status).toBe(200);
+    expect(Array.isArray(res.body)).toBe(true);
+    expect(res.body.length).toBe(TOTAL_USERS);
   });
 
   // Scenario 2: GET /users?limit=3 — returns exactly 3 users
-  it('S2: GET /users with limit=3 returns 3 users', (done) => {
+  it('S2: GET /users with limit=3 returns 3 users', async () => {
     const query = qb.setLimit(3).query();
-    request(server)
-      .get('/users')
-      .query(query)
-      .end((_, res) => {
-        expect(res.status).toBe(200);
-        expect(Array.isArray(res.body)).toBe(true);
-        expect(res.body.length).toBe(3);
-        done();
-      });
+    const res = await request(server).get('/users').query(query);
+    expect(res.status).toBe(200);
+    expect(Array.isArray(res.body)).toBe(true);
+    expect(res.body.length).toBe(3);
   });
 
   // Scenario 3: GET /users?filter=isActive||$eq||true — returns only active users
-  it('S3: GET /users filtered by isActive=true returns active users only', (done) => {
+  it('S3: GET /users filtered by isActive=true returns active users only', async () => {
     const query = qb.setFilter({ field: 'isActive', operator: '$eq', value: true }).query();
-    request(server)
-      .get('/users')
-      .query(query)
-      .end((_, res) => {
-        expect(res.status).toBe(200);
-        expect(Array.isArray(res.body)).toBe(true);
-        expect(res.body.length).toBe(ACTIVE_USERS);
-        expect(res.body.every((u: any) => u.isActive === true)).toBe(true);
-        done();
-      });
+    const res = await request(server).get('/users').query(query);
+    expect(res.status).toBe(200);
+    expect(Array.isArray(res.body)).toBe(true);
+    expect(res.body.length).toBe(ACTIVE_USERS);
+    expect(res.body.every((u: any) => u.isActive === true)).toBe(true);
   });
 
   // Scenario 4: GET /users?sort=email,ASC — verifies sort traverses full pipeline
@@ -154,30 +140,21 @@ async function reseedDb(prisma: any, db: 'postgres' | 'mysql'): Promise<void> {
   });
 
   // Scenario 5: GET /users?s={"email":{"$cont":"@email"}} — search via $cont operator
-  it('S5: GET /users with $cont search on email returns matching users', (done) => {
+  it('S5: GET /users with $cont search on email returns matching users', async () => {
     const query = qb.search({ email: { $cont: '@email.com' } }).query();
-    request(server)
-      .get('/users')
-      .query(query)
-      .end((_, res) => {
-        expect(res.status).toBe(200);
-        expect(Array.isArray(res.body)).toBe(true);
-        expect(res.body.length).toBe(TOTAL_USERS);
-        expect(res.body.every((u: any) => String(u.email).includes('@email.com'))).toBe(true);
-        done();
-      });
+    const res = await request(server).get('/users').query(query);
+    expect(res.status).toBe(200);
+    expect(Array.isArray(res.body)).toBe(true);
+    expect(res.body.length).toBe(TOTAL_USERS);
+    expect(res.body.every((u: any) => String(u.email).includes('@email.com'))).toBe(true);
   });
 
   // Scenario 6: GET /users/:id — single user by primary key
-  it('S6: GET /users/1 returns user with id=1', (done) => {
-    request(server)
-      .get('/users/1')
-      .end((_, res) => {
-        expect(res.status).toBe(200);
-        expect(res.body.id).toBe(1);
-        expect(res.body.email).toBe('1@email.com');
-        done();
-      });
+  it('S6: GET /users/1 returns user with id=1', async () => {
+    const res = await request(server).get('/users/1');
+    expect(res.status).toBe(200);
+    expect(res.body.id).toBe(1);
+    expect(res.body.email).toBe('1@email.com');
   });
 
   // Scenario 7: POST /users → 201; subsequent GET /users returns 11

@@ -7,7 +7,26 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
-## [Unreleased]
+## [2.2.1] — 2026-05-03
+
+Maintenance release. No consumer source changes. Resolves the v2.2.0 release-notes "known issue" on the `c.basic-crud` compound-primary-key route test, plus a round of test-suite reliability hardening.
+
+### Fixed
+
+- `cursor.spec` cell 9 (`soft-delete still applies in cursor mode`) selected `targetId` as the last id of the first cursor page. The `/users-cursor` controller is configured with `limit: 5`, so under `?sort=id,ASC` the first page returned ids `[1..5]` and `targetId` landed on user 5. User 5 is part of the shared seed (`companyId=1, profileId=5`) and is the row exercised by `c.basic-crud`'s compound-key route test `GET /users4/1/5`. The `/users-cursor` controller has no `softDelete` config so the `DELETE` was a hard delete via TypeORM remove, dropping the row from the shared `users` table. Whether the bug surfaced depended on jest's file-execution order — locally jest tended to run `c.basic-crud` first (largest file in sequencer cache) and the bug stayed hidden, but `release.yml`'s MySQL runner sequenced `cursor.spec` before `c.basic-crud` and the compound-key test then saw user 5 gone (`status: 404`). The cell now POSTs a throwaway user, captures the returned id, and DELETEs that id; the seed range is no longer touched and execution order no longer matters. Test-fixture-only — no consumer code is affected.
+
+### Changed
+
+- `test:typeorm:mysql` script now passes `--runInBand` to jest (`packages/typeorm/jest.config.js` is unaffected). Single-worker execution avoids parallel-worker contention against the shared MySQL container that v2.2.0 hit.
+- The supertest `done(callback)` pattern is migrated to direct `await` across `packages/typeorm/test/b.query-params.spec.ts`, `packages/typeorm/test/c.basic-crud.spec.ts`, and the three `real-db-smoke.spec.ts` files (drizzle, mikro-orm, prisma). `supertest >= 7` returns a thenable from `request(server).get(...)`, so the manual callback bridge is no longer needed; failures now surface as Promise rejections with a clean stack instead of hanging to jest's 30s timeout. Behaviour unchanged.
+
+### Removed
+
+- The orphan `mrepo.json` file at the repo root is removed. The `@zmotivat0r/mrepo` orchestrator was already replaced with native `lerna` + `tsc -b` in v2.2.0; the config file was left behind and is no longer read by any tooling.
+
+---
+
+## [2.2.0] — 2026-05-03
 
 ### Added
 
