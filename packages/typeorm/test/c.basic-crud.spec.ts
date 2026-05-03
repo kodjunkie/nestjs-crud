@@ -473,6 +473,33 @@ describe('#crud-typeorm', () => {
           console.log('[diag users4] introspection failed:', (err as Error).message);
         }
 
+        // Second diag: dump user-5 row state directly via the app's DataSource,
+        // then the targeted SELECT the route would emit. Catches mid-suite mutation.
+        try {
+          const ds: any = app.get('DataSource', { strict: false });
+          if (ds?.query) {
+            const isMy = ds.options?.type === 'mysql';
+            const q = isMy ? '`' : '"';
+            const cols = `id, ${q}companyId${q}, ${q}profileId${q}, ${q}deletedAt${q}`;
+            const all5 = await ds.query(
+              `SELECT ${cols} FROM users WHERE id = 5 OR ${q}profileId${q} = 5`,
+            );
+            // eslint-disable-next-line no-console
+            console.log('[diag user5 rows]', JSON.stringify(all5));
+            const targeted = await ds.query(
+              `SELECT ${cols} FROM users WHERE ${q}companyId${q} = 1 AND ${q}profileId${q} = 5 AND ${q}deletedAt${q} IS NULL`,
+            );
+            // eslint-disable-next-line no-console
+            console.log('[diag targeted]', JSON.stringify(targeted));
+          } else {
+            // eslint-disable-next-line no-console
+            console.log('[diag] no DataSource on app');
+          }
+        } catch (err) {
+          // eslint-disable-next-line no-console
+          console.log('[diag db query failed]', (err as Error).message);
+        }
+
         const res = await request(server).get('/users4/1/5');
         if (res.status !== 200) {
           // eslint-disable-next-line no-console
