@@ -23,6 +23,7 @@ Eight RESTful endpoints for any NestJS controller: list, paginate, filter, sort,
 - CRUD controllers and services you extend, not scaffolds you own
 - DB and service agnostic. Base classes per adapter
 - Query parsing: filters, pagination, sort, relations, nested relations, cache
+- Pluggable cache: Redis, ioredis, Prisma Accelerate, or bring your own via `RedisLike`
 - Framework-agnostic query builder for the frontend
 - Body, query, and path-param validation included
 - Override any generated handler with `@Override()`
@@ -72,7 +73,7 @@ Full docs live on the [**Wiki**](https://github.com/kodjunkie/nestjs-crud/wiki).
 
 - [Why nestjs-crud](https://github.com/kodjunkie/nestjs-crud/wiki#why)
 - [Controllers](https://github.com/kodjunkie/nestjs-crud/wiki/Controllers) · [Services](https://github.com/kodjunkie/nestjs-crud/wiki/Services) · [Requests](https://github.com/kodjunkie/nestjs-crud/wiki/Requests) · [Query syntax](https://github.com/kodjunkie/nestjs-crud/wiki/Query-Syntax)
-- [Swagger setup](https://github.com/kodjunkie/nestjs-crud/wiki/Swagger) · [Caching](https://github.com/kodjunkie/nestjs-crud/wiki/Caching) · [Logging](https://github.com/kodjunkie/nestjs-crud/wiki/Logging) · [Relation load strategy](https://github.com/kodjunkie/nestjs-crud/wiki/RelationLoadStrategy)
+- [Swagger setup](https://github.com/kodjunkie/nestjs-crud/wiki/Swagger) · [Caching](https://github.com/kodjunkie/nestjs-crud/wiki/Caching) · [Logging](https://github.com/kodjunkie/nestjs-crud/wiki/Logging) · [Relation load strategy](https://github.com/kodjunkie/nestjs-crud/wiki/RelationLoadStrategy) · [Pagination (offset, cursor)](https://github.com/kodjunkie/nestjs-crud/wiki/CursorPagination)
 - Migration guides: [v1 → v2](https://github.com/kodjunkie/nestjs-crud/wiki/v2-Migration) · [v2.0 → v2.1](https://github.com/kodjunkie/nestjs-crud/wiki/v2.1-Migration)
 
 ## Skills
