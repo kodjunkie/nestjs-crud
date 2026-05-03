@@ -1797,9 +1797,15 @@ __metadata:
     "@nestjs/common": ^10.0.0 || ^11.0.0
     drizzle-orm: ">=0.45.2"
     ioredis: ^5.0.0
+    mysql2: ^3.0.0
+    pg: ^8.0.0
     redis: ^5.0.0
   peerDependenciesMeta:
     ioredis:
+      optional: true
+    mysql2:
+      optional: true
+    pg:
       optional: true
     redis:
       optional: true
@@ -1819,9 +1825,15 @@ __metadata:
     "@nestjs-crud/util": ^2.0.0
     "@nestjs/common": ^10.0.0 || ^11.0.0
     ioredis: ^5.0.0
+    mysql2: ^3.0.0
+    pg: ^8.0.0
     redis: ^5.0.0
   peerDependenciesMeta:
     ioredis:
+      optional: true
+    mysql2:
+      optional: true
+    pg:
       optional: true
     redis:
       optional: true
@@ -1837,11 +1849,17 @@ __metadata:
     "@prisma/client": ^7.0.0
     "@prisma/extension-accelerate": ^3.0.0
     ioredis: ^5.0.0
+    mysql2: ^3.0.0
+    pg: ^8.0.0
     redis: ^5.0.0
   peerDependenciesMeta:
     "@prisma/extension-accelerate":
       optional: true
     ioredis:
+      optional: true
+    mysql2:
+      optional: true
+    pg:
       optional: true
     redis:
       optional: true
@@ -1865,10 +1883,16 @@ __metadata:
     "@nestjs/common": ^10.0.0 || ^11.0.0
     "@nestjs/typeorm": ^10.0.0 || ^11.0.0
     ioredis: ^5.0.0
+    mysql2: ^3.0.0
+    pg: ^8.0.0
     redis: ^5.0.0
     typeorm: ^0.3.0
   peerDependenciesMeta:
     ioredis:
+      optional: true
+    mysql2:
+      optional: true
+    pg:
       optional: true
     redis:
       optional: true

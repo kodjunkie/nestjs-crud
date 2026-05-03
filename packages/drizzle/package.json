@@ -48,10 +48,18 @@
     "@nestjs/common": "^10.0.0 || ^11.0.0",
     "drizzle-orm": ">=0.45.2",
     "ioredis": "^5.0.0",
+    "mysql2": "^3.0.0",
+    "pg": "^8.0.0",
     "redis": "^5.0.0"
   },
   "peerDependenciesMeta": {
     "ioredis": {
+      "optional": true
+    },
+    "mysql2": {
+      "optional": true
+    },
+    "pg": {
       "optional": true
     },
     "redis": {
