@@ -23,7 +23,7 @@ Eight RESTful endpoints for any NestJS controller: list, paginate, filter, sort,
 - CRUD controllers and services you extend, not scaffolds you own
 - DB and service agnostic. Base classes per adapter
 - Query parsing: filters, pagination, sort, relations, nested relations, cache
-- Pluggable cache: Redis, ioredis, Prisma Accelerate, or bring your own via `RedisLike`
+- Pluggable cache: Redis, ioredis, Prisma Accelerate, or bring your own
 - Framework-agnostic query builder for the frontend
 - Body, query, and path-param validation included
 - Override any generated handler with `@Override()`
