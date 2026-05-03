@@ -55,7 +55,7 @@ export abstract class CrudService<T> {
    * @param options
    */
   getPaginationMode(options: CrudRequestOptions): 'offset' | 'cursor' {
-    return options.query?.pagination ?? 'offset';
+    return options.query.pagination ?? 'offset';
   }
 
   /**
