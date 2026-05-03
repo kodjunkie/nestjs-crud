@@ -298,6 +298,35 @@ describe('#crud-typeorm', () => {
 
       await app.init();
       server = app.getHttpServer();
+
+      // Diagnostic: snapshot users/companies state at #basic-crud beforeAll
+      try {
+        const usersSvc: any = app.get(UsersService);
+        const ds: any = usersSvc?.repo?.manager?.connection;
+        if (ds?.query) {
+          const isMy = ds.options?.type === 'mysql';
+          const q = isMy ? '`' : '"';
+          const userCount = await ds.query(`SELECT COUNT(*) AS c FROM users`);
+          const user5 = await ds.query(
+            `SELECT id, ${q}companyId${q}, ${q}profileId${q}, ${q}deletedAt${q} FROM users WHERE id = 5 OR ${q}profileId${q} = 5`,
+          );
+          const companies = await ds.query(`SELECT id, ${q}deletedAt${q} FROM companies WHERE id IN (1, 2, 3, 4, 5) ORDER BY id`);
+          // eslint-disable-next-line no-console
+          console.log(
+            '[diag beforeAll] dialect:',
+            ds.options?.type,
+            'userCount:',
+            JSON.stringify(userCount),
+            'user5:',
+            JSON.stringify(user5),
+            'companies1-5:',
+            JSON.stringify(companies),
+          );
+        }
+      } catch (err) {
+        // eslint-disable-next-line no-console
+        console.log('[diag beforeAll] failed:', (err as Error).message);
+      }
     });
 
     beforeEach(() => {
