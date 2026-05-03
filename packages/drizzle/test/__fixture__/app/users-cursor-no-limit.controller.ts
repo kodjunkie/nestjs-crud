@@ -2,17 +2,8 @@ import { Controller } from '@nestjs/common';
 
 import { Crud } from '@nestjs-crud/core';
 
+import { UserModel } from './user-model';
 import { UsersService } from './users.service';
-
-class UserModel {
-  id!: number;
-
-  email!: string;
-
-  isActive!: boolean;
-
-  deletedAt?: Date | null;
-}
 
 /**
  * Fixture controller for the missing-limit + cursor 400 cell. NO `limit` and

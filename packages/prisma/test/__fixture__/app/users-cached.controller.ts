@@ -2,6 +2,7 @@ import { Controller } from '@nestjs/common';
 
 import { Crud } from '@nestjs-crud/core';
 
+import { UserModel } from './user-model';
 import { UsersService } from './users.service';
 
 /**
@@ -22,17 +23,6 @@ import { UsersService } from './users.service';
  * NOTE: The existing `UsersController` does NOT declare `cache: 5000`, so
  * smoke tests are unaffected by the D-11 fail-fast behavior.
  */
-
-class UserModel {
-  id!: number;
-
-  email!: string;
-
-  isActive!: boolean;
-
-  deletedAt?: Date | null;
-}
-
 @Crud({
   model: { type: UserModel },
   query: {

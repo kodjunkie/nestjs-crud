@@ -51,6 +51,14 @@ export abstract class CrudService<T> {
   }
 
   /**
+   * Resolve pagination mode for the current request — `'offset'` (default) or `'cursor'`.
+   * @param options
+   */
+  getPaginationMode(options: CrudRequestOptions): 'offset' | 'cursor' {
+    return options.query?.pagination ?? 'offset';
+  }
+
+  /**
    * Get number of resources to be fetched
    * @param query
    * @param options
