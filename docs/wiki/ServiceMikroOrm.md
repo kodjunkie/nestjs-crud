@@ -6,7 +6,11 @@ A CRUD service for databases using MikroORM.
 
 ```shell
 npm i @nestjs-crud/mikro-orm @mikro-orm/core @mikro-orm/knex
+npm i @mikro-orm/postgresql pg # Postgres
+npm i @mikro-orm/mysql mysql2  # MySQL
 ```
+
+The DB driver is declared as an optional `peerDependency` on `@nestjs-crud/mikro-orm` — install whichever your backend uses, alongside the matching `@mikro-orm/<dialect>` package.
 
 ## Usage
 

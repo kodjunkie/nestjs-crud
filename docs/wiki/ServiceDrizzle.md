@@ -6,7 +6,11 @@ A CRUD service for databases using Drizzle ORM.
 
 ```shell
 npm i @nestjs-crud/drizzle drizzle-orm
+npm i pg                       # Postgres
+npm i mysql2                   # MySQL
 ```
+
+The DB driver is declared as an optional `peerDependency` on `@nestjs-crud/drizzle` — install whichever your backend uses.
 
 ## Usage
 
