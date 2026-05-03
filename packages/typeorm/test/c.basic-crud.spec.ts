@@ -476,14 +476,13 @@ describe('#crud-typeorm', () => {
         // Second diag: dump user-5 row state directly via the app's DataSource,
         // then the targeted SELECT the route would emit. Catches mid-suite mutation.
         try {
-          const ds: any = app.get('DataSource', { strict: false });
+          const usersSvc: any = app.get(UsersService);
+          const ds: any = usersSvc?.repo?.manager?.connection;
           if (ds?.query) {
             const isMy = ds.options?.type === 'mysql';
             const q = isMy ? '`' : '"';
             const cols = `id, ${q}companyId${q}, ${q}profileId${q}, ${q}deletedAt${q}`;
-            const all5 = await ds.query(
-              `SELECT ${cols} FROM users WHERE id = 5 OR ${q}profileId${q} = 5`,
-            );
+            const all5 = await ds.query(`SELECT ${cols} FROM users WHERE id = 5 OR ${q}profileId${q} = 5`);
             // eslint-disable-next-line no-console
             console.log('[diag user5 rows]', JSON.stringify(all5));
             const targeted = await ds.query(
