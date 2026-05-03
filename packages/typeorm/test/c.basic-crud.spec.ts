@@ -298,35 +298,6 @@ describe('#crud-typeorm', () => {
 
       await app.init();
       server = app.getHttpServer();
-
-      // Diagnostic: snapshot users/companies state at #basic-crud beforeAll
-      try {
-        const usersSvc: any = app.get(UsersService);
-        const ds: any = usersSvc?.repo?.manager?.connection;
-        if (ds?.query) {
-          const isMy = ds.options?.type === 'mysql';
-          const q = isMy ? '`' : '"';
-          const userCount = await ds.query(`SELECT COUNT(*) AS c FROM users`);
-          const user5 = await ds.query(
-            `SELECT id, ${q}companyId${q}, ${q}profileId${q}, ${q}deletedAt${q} FROM users WHERE id = 5 OR ${q}profileId${q} = 5`,
-          );
-          const companies = await ds.query(`SELECT id, ${q}deletedAt${q} FROM companies WHERE id IN (1, 2, 3, 4, 5) ORDER BY id`);
-          // eslint-disable-next-line no-console
-          console.log(
-            '[diag beforeAll] dialect:',
-            ds.options?.type,
-            'userCount:',
-            JSON.stringify(userCount),
-            'user5:',
-            JSON.stringify(user5),
-            'companies1-5:',
-            JSON.stringify(companies),
-          );
-        }
-      } catch (err) {
-        // eslint-disable-next-line no-console
-        console.log('[diag beforeAll] failed:', (err as Error).message);
-      }
     });
 
     beforeEach(() => {
@@ -464,84 +435,7 @@ describe('#crud-typeorm', () => {
           });
       });
       it('should return an entity with compound key', async () => {
-        // CI-side diagnostic: dump registered Express routes that mention `users4`,
-        // then full response shape. Goal — prove whether the route is registered
-        // at all in CI MySQL, and if so what NestJS actually returns.
-        try {
-          const router =
-            (server as any)?._events?.request?._router ??
-            (server as any)?._events?.request?.router ??
-            (server as any)?.router;
-          const stack = router?.stack ?? [];
-          const routes: string[] = [];
-          for (const layer of stack) {
-            if (layer?.route?.path) {
-              const methods = Object.keys(layer.route.methods || {}).join(',');
-              routes.push(`${methods.toUpperCase()} ${layer.route.path}`);
-            } else if (layer?.handle?.stack) {
-              for (const sub of layer.handle.stack) {
-                if (sub?.route?.path) {
-                  const methods = Object.keys(sub.route.methods || {}).join(',');
-                  routes.push(`${methods.toUpperCase()} ${sub.route.path}`);
-                }
-              }
-            }
-          }
-          const users4Routes = routes.filter((r) => r.toLowerCase().includes('users4'));
-          // eslint-disable-next-line no-console
-          console.log(
-            '[diag users4] count:',
-            users4Routes.length,
-            'sample:',
-            JSON.stringify(users4Routes.slice(0, 10)),
-            'total-routes:',
-            routes.length,
-          );
-        } catch (err) {
-          // eslint-disable-next-line no-console
-          console.log('[diag users4] introspection failed:', (err as Error).message);
-        }
-
-        // Second diag: dump user-5 row state directly via the app's DataSource,
-        // then the targeted SELECT the route would emit. Catches mid-suite mutation.
-        try {
-          const usersSvc: any = app.get(UsersService);
-          const ds: any = usersSvc?.repo?.manager?.connection;
-          if (ds?.query) {
-            const isMy = ds.options?.type === 'mysql';
-            const q = isMy ? '`' : '"';
-            const cols = `id, ${q}companyId${q}, ${q}profileId${q}, ${q}deletedAt${q}`;
-            const all5 = await ds.query(`SELECT ${cols} FROM users WHERE id = 5 OR ${q}profileId${q} = 5`);
-            // eslint-disable-next-line no-console
-            console.log('[diag user5 rows]', JSON.stringify(all5));
-            const targeted = await ds.query(
-              `SELECT ${cols} FROM users WHERE ${q}companyId${q} = 1 AND ${q}profileId${q} = 5 AND ${q}deletedAt${q} IS NULL`,
-            );
-            // eslint-disable-next-line no-console
-            console.log('[diag targeted]', JSON.stringify(targeted));
-          } else {
-            // eslint-disable-next-line no-console
-            console.log('[diag] no DataSource on app');
-          }
-        } catch (err) {
-          // eslint-disable-next-line no-console
-          console.log('[diag db query failed]', (err as Error).message);
-        }
-
         const res = await request(server).get('/users4/1/5');
-        if (res.status !== 200) {
-          // eslint-disable-next-line no-console
-          console.log(
-            '[diag /users4/1/5] status:',
-            res.status,
-            'body:',
-            JSON.stringify(res.body),
-            'text:',
-            res.text,
-            'headers:',
-            JSON.stringify(res.headers),
-          );
-        }
         expect(res.status).toBe(200);
         expect(res.body.id).toBe(5);
       });
