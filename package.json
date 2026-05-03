@@ -15,7 +15,7 @@
     "test": "yarn test:typeorm:postgres && yarn test:drizzle:postgres && yarn test:mikro-orm:postgres && yarn test:prisma:postgres && jest --config jest.config.js",
     "test:coverage": "yarn test:all --coverage",
     "test:typeorm:postgres": "yarn db:prepare:typeorm:postgres && npx jest --config packages/typeorm/jest.config.js",
-    "test:typeorm:mysql": "yarn db:prepare:typeorm:mysql && TYPEORM_CONNECTION=mysql npx jest --config packages/typeorm/jest.config.js",
+    "test:typeorm:mysql": "yarn db:prepare:typeorm:mysql && TYPEORM_CONNECTION=mysql npx jest --config packages/typeorm/jest.config.js --runInBand",
     "test:drizzle:postgres": "yarn db:prepare:drizzle:postgres && DRIZZLE_DIALECT=postgres npx jest --config packages/drizzle/jest.config.js",
     "test:drizzle:mysql": "yarn db:prepare:drizzle:mysql && DRIZZLE_DIALECT=mysql npx jest --config packages/drizzle/jest.config.js",
     "test:parity": "npx jest --config jest.config.js packages/core/test/parity",
