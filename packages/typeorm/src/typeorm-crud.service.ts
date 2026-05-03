@@ -97,7 +97,7 @@ export class TypeOrmCrudService<T> extends CrudService<T> {
 
   public async getMany(req: CrudRequest): Promise<GetManyDefaultResponse<T> | CursorPaginatedResponse<T> | T[]> {
     const { parsed, options } = req;
-    const mode = options.query?.pagination ?? (options as any).pagination ?? 'offset';
+    const mode = options.query?.pagination ?? 'offset';
 
     if (mode === 'cursor') {
       return this.doGetManyCursor(parsed, options);

@@ -51,7 +51,7 @@ export class PrismaCrudService<T extends Record<string, unknown>> extends CrudSe
   public async getMany(req: CrudRequest): Promise<GetManyDefaultResponse<T> | CursorPaginatedResponse<T> | T[]> {
     try {
       const { parsed, options } = req;
-      const mode = options.query?.pagination ?? (options as any).pagination ?? 'offset';
+      const mode = options.query?.pagination ?? 'offset';
 
       if (mode === 'cursor') {
         return await this.doGetManyCursor(parsed, options);
