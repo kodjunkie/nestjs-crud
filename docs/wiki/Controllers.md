@@ -1152,6 +1152,7 @@ enum CrudActions {
   UpdateOne = 'Update-One',
   ReplaceOne = 'Replace-One',
   DeleteOne = 'Delete-One',
+  RecoverOne = 'Recover-One',
 }
 ```
 

@@ -2,8 +2,9 @@
 name: nestjs-crud
 description: >-
   Use when integrating `@nestjs-crud/*` (v2.2+) — wiring TypeORM/Drizzle/MikroORM/Prisma adapters,
-  configuring `@Crud()`/`@CrudAuth()`/`@Override()`, opt-in cursor pagination, DTOs with
-  `CrudValidationGroups`, split-query relation loading, debugging `RequestQueryException`,
+  configuring `@Crud()`/`@CrudAuth()`/`@Override()`/`@Feature()`/`@Action()`, opt-in cursor
+  pagination, ACL/RBAC guards via `getFeature`/`getAction` + `nest-access-control`/CASL, DTOs
+  with `CrudValidationGroups`, split-query relation loading, debugging `RequestQueryException`,
   `CrudCacheNotConfiguredError`, `EBADENGINE` (Node <22), validation-fails-on-update,
   MikroORM stale-em, savepoints on overridden writes.
 ---
@@ -210,6 +211,10 @@ export class PostsController { constructor(public service: PostsService) {} }
 `persist` keys validated against entity columns at runtime — typos throw `RequestQueryException` → 400.
 
 **Guard ordering:** `@UseGuards()` MUST be on the controller class (runs before `CrudRequestInterceptor` reads `req.user`).
+
+## ACL / RBAC integration
+
+Generated route handlers carry an auto-applied `@Action(CrudActions.<X>)` — values: `Read-All`, `Read-One`, `Create-One`, `Create-Many`, `Update-One`, `Replace-One`, `Delete-One`, `Recover-One`. Tag the controller with `@Feature(name)` and reflect both from a guard via `getFeature(ctx.getClass())` + `getAction(ctx.getHandler())`, then dispatch to your ACL backend (`nest-access-control`, CASL, etc). Full `ACLGuard` example: [Controllers wiki §Additional decorators](https://github.com/kodjunkie/nestjs-crud/wiki/Controllers#additional-decorators).
 
 ## `@Override()` — Custom Handlers
 
