@@ -7,6 +7,7 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 ### Added
 
+- Cursor pagination support: `DrizzleQueryComposer.applyCursor` emits `or(gt/lt(sortCol, v), and(eq(sortCol, v), gt/lt(idCol, id)))` keyset WHERE per the official Drizzle cursor-pagination guide, with primary-key tie-breaker via `asc`/`desc`. `getMany` honors `@Crud({ query: { pagination: 'cursor' } })`; cursor mode bypasses the query cache wrap. The `sortField` decoded from the cursor flows through the same `columnsMap` allowlist used for offset-mode `?sort=`.
 - `DrizzleCacheStrategy` — bring-your-own Redis-backed `CacheStrategy` implementation. Constructor takes a config object (`{ redisClient }`); `redisClient` accepts node-redis v5, ioredis, or any custom `RedisLike` client; auto-connects on first cache operation. Provides single-flight de-duplication.
 - `ioredis: ^5.0.0` declared as an optional `peerDependency` (joining the existing `redis: ^5.0.0` optional peer). Consumers using neither do not need either installed.
 - `DrizzleCrudService` constructor accepts an optional fifth `cacheStrategy` argument. Existing constructor signatures continue to work unchanged.

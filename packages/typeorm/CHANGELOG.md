@@ -7,6 +7,7 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 ### Added
 
+- Cursor pagination support: `TypeOrmQueryComposer.applyCursor` adds parameterized OR-decomposed keyset WHERE with primary-key tie-breaker on top of the existing sort branch. `getMany` honors `@Crud({ query: { pagination: 'cursor' } })` with single-page forward and back navigation; cursor mode bypasses the query cache wrap. The `sortField` decoded from the cursor token flows through the same `entityColumnsHash` allowlist used for offset-mode `?sort=` — no new SQL injection surface.
 - `TypeOrmCacheStrategy` — bring-your-own Redis-backed `CacheStrategy` implementation. Accepts node-redis v5, ioredis, or any custom `RedisLike` client; auto-connects on first cache operation. Uses non-blocking `scanPrefix` for entity-prefix invalidation. Provides single-flight de-duplication.
 - `ioredis: ^5.0.0` declared as an optional `peerDependency`. Install either `redis@^5` or `ioredis@^5` depending on which client you bring; consumers using neither do not need either installed.
 - `TypeOrmCrudService` constructor accepts an optional third `cacheStrategy` argument. Existing `super(repo)` and `super(repo, logger)` calls continue to work unchanged.

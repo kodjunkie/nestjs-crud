@@ -632,6 +632,18 @@ _Optional._
 
 If `true`, `GET many` always returns a paginated object (instead of a bare array). Can also be set [globally](#global-options).
 
+#### pagination
+
+```typescript
+{
+  pagination: 'offset' | 'cursor';
+}
+```
+
+_Optional. Default `'offset'`._
+
+Switches `getManyBase` between offset pagination (default) and opt-in cursor pagination. Cursor mode requires a single sort field plus a configured `limit` (or `?limit=N`); see [Cursor Pagination](https://github.com/kodjunkie/nestjs-crud/wiki/CursorPagination) for the response shape, navigation pattern, security caveats, and per-adapter notes.
+
 ### dto
 
 ```typescript
