@@ -89,6 +89,31 @@ describe('#crud-typeorm', () => {
 
       await app.init();
       server = app.getHttpServer();
+
+      try {
+        const usersSvc: any = app.get(UsersService);
+        const ds: any = usersSvc?.repo?.manager?.connection;
+        if (ds?.query) {
+          const isMy = ds.options?.type === 'mysql';
+          const q = isMy ? '`' : '"';
+          const userCount = await ds.query(`SELECT COUNT(*) AS c FROM users`);
+          const allUsers = await ds.query(
+            `SELECT id, ${q}companyId${q}, ${q}profileId${q} FROM users ORDER BY id`,
+          );
+          // eslint-disable-next-line no-console
+          console.log(
+            '[diag a.params beforeAll] dialect:',
+            ds.options?.type,
+            'count:',
+            JSON.stringify(userCount),
+            'allUsers:',
+            JSON.stringify(allUsers),
+          );
+        }
+      } catch (err) {
+        // eslint-disable-next-line no-console
+        console.log('[diag a.params beforeAll] failed:', (err as Error).message);
+      }
     });
 
     afterAll(async () => {
