@@ -233,10 +233,7 @@ export class MikroOrmQueryComposer<T extends object> implements QueryComposer<Qu
         }
         orderBy[s.field] = s.order === 'DESC' ? 'DESC' : 'ASC';
       } else {
-        if (!this.propertiesMap[s.field]) {
-          this.onBadRequest(`Invalid sort field: '${s.field}'`);
-          continue;
-        }
+        if (!this.propertiesMap[s.field]) this.onBadRequest(`Invalid sort field: '${s.field}'`);
         orderBy[s.field] = s.order === 'DESC' ? 'DESC' : 'ASC';
       }
     }

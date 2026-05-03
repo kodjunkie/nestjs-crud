@@ -133,11 +133,11 @@ const runSuite = dialect === 'postgres' || dialect === 'mysql';
     expect(body.message).toMatch(/Invalid cursor/);
   });
 
-  // Cell 8: @CrudAuth filter still applies — cursor pages are subset of full result
-  it('@CrudAuth filter still applies in cursor mode', async () => {
-    // /users-cursor does not restrict by company param. Both /users-cursor and
-    // /users share the same UsersService — verify cursor response ids are
-    // valid user ids (positive integers).
+  // Cell 8: row id shape — fixture has no @CrudAuth, so this is a smoke check
+  // that cursor pages return valid user ids. Real @CrudAuth-filtering coverage
+  // would require a separate fixture controller with @CrudAuth({ filter }) +
+  // cross-company seed; deferred.
+  it('cursor response row ids are valid user ids', async () => {
     const cursorBody = (await request(server).get(`/users-cursor?sort=id,ASC`).expect(200)).body;
     expect(cursorBody.data.length).toBeGreaterThan(0);
     for (const r of cursorBody.data) {
@@ -146,7 +146,7 @@ const runSuite = dialect === 'postgres' || dialect === 'mysql';
     }
   });
 
-  // Cell 9: Soft-delete still applies in cursor mode — deleted row absent from cursor pages
+  // Cell 9: Hard-delete still applies in cursor mode — deleted row absent from cursor pages
   it('hard-delete still applies in cursor mode', async () => {
     // /users-cursor has no softDelete config, so DELETE is a hard delete.
     // Either way the deleted id must not appear in any cursor page.

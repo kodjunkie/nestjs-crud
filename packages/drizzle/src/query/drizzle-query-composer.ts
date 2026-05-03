@@ -230,16 +230,18 @@ export class DrizzleQueryComposer implements QueryComposer<AnyDrizzleSelect> {
     const sortCol = this.columnsMap[sort.field];
     const idField = this.entityPrimaryColumns[0];
     const idCol = this.columnsMap[idField];
-    if (!sortCol) {
-      this.onBadRequest(`Invalid sort field: '${sort.field}'`);
-      return q;
-    }
+    if (!sortCol) this.onBadRequest(`Invalid sort field: '${sort.field}'`);
 
     const isAsc = sort.order === 'ASC';
     const isForward = decoded.dir === 'next';
     const cmp = isAsc === isForward ? gt : lt;
     const dirFn = isAsc === isForward ? asc : desc;
 
+    // `as any` casts bridge runtime cursor payload values (`unknown` after JSON
+    // decode) into Drizzle's column-typed operator signatures. The runtime types
+    // round-trip through CursorCodec; the values are bound through Drizzle's
+    // parameterization, so SQLi exposure is on `sortField` (guarded above), not
+    // on these values.
     q.where(
       or(
         cmp(sortCol, decoded.sortValue as any),
@@ -278,10 +280,7 @@ export class DrizzleQueryComposer implements QueryComposer<AnyDrizzleSelect> {
         );
       } else {
         const col = this.columnsMap[s.field];
-        if (!col) {
-          this.onBadRequest(`Invalid sort field: '${s.field}'`);
-          continue;
-        }
+        if (!col) this.onBadRequest(`Invalid sort field: '${s.field}'`);
         clauses.push(s.order === 'DESC' ? sql`${col} DESC` : sql`${col} ASC`);
       }
     }

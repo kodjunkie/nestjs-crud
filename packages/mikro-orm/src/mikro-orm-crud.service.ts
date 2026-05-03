@@ -457,7 +457,8 @@ export class MikroOrmCrudService<T extends object> extends CrudService<T> {
     parsed: ParsedRequestParams,
     options: CrudRequestOptions,
   ): Promise<CursorPaginatedResponse<T>> {
-    // D-01a: single-sort-field requirement
+    this.logger.debug?.('cursor pagination: bypassing cache wrap');
+    // single-sort-field requirement
     if (!parsed.sort || parsed.sort.length !== 1) {
       this.throwBadRequestException(
         `Cursor pagination supports a single sort field; got: ${parsed.sort?.map((s) => s.field).join(', ') || '0'}`,
