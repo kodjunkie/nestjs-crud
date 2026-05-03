@@ -48,9 +48,7 @@ export class PrismaCrudService<T extends Record<string, unknown>> extends CrudSe
 
   // === PUBLIC CRUD VERBS ===
 
-  public async getMany(
-    req: CrudRequest,
-  ): Promise<GetManyDefaultResponse<T> | CursorPaginatedResponse<T> | T[]> {
+  public async getMany(req: CrudRequest): Promise<GetManyDefaultResponse<T> | CursorPaginatedResponse<T> | T[]> {
     try {
       const { parsed, options } = req;
       const mode = options.query?.pagination ?? (options as any).pagination ?? 'offset';
@@ -314,9 +312,7 @@ export class PrismaCrudService<T extends Record<string, unknown>> extends CrudSe
 
     // sortField mismatch guard
     if (decoded && decoded.sortField !== sort.field) {
-      this.throwBadRequestException(
-        `Cursor sort field mismatch: expected '${sort.field}', got '${decoded.sortField}'`,
-      );
+      this.throwBadRequestException(`Cursor sort field mismatch: expected '${sort.field}', got '${decoded.sortField}'`);
     }
 
     // D-06a: missing-limit terminal → 400
