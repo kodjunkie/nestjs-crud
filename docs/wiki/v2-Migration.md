@@ -59,7 +59,7 @@ Migration: ensure every field passed through `?sort=`, `?filter=`, or `?search=`
 
 Common v1 breakages now surfaced:
 
-- **`@VirtualColumn` and `@Formula`**: TypeORM virtual columns. They are not reflected in the standard column metadata that the SQLi guard reads. To allow filtering on them, declare them explicitly in your service via the `entityColumnsHash` override hook, or add them to your `@Crud({ query: { exclude } })` / `allow` config.
+- **`@VirtualColumn` and `@Formula`**: TypeORM virtual columns. They are not reflected in the standard column metadata that the SQLi guard reads. To allow filtering on them, declare them explicitly by overriding `protected entityColumnsHash` in your CrudService subclass. `@Crud({ query: { exclude | allow } })` filters the entity-column set down for SELECT projection; it does not add new keys to the SQLi-guard allowlist.
 - **Client aliases for joined subquery results**: if you exposed `?sort=clientAlias` where `clientAlias` was a SELECT alias from a custom query builder override, v2 rejects it. Either expose the underlying column name in the request, or extend the allowlist via the override hook.
 - **Dotted paths like `?sort=profile.name` when `profile` is not joined**: v2 requires the relation to be declared in the controller's `@Crud({ query: { join: { profile: {} } } })` block. v1 silently fell through and ordered by nothing.
 
