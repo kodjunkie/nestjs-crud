@@ -278,7 +278,7 @@ Many such routes? Factor a helper. Alternative: switch to dedicated DTOs (Patter
 
 ## Strict Field Allowlist (v2 BREAKING)
 
-Every field in `?sort/?filter/?search/?fields/?join` MUST be entity column OR allow-listed relation. Otherwise: `RequestQueryException: Invalid field 'X'` → 400. No opt-out. Common breakages: TypeORM `@VirtualColumn`/`@Formula`, client-side aliases, dotted paths against unjoined relations.
+Every field in `?sort/?filter/?search/?fields/?join` MUST be entity column OR allow-listed relation. Otherwise: `RequestQueryException: Invalid field 'X'` → 400. No opt-out. Common breakages: TypeORM `@VirtualColumn`/`@Formula` (not in `metadata.columns` — override `protected entityColumnsHash` in subclass to allow), client-side aliases, dotted paths against unjoined relations.
 
 ## Caching
 
