@@ -70,7 +70,7 @@
   },
   "gitHead": "6f5fb9b83cde621265e4268c904c6ee98ae89142",
   "devDependencies": {
-    "@jest/globals": "^30.0.0",
+    "@jest/globals": "^30.4.1",
     "@mikro-orm/nestjs": "^7"
   }
 }
