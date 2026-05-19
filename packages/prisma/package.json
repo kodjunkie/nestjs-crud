@@ -1,7 +1,7 @@
 {
   "name": "@nestjs-crud/prisma",
   "description": "NestJs CRUD for RESTful APIs - Prisma ORM",
-  "version": "2.2.1",
+  "version": "2.2.2",
   "license": "MIT",
   "main": "lib/index.js",
   "typings": "lib/index.d.ts",
@@ -49,6 +49,8 @@
     "@prisma/client": "^7.0.0",
     "@prisma/extension-accelerate": "^3.0.0",
     "ioredis": "^5.0.0",
+    "mysql2": "^3.0.0",
+    "pg": "^8.0.0",
     "redis": "^5.0.0"
   },
   "peerDependenciesMeta": {
@@ -56,6 +58,12 @@
       "optional": true
     },
     "ioredis": {
+      "optional": true
+    },
+    "mysql2": {
+      "optional": true
+    },
+    "pg": {
       "optional": true
     },
     "redis": {

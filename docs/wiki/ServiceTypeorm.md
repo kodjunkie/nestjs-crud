@@ -4,7 +4,11 @@ A CRUD service for relational databases built with TypeORM.
 
 ```shell
 npm i @nestjs-crud/typeorm @nestjs/typeorm typeorm
+npm i pg                       # Postgres
+npm i mysql2                   # MySQL
 ```
+
+The DB driver is declared as an optional `peerDependency` on `@nestjs-crud/typeorm` — install whichever your backend uses.
 
 ## Usage
 

@@ -1,6 +1,6 @@
 {
   "name": "@nestjs-crud/mikro-orm",
-  "version": "2.2.1",
+  "version": "2.2.2",
   "description": "NestJS CRUD MikroORM adapter",
   "main": "lib/index.js",
   "typings": "lib/index.d.ts",
@@ -50,10 +50,18 @@
     "@nestjs-crud/util": "^2.0.0",
     "@nestjs/common": "^10.0.0 || ^11.0.0",
     "ioredis": "^5.0.0",
+    "mysql2": "^3.0.0",
+    "pg": "^8.0.0",
     "redis": "^5.0.0"
   },
   "peerDependenciesMeta": {
     "ioredis": {
+      "optional": true
+    },
+    "mysql2": {
+      "optional": true
+    },
+    "pg": {
       "optional": true
     },
     "redis": {
@@ -62,7 +70,7 @@
   },
   "gitHead": "6f5fb9b83cde621265e4268c904c6ee98ae89142",
   "devDependencies": {
-    "@jest/globals": "^30.0.0",
+    "@jest/globals": "^30.4.1",
     "@mikro-orm/nestjs": "^7"
   }
 }
