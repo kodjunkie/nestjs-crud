@@ -5,9 +5,20 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 ## [Unreleased]
 
+
+## [2.2.2] — 2026-05-19
+
+### Security
+
+- **HIGH — GHSA-cfw5-68c4-ffqp** (MikroORM SQL injection via runtime-controlled identifiers and JSON-path keys) closed by bumping `@mikro-orm/{core,knex,mysql,postgresql,sqlite}` to the patched lines. Consumer-facing: any caller passing runtime-controlled identifiers into the MikroORM SQL layer is affected. Recommended action: update to `@nestjs-crud/mikro-orm@^2.2.2` (forces the patched `@mikro-orm/sql@7.0.14+` and `@mikro-orm/knex@6.6.14`).
+- **HIGH — GHSA-pv5w-4p9q-p3v2** (Kysely JSON-path traversal) closed transitively via the MikroORM 7.0.17 bump (vendors patched `kysely@0.29.x`).
+
 ### Changed
 
 - Declared `mysql2: ^3.0.0` and `pg: ^8.0.0` as optional `peerDependencies` (`peerDependenciesMeta.{mysql2,pg}.optional: true`). Consumers install only the driver their backend uses.
+- `@mikro-orm/core` peer range bumped to `^7.0.17`; `@mikro-orm/knex` peer range bumped to `^6.6.14`. Within the existing `^7` / `^6` major bands; no consumer migration required.
+
+See the [root CHANGELOG.md](../../CHANGELOG.md#222--2026-05-19) for the full v2.2.2 release notes.
 
 
 ## [2.2.1] — 2026-05-03

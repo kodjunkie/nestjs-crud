@@ -9,9 +9,24 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+---
+
+## [2.2.2] — 2026-05-19
+
+Security-driven patch. Closes 5 dependabot advisories — 3 consumer-runtime HIGHs in the MikroORM SQL layer plus 2 dev-tree HIGHs in `fast-uri` — and sweeps an additional 4 dev-tree MED/LOW alerts via yarn resolutions. Bundles the root-deps reclassification originally tabled for v2.3.0 since it ships alongside.
+
+### Security
+
+- **HIGH — GHSA-cfw5-68c4-ffqp** (MikroORM SQL injection via runtime-controlled identifiers and JSON-path keys): closed by bumping `@mikro-orm/{core,mysql,postgresql,sqlite}` to `^7.0.17` (pulls patched `@mikro-orm/sql@7.0.14+`) and `@mikro-orm/knex` to `^6.6.14`. Affects consumers using the MikroORM adapter on any runtime-controlled identifier path.
+- **HIGH — GHSA-pv5w-4p9q-p3v2** (Kysely JSON-path traversal injection via unsanitized path-leg metacharacters in `JSONPathBuilder.key()` / `.at()`): closed transitively via the MikroORM 7.0.17 bump (vendors patched `kysely@0.29.x`).
+- **HIGH — GHSA-q3j6-qgpj-74h6** (`fast-uri` path traversal via percent-encoded dot segments) and **HIGH — GHSA-v39h-62p7-jpjc** (`fast-uri` host confusion via percent-encoded authority delimiters): closed via yarn resolution to `fast-uri@^3.1.2`. Dev-tree only (reaches via `ajv` from commitlint, prisma's dev sandbox, and ESLint), but pinned for hygiene.
+- **MED — GHSA-{69xw-7hcm-h432, p77w-8qqv-26rm, qp7p-654g-cw7p}** and **LOW — GHSA-hm8q-7f3q-5f36** (multiple `hono@<4.12.18` issues: JSX HTML injection, Vary-header cache leakage, CSS injection, JWT validation): closed via yarn resolution to `hono@^4.12.18`. Dev-tree only (transitive via `prisma`'s `@prisma/dev` sandbox).
+- **MED — GHSA-v2v4-37r5-5v8g** (`ip-address` XSS in `Address6` HTML-emitting methods): closed via yarn resolution to `ip-address@^10.1.1`. Dev-tree only (transitive via `socks-proxy-agent`).
+
 ### Changed
 
-- `@nestjs/testing`, `mysql2`, and `pg` are reclassified from root `dependencies` to root `devDependencies`. They were test-fixture-only — `@nestjs/testing` is imported by `packages/*/test/*.spec.ts`; `mysql2` and `pg` are referenced only by ORM `DataSource.type` configs in test fixtures. Stops them being pulled into consumer trees as transitive runtime requirements. Consumers using a Postgres or MySQL backend continue to install their chosen driver as a normal dependency in their own project, per the optional `peerDependency` declaration on each adapter package (see below).
+- Runtime dependency refresh: `@nestjs/common`, `@nestjs/core`, `@nestjs/platform-express` `^11.1.13` → `^11.1.21`; `@nestjs/typeorm` `^11.0.0` → `^11.0.1`; `typeorm` `^0.3.28` → `^0.3.30`; `drizzle-orm` `^0.45.1` → `^0.45.2`; `redis` `5.11.0` → `5.12.1`; `qs` `6.15.0` → `6.15.2`; `class-validator` `0.14.3` → `0.15.1`. All within their declared peer ranges; no consumer migration required. Verified across 114 jest suites / 1364 tests on TypeORM/Drizzle/MikroORM/Prisma × Postgres/MySQL.
+- `@nestjs/testing`, `mysql2`, and `pg` reclassified from root `dependencies` to root `devDependencies`. They were test-fixture-only — `@nestjs/testing` is imported by `packages/*/test/*.spec.ts`; `mysql2` and `pg` are referenced only by ORM `DataSource.type` configs in test fixtures. Stops them being pulled into consumer trees as transitive runtime requirements. Consumers using a Postgres or MySQL backend continue to install their chosen driver as a normal dependency in their own project, per the optional `peerDependency` declaration on each adapter package (see below).
 - `mysql2: ^3.0.0` and `pg: ^8.0.0` are now declared as optional `peerDependencies` on each of `@nestjs-crud/typeorm`, `@nestjs-crud/mikro-orm`, `@nestjs-crud/drizzle`, and `@nestjs-crud/prisma`. Mirrors the `@nestjs/typeorm` ecosystem norm: consumers install only the driver they actually use; no install-time `npm WARN unmet peer` noise for the unused driver.
 
 ---

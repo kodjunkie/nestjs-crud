@@ -5,9 +5,15 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 ## [Unreleased]
 
+
+## [2.2.2] — 2026-05-19
+
 ### Changed
 
 - Declared `mysql2: ^3.0.0` and `pg: ^8.0.0` as optional `peerDependencies` (`peerDependenciesMeta.{mysql2,pg}.optional: true`). Consumers install only the driver their backend uses.
+- `@prisma/client` dev/peer range bumped to `^7.8.0` (verified against `prisma@7.8.x`). Within the existing `^7` band; no consumer migration required.
+
+See the [root CHANGELOG.md](../../CHANGELOG.md#222--2026-05-19) for the full v2.2.2 release notes (5 dependabot advisories closed; runtime dep refresh).
 
 
 ## [2.2.1] — 2026-05-03
