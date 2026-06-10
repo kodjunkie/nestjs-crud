@@ -1,7 +1,7 @@
 /**
  * Query-parameter and path-parameter metadata builders for the generated
- * CRUD routes, plus the `docsLink` Markdown helper rendered inside each
- * parameter's OpenAPI description.
+ * CRUD routes. Parameter descriptions are written for API consumers and
+ * are self-contained — no library internals or external doc links.
  */
 import { RequestQueryBuilder } from '@nestjs-crud/request';
 import { isString, objKeys } from '@nestjs-crud/util';
@@ -10,10 +10,6 @@ import { MergedCrudOptions, ParamsOptions } from '../../interfaces';
 import { BaseRouteName } from '../../types';
 import { R } from '../reflection.helper';
 import { swaggerConst } from './swagger-constants';
-
-export function docsLink(section: string): string {
-  return `<a href="https://github.com/kodjunkie/nestjs-crud/wiki/Query-Syntax#${section}" target="_blank">Docs</a>`;
-}
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function setParams(metadata: unknown, func: any): void {
@@ -88,7 +84,7 @@ export function createQueryParamsMeta(name: BaseRouteName, options: MergedCrudOp
 
   const fieldsMetaBase = {
     name: fields,
-    description: `Comma-separated resource fields to return. Empty = all fields. ${docsLink('select')}`,
+    description: 'Comma-separated list of fields to return. Empty = all fields.',
     required: false,
     in: 'query',
     example: 'id,name,email',
@@ -107,7 +103,8 @@ export function createQueryParamsMeta(name: BaseRouteName, options: MergedCrudOp
 
   const searchMetaBase = {
     name: search,
-    description: `Adds search condition. ${docsLink('search')}`,
+    description:
+      'Search condition as a JSON object. Field conditions support operators such as `$eq`, `$ne`, `$gt`, `$lt`, `$cont` (contains), `$in`, and may be combined with `$and` / `$or`.',
     required: false,
     in: 'query',
     // Emitted as a literal JSON string so OpenAPI's `example` scalar renders the raw
@@ -118,7 +115,8 @@ export function createQueryParamsMeta(name: BaseRouteName, options: MergedCrudOp
 
   const filterMetaBase = {
     name: filter,
-    description: `Adds filter condition. ${docsLink('filter')}`,
+    description:
+      'Filter condition in the form `field||$operator||value`. Repeatable; multiple filters are combined with AND.',
     required: false,
     in: 'query',
     example: 'age||$gte||18',
@@ -137,7 +135,8 @@ export function createQueryParamsMeta(name: BaseRouteName, options: MergedCrudOp
 
   const orMetaBase = {
     name: or,
-    description: `Adds OR condition. ${docsLink('or')}`,
+    description:
+      'Filter condition in the form `field||$operator||value`, combined with OR against other conditions. Repeatable.',
     required: false,
     in: 'query',
     example: 'status||$eq||active',
@@ -156,7 +155,7 @@ export function createQueryParamsMeta(name: BaseRouteName, options: MergedCrudOp
 
   const sortMetaBase = {
     name: sort,
-    description: `Adds sort by field. ${docsLink('sort')}`,
+    description: 'Sort order in the form `field,ASC` or `field,DESC`. Repeatable.',
     required: false,
     in: 'query',
     example: 'name,ASC',
@@ -175,7 +174,8 @@ export function createQueryParamsMeta(name: BaseRouteName, options: MergedCrudOp
 
   const joinMetaBase = {
     name: join,
-    description: `Adds relational resources. ${docsLink('join')}`,
+    description:
+      'Related resource to include, in the form `relation` or `relation||field1,field2` to select specific fields. Repeatable.',
     required: false,
     in: 'query',
     example: 'profile||bio,avatar',
@@ -194,7 +194,7 @@ export function createQueryParamsMeta(name: BaseRouteName, options: MergedCrudOp
 
   const limitMetaBase = {
     name: limit,
-    description: `Limit amount of resources. ${docsLink('limit')}`,
+    description: 'Maximum number of resources to return.',
     required: false,
     in: 'query',
     example: 25,
@@ -203,7 +203,7 @@ export function createQueryParamsMeta(name: BaseRouteName, options: MergedCrudOp
 
   const offsetMetaBase = {
     name: offset,
-    description: `Offset amount of resources. ${docsLink('offset')}`,
+    description: 'Number of resources to skip.',
     required: false,
     in: 'query',
     example: 50,
@@ -212,7 +212,7 @@ export function createQueryParamsMeta(name: BaseRouteName, options: MergedCrudOp
 
   const pageMetaBase = {
     name: page,
-    description: `Page portion of resources. ${docsLink('page')}`,
+    description: 'Page number, used together with `limit`.',
     required: false,
     in: 'query',
     example: 2,
@@ -221,7 +221,7 @@ export function createQueryParamsMeta(name: BaseRouteName, options: MergedCrudOp
 
   const cacheMetaBase = {
     name: cache,
-    description: `Reset cache (if was enabled). ${docsLink('cache')}`,
+    description: 'Set to `0` to bypass the cache for this request (when caching is enabled).',
     required: false,
     in: 'query',
     example: 0,
@@ -230,7 +230,7 @@ export function createQueryParamsMeta(name: BaseRouteName, options: MergedCrudOp
 
   const includeDeletedMetaBase = {
     name: includeDeleted,
-    description: `Include deleted. ${docsLink('includeDeleted')}`,
+    description: 'Set to `1` to include soft-deleted records in the result.',
     required: false,
     in: 'query',
     example: 1,

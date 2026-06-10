@@ -7,6 +7,16 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [2.2.4] — 2026-06-10
+
+### Added
+
+- `@nestjs-crud/prisma`: debug-level `CrudService initialized: <model>` constructor log, matching the other three adapters (logging-parity gap — Prisma was previously silent at initialization).
+
+### Changed
+
+- `@nestjs-crud/core`: generated OpenAPI descriptions rewritten for API consumers — no more references to library internals (`@Crud(...)` config, `CrudValidationGroups`) in operation descriptions. Per-parameter "Docs" HTML anchors are consolidated into a single Markdown "Query Syntax" reference link on the list/get-one operation descriptions; query-parameter descriptions now describe their syntax inline.
+
 ## [2.2.3] — 2026-06-10
 
 ### Fixed

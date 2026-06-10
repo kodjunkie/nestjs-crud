@@ -16,6 +16,12 @@ import { swaggerConst } from './swagger-constants';
 const pluralize: (word: string) => string =
   typeof pluralizeNs === 'function' ? (pluralizeNs as any) : (pluralizeNs as any).default;
 
+// Full query-grammar reference linked once per list/get operation (the only routes
+// with a query surface). Hardcoded for now; a `swagger.queryDocsUrl` config knob
+// (route-level → global → this default, `false` to disable) is the planned follow-up.
+const QUERY_DOCS_URL = 'https://github.com/kodjunkie/nestjs-crud/wiki/Query-Syntax';
+const QUERY_DOCS_LINE = `Full query syntax reference: [Query Syntax](${QUERY_DOCS_URL}).`;
+
 export function operationsMap(modelName: string): { [key in BaseRouteName]: { summary: string; description: string } } {
   const lower = modelName.toLowerCase();
   const lowerPlural = pluralize(lower);
@@ -30,8 +36,10 @@ export function operationsMap(modelName: string): { [key in BaseRouteName]: { su
         'filter (`?or=`), sort (`?sort=`), relation loading (`?join=`), and pagination',
         '(`?limit=`, `?offset=`, `?page=`).',
         '',
-        'When the controller is configured with `@Crud({ query: { softDelete: true } })`,',
-        'soft-deleted rows are excluded by default; pass `?includeDeleted=1` to include them.',
+        'If soft deletion is enabled for this resource, soft-deleted records are excluded',
+        'by default; pass `?includeDeleted=1` to include them.',
+        '',
+        QUERY_DOCS_LINE,
       ].join('\n'),
     },
     getOneBase: {
@@ -39,9 +47,11 @@ export function operationsMap(modelName: string): { [key in BaseRouteName]: { su
       description: [
         `Returns a single ${lower} matching the id path parameter.`,
         '',
-        'Supports field selection (`?fields=`) and relation loading (`?join=`). When the',
-        'controller is configured with `@Crud({ query: { softDelete: true } })`, soft-deleted',
-        'rows are excluded by default; pass `?includeDeleted=1` to include them.',
+        'Supports field selection (`?fields=`) and relation loading (`?join=`). If soft',
+        'deletion is enabled for this resource, soft-deleted records are excluded by',
+        'default; pass `?includeDeleted=1` to include them.',
+        '',
+        QUERY_DOCS_LINE,
       ].join('\n'),
     },
     createOneBase: {
@@ -49,9 +59,7 @@ export function operationsMap(modelName: string): { [key in BaseRouteName]: { su
       description: [
         `Creates a single ${lower} from the request body.`,
         '',
-        'Validation uses the `CrudValidationGroups.CREATE` group. When a dedicated create',
-        'DTO is provided via `@Crud({ dto: { create } })`, the DTO class drives validation;',
-        'otherwise validation is performed against the entity with the CREATE group.',
+        'The request body is validated with create rules; required fields must be present.',
       ].join('\n'),
     },
     createManyBase: {
@@ -60,8 +68,8 @@ export function operationsMap(modelName: string): { [key in BaseRouteName]: { su
         `Creates multiple ${lowerPlural} in a single request.`,
         '',
         'The request body uses the wrapper shape `{ "bulk": [ ... ] }`. Each element is',
-        'validated with the `CrudValidationGroups.CREATE` group. The bulk insert runs inside',
-        'a single transaction so either all rows are persisted or none are.',
+        'validated with create rules. The bulk insert runs inside a single transaction,',
+        'so either all records are persisted or none are.',
       ].join('\n'),
     },
     updateOneBase: {
@@ -70,8 +78,8 @@ export function operationsMap(modelName: string): { [key in BaseRouteName]: { su
         `Partially updates a single ${lower} (HTTP PATCH semantics).`,
         '',
         'Only the fields present in the request body are modified; omitted fields retain',
-        'their current values. Validation uses the `CrudValidationGroups.UPDATE` group,',
-        'which typically relaxes required-field constraints versus CREATE.',
+        'their current values. The body is validated with update rules, which typically',
+        'relax required-field constraints compared to creation.',
       ].join('\n'),
     },
     replaceOneBase: {
@@ -89,18 +97,17 @@ export function operationsMap(modelName: string): { [key in BaseRouteName]: { su
       description: [
         `Removes a single ${lower} by id.`,
         '',
-        'When the entity has a soft-delete column and the controller is configured with',
-        '`@Crud({ query: { softDelete: true } })`, the row is soft-deleted (delete column',
-        'set to the current timestamp). Otherwise the row is hard-deleted.',
+        'If soft deletion is enabled for this resource, the record is soft-deleted (marked',
+        'deleted and excluded from default reads, but recoverable). Otherwise the record is',
+        'permanently deleted.',
       ].join('\n'),
     },
     recoverOneBase: {
       summary: `Restore soft-deleted ${lower}`,
       description: [
-        `Restores a previously soft-deleted ${lower} by clearing its delete column.`,
+        `Restores a previously soft-deleted ${lower}.`,
         '',
-        'Requires the entity to expose a soft-delete column and the controller to be',
-        `configured with \`@Crud({ query: { softDelete: true } })\`. Hard-deleted ${lowerPlural}`,
+        `Available only when soft deletion is enabled for this resource. Permanently deleted ${lowerPlural}`,
         'cannot be recovered.',
       ].join('\n'),
     },

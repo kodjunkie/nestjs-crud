@@ -44,6 +44,7 @@ export class PrismaCrudService<T extends Record<string, unknown>> extends CrudSe
       entityName: this.modelName,
       logger: this.serviceConfig.logger as any,
     } as any);
+    this.serviceConfig.logger.debug?.(`CrudService initialized: ${this.modelName}`);
   }
 
   // === PUBLIC CRUD VERBS ===

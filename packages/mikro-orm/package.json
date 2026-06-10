@@ -1,6 +1,6 @@
 {
   "name": "@nestjs-crud/mikro-orm",
-  "version": "2.2.3",
+  "version": "2.2.4",
   "description": "NestJS CRUD MikroORM adapter",
   "main": "lib/index.js",
   "typings": "lib/index.d.ts",
