@@ -7,7 +7,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
-## [Unreleased]
+## [2.2.3] — 2026-06-10
+
+### Fixed
+
+- **`@nestjs-crud/core` subpath exports broken in published npm tarball (affects 2.2.0–2.2.2):** Consumers importing `@nestjs-crud/core/cache`, `@nestjs-crud/core/cursor`, or `@nestjs-crud/core/query` from the published package received `ERR_PACKAGE_PATH_NOT_EXPORTED` or `MODULE_NOT_FOUND` because `packages/core/package.json` shipped no `exports` map. An `exports` map is now included so those three subpaths resolve from the tarball. The previously-required workaround paths (`@nestjs-crud/core/lib/cache`, `/lib/cursor`, `/lib/query`) continue to resolve via explicit exports entries, and exact file paths with extensions under `lib/` resolve through a `./lib/*` wildcard. Note that the exports map restricts deep imports to this documented surface: extensionless file paths and other directory paths under `lib/` — which were never public API — no longer resolve. Internal imports in `@nestjs-crud/core` that previously referenced `@nestjs-crud/request`'s internal library path are now updated to use the request package's public root, aligning emitted type declarations with the published API surface.
+- **Swagger route metadata now survives `@nestjs/swagger` 11.4.3+ exports-map changes.** Recent versions of `@nestjs/swagger` added a package `exports` map that stopped exposing `./dist/constants`, causing the four core swagger helpers to silently fall into the no-swagger degradation path and emit no OpenAPI operation, parameter, response, or tag metadata on generated CRUD routes. Core now attempts the legacy deep-require first (still preferred when the installed version exposes that path) and falls back to inlined stable `DECORATORS` metadata key strings when the deep path is blocked. The no-swagger graceful-degradation path (when `@nestjs/swagger` is genuinely not installed) is unchanged.
 
 ---
 
@@ -292,7 +297,8 @@ See the [v1.0.1 release](https://github.com/kodjunkie/nestjs-crud/releases/tag/v
 
 ---
 
-[Unreleased]: https://github.com/kodjunkie/nestjs-crud/compare/v2.2.1...HEAD
+[2.2.3]: https://github.com/kodjunkie/nestjs-crud/compare/v2.2.2...v2.2.3
+[2.2.2]: https://github.com/kodjunkie/nestjs-crud/compare/v2.2.1...v2.2.2
 [2.2.1]: https://github.com/kodjunkie/nestjs-crud/compare/v2.2.0...v2.2.1
 [2.2.0]: https://github.com/kodjunkie/nestjs-crud/compare/v2.1.0...v2.2.0
 [2.1.0]: https://github.com/kodjunkie/nestjs-crud/compare/v2.0.1...v2.1.0

@@ -8,10 +8,8 @@ import { isString, objKeys } from '@nestjs-crud/util';
 
 import { MergedCrudOptions, ParamsOptions } from '../../interfaces';
 import { BaseRouteName } from '../../types';
-import { safeRequire } from '../../util';
 import { R } from '../reflection.helper';
-
-const swaggerConst = safeRequire('@nestjs/swagger/dist/constants', () => require('@nestjs/swagger/dist/constants'));
+import { swaggerConst } from './swagger-constants';
 
 export function docsLink(section: string): string {
   return `<a href="https://github.com/kodjunkie/nestjs-crud/wiki/Query-Syntax#${section}" target="_blank">Docs</a>`;

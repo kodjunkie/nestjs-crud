@@ -3,7 +3,7 @@ networks:
 
 services:
   postgres:
-    image: postgres:18
+    image: postgres:18-alpine
     ports:
       - 5455:5432
     environment:

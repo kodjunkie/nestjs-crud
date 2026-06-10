@@ -9,10 +9,8 @@
 import * as pluralizeNs from 'pluralize';
 
 import { BaseRouteName } from '../../types';
-import { safeRequire } from '../../util';
 import { R } from '../reflection.helper';
-
-const swaggerConst = safeRequire('@nestjs/swagger/dist/constants', () => require('@nestjs/swagger/dist/constants'));
+import { swaggerConst } from './swagger-constants';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const pluralize: (word: string) => string =

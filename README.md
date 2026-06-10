@@ -90,7 +90,6 @@ Three agent skills ship alongside the library:
 | `nestjs-crud-migration` | v1 → v2 upgrade playbook: audit greps, error-to-fix mapping                                          |
 
 ```bash
-# to install, run
 npx skills add kodjunkie/nestjs-crud
 ```
 

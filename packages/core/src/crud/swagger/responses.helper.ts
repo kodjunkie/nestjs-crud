@@ -9,11 +9,10 @@ import { MergedCrudOptions } from '../../interfaces';
 import { BaseRouteName } from '../../types';
 import { safeRequire } from '../../util';
 import { R } from '../reflection.helper';
+import { swaggerConst } from './swagger-constants';
 
 export const swagger = safeRequire('@nestjs/swagger', () => require('@nestjs/swagger'));
-export const swaggerConst = safeRequire('@nestjs/swagger/dist/constants', () =>
-  require('@nestjs/swagger/dist/constants'),
-);
+export { swaggerConst };
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function setResponseOk(metadata: unknown, func: any): void {

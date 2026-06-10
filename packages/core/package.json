@@ -1,10 +1,55 @@
 {
   "name": "@nestjs-crud/core",
   "description": "NestJs CRUD for RESTful APIs",
-  "version": "2.2.2",
+  "version": "2.2.3",
   "license": "MIT",
   "main": "lib/index.js",
   "typings": "lib/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./lib/index.d.ts",
+      "default": "./lib/index.js"
+    },
+    "./cache": {
+      "types": "./lib/cache/index.d.ts",
+      "default": "./lib/cache/index.js"
+    },
+    "./cursor": {
+      "types": "./lib/cursor/index.d.ts",
+      "default": "./lib/cursor/index.js"
+    },
+    "./query": {
+      "types": "./lib/query/index.d.ts",
+      "default": "./lib/query/index.js"
+    },
+    "./package.json": "./package.json",
+    "./lib/cache": {
+      "types": "./lib/cache/index.d.ts",
+      "default": "./lib/cache/index.js"
+    },
+    "./lib/cursor": {
+      "types": "./lib/cursor/index.d.ts",
+      "default": "./lib/cursor/index.js"
+    },
+    "./lib/query": {
+      "types": "./lib/query/index.d.ts",
+      "default": "./lib/query/index.js"
+    },
+    "./lib/*": "./lib/*"
+  },
+  "typesVersions": {
+    "*": {
+      "cache": [
+        "./lib/cache/index.d.ts"
+      ],
+      "cursor": [
+        "./lib/cursor/index.d.ts"
+      ],
+      "query": [
+        "./lib/query/index.d.ts"
+      ]
+    }
+  },
   "publishConfig": {
     "access": "public"
   },
@@ -50,10 +95,11 @@
     "build": "npx tsc -b"
   },
   "dependencies": {
-    "@nestjs-crud/request": "^2.2.2",
-    "@nestjs-crud/util": "^2.2.2",
+    "@nestjs-crud/request": "^2.2.3",
+    "@nestjs-crud/util": "^2.2.3",
     "deepmerge": "^4.3.1",
-    "pluralize": "^8.0.0"
+    "pluralize": "^8.0.0",
+    "qs": "^6.15.2"
   },
   "peerDependencies": {
     "@nestjs/common": "^10.0.0 || ^11.0.0",

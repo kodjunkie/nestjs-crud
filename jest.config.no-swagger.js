@@ -49,6 +49,12 @@ module.exports = {
     // so the no-swagger sentinel cell can go green; original `test` matrix
     // cells run via per-adapter scripts that don't touch this file either.
     '/packages/core/test/crud-request\\.interceptor\\.spec\\.ts$',
+    // Compares INLINED_FALLBACK against the real @nestjs/swagger dist/constants.js
+    // using an absolute-path require that bypasses the exports map. Requires the
+    // real installed swagger module; cannot run when @nestjs/swagger is replaced by
+    // the throwing stub. Runs in the smoke job (bare root jest) where swagger IS
+    // installed. Excluded here to keep the no-swagger sentinel green.
+    '/packages/core/test/swagger-constants-fallback\\.spec\\.ts$',
   ],
   // This sentinel config DISABLES the inherited 80% coverageThreshold.
   // Rationale: the no-swagger config skips 3 specs and runs only the
