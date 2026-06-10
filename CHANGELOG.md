@@ -7,6 +7,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [Unreleased]
+
+### Added
+
+- `@nestjs-crud/prisma`: debug-level `CrudService initialized: <model>` constructor log, matching the other three adapters (logging-parity gap — Prisma was previously silent at initialization).
+
 ## [2.2.3] — 2026-06-10
 
 ### Fixed

@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [Unreleased]
+
+### Added
+
+- `PrismaCrudService` now emits the same debug-level `CrudService initialized: <model>` constructor log as the TypeORM, Drizzle, and MikroORM adapters (visible only when debug logging is enabled). Closes a logging-parity gap — the Prisma adapter was previously silent at initialization.
+
 ## [2.2.3] — 2026-06-10
 
 Version-only republish — no package-specific source changes. Bumped in lockstep with the rest of the monorepo. See the [root CHANGELOG.md](../../CHANGELOG.md#223--2026-06-10) for full release details.
