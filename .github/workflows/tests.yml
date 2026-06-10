@@ -32,6 +32,14 @@ jobs:
       - name: run smoke
         run: yarn smoke:pack
 
+      - name: run core/request/util unit suite
+        # Bare root jest (core + request + util specs, no DB needed). No other
+        # job runs this suite: parity filters to packages/core/test/parity and
+        # the test matrix runs per-adapter configs only. This is what executes
+        # swagger-constants-fallback.spec.ts — the guard that fails when the
+        # inlined DECORATORS fallback drifts from the installed @nestjs/swagger.
+        run: npx jest --silent
+
   parity:
     runs-on: ubuntu-latest
     steps:

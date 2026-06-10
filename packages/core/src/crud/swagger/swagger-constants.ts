@@ -44,11 +44,16 @@ export interface SwaggerConstants {
  * upstream source — so any prefix inconsistency would be trivially visible in review.
  * Shape: `{ DECORATORS_PREFIX, DECORATORS }` only.  No top-level `API_EXTRA_MODELS` is added
  * here; the real module has none, and `responses.helper.ts` depends on that absence to return
- * `[]` from `getExtraModels` (latent quirk preserved deliberately — see interface_context note
- * in the plan).
+ * `[]` from `getExtraModels` (latent quirk preserved deliberately).
+ *
+ * Exported only so `swagger-constants-fallback.spec.ts` can deep-equal it against the real
+ * upstream module (loaded by absolute path, bypassing the exports map). Any typo here or any
+ * upstream key drift fails that spec instead of silently stripping OpenAPI metadata.
+ *
+ * @internal
  */
 const DECORATORS_PREFIX = 'swagger';
-const INLINED_FALLBACK: SwaggerConstants = {
+export const INLINED_FALLBACK: SwaggerConstants = {
   DECORATORS_PREFIX,
   DECORATORS: {
     API_OPERATION: `${DECORATORS_PREFIX}/apiOperation`,
