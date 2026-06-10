@@ -31,7 +31,7 @@ import { safeRequire } from '../../util';
  * upstream module has no top-level `API_EXTRA_MODELS`; the index signature resolves to
  * `undefined` at runtime for any key not explicitly present, which is the intended behavior.
  */
-interface SwaggerConstants {
+export interface SwaggerConstants {
   DECORATORS_PREFIX: string;
   DECORATORS: Record<string, string>;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
