@@ -9,6 +9,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed
+
+- **`@nestjs-crud/core` subpath exports broken in published npm tarball (affects 2.2.0–2.2.2):** Consumers importing `@nestjs-crud/core/cache`, `@nestjs-crud/core/cursor`, or `@nestjs-crud/core/query` from the published package received `ERR_PACKAGE_PATH_NOT_EXPORTED` or `MODULE_NOT_FOUND` because `packages/core/package.json` shipped no `exports` map. An `exports` map is now included so those three subpaths resolve from the tarball. The previously-required workaround (`@nestjs-crud/core/lib/cache`, `/lib/cursor`, `/lib/query`) continues to resolve via an explicit `./lib/*` wildcard passthrough — no consumer migration required. Internal imports in `@nestjs-crud/core` that previously referenced `@nestjs-crud/request`'s internal library path are now updated to use the request package's public root, aligning emitted type declarations with the published API surface.
+
 ---
 
 ## [2.2.2] — 2026-05-19

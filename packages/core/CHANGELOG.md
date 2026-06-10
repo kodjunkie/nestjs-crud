@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [Unreleased]
+
+### Fixed
+
+- **Subpath exports added to published tarball (affects 2.2.0–2.2.2):** `@nestjs-crud/core/cache`, `@nestjs-crud/core/cursor`, and `@nestjs-crud/core/query` now resolve from the published npm package via an `exports` map. Previously these subpaths failed with `ERR_PACKAGE_PATH_NOT_EXPORTED` or `MODULE_NOT_FOUND` in consumers. The previously-required `@nestjs-crud/core/lib/cache`, `/lib/cursor`, and `/lib/query` workaround paths continue to resolve via an explicit `./lib/*` wildcard passthrough — existing consumers do not need to change their imports.
+- **Internal declaration cleanup:** Core type declarations previously referenced `@nestjs-crud/request`'s internal library path (`@nestjs-crud/request/lib/types/request-query.types`) in emitted `.d.ts` files. The three affected core source files now import from the `@nestjs-crud/request` package root, so emitted declarations reference only the public API surface of the request package.
+
 ## [2.2.2] — 2026-05-19
 
 Version-only republish — no package-specific source changes. Bumped in lockstep with the rest of the monorepo. See the [root CHANGELOG.md](../../CHANGELOG.md#222--2026-05-19) for full release details (security: 5 dependabot advisories closed; runtime dep refresh; optional driver peers on adapters).
