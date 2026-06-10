@@ -76,58 +76,81 @@ __metadata:
   linkType: hard
 
 "@nestjs-crud/core@file:../../packages/core::locator=typeorm-demo%40workspace%3A.":
-  version: 1.0.2
-  resolution: "@nestjs-crud/core@file:../../packages/core#../../packages/core::hash=e36782&locator=typeorm-demo%40workspace%3A."
+  version: 2.2.2
+  resolution: "@nestjs-crud/core@file:../../packages/core#../../packages/core::hash=f07ec2&locator=typeorm-demo%40workspace%3A."
   dependencies:
-    "@nestjs-crud/request": "npm:^1.0.2"
-    "@nestjs-crud/util": "npm:^1.0.2"
+    "@nestjs-crud/request": "npm:^2.2.2"
+    "@nestjs-crud/util": "npm:^2.2.2"
     deepmerge: "npm:^4.3.1"
     pluralize: "npm:^8.0.0"
   peerDependencies:
-    class-transformer: "*"
-    class-validator: "*"
-  checksum: 10c0/97f3bf9bb3d7401694eb8f725c454a7d4a45fd7f864e8a978011ca9d28e5c5583eb37404e168a1ab171ca5d8aa12f4bb9b1f2c477f370af20cbb15414adb2118
+    "@nestjs/common": ^10.0.0 || ^11.0.0
+    "@nestjs/swagger": ^10.0.0 || ^11.0.0
+    class-transformer: ^0.5.0
+    class-validator: ^0.14.0
+  peerDependenciesMeta:
+    "@nestjs/swagger":
+      optional: true
+  checksum: 10c0/41bb181a9e5c7bc87d61b5a9a61b42db8560a3bdaa00125ed425d924659570e97127e4992482916d836dab47d3b99df3b4d6f71cceec290a29704a3c0fc3a203
   languageName: node
   linkType: hard
 
 "@nestjs-crud/request@file:../../packages/request::locator=typeorm-demo%40workspace%3A.":
-  version: 1.0.2
-  resolution: "@nestjs-crud/request@file:../../packages/request#../../packages/request::hash=a0da2f&locator=typeorm-demo%40workspace%3A."
+  version: 2.2.2
+  resolution: "@nestjs-crud/request@file:../../packages/request#../../packages/request::hash=3f2726&locator=typeorm-demo%40workspace%3A."
   dependencies:
-    "@nestjs-crud/util": "npm:^1.0.2"
-    qs: "npm:^6.15.0"
-  checksum: 10c0/545fc6bccefa7702cbf10d0dc8a0cbe7940e5c64561849c540662f935b3af27b6763633cb9c5046049ec9d404e776a605b5eafb1a2504380a3c1c4b2de557cdf
+    "@nestjs-crud/util": "npm:^2.2.2"
+    qs: "npm:^6.15.2"
+  checksum: 10c0/d2105f62fec72524f99d82bf5bc47a11a9e064554dae055571880f006dd389d53e98f9ed5f3724d464fdbabf77ede5369dc4899cbf1cbae7f09bb0217c106e15
   languageName: node
   linkType: hard
 
-"@nestjs-crud/request@npm:^1.0.2":
-  version: 1.0.2
-  resolution: "@nestjs-crud/request@npm:1.0.2"
+"@nestjs-crud/request@npm:^2.2.2":
+  version: 2.2.2
+  resolution: "@nestjs-crud/request@npm:2.2.2"
   dependencies:
-    "@nestjs-crud/util": "npm:^1.0.2"
-    qs: "npm:^6.15.0"
-  checksum: 10c0/8d9ae2ba57c37adfae34ee5996199b5bcc59d027c5028789a6d4e19f2d6c8b458a35409d3f741d9ea8a3b6768de84bf2be36e7f4ddcccf0718d15fc55eeb50e9
+    "@nestjs-crud/util": "npm:^2.2.2"
+    qs: "npm:^6.15.2"
+  checksum: 10c0/c16fa85271c94946bb57bde838d458f17cf4526fb0ba778311ed5e4deeab38a9d75a20d4fa89ace6ee9b55adbde92b785f4d441e5fa0909c410fd4f57078407a
   languageName: node
   linkType: hard
 
 "@nestjs-crud/typeorm@file:../../packages/typeorm::locator=typeorm-demo%40workspace%3A.":
-  version: 1.0.2
-  resolution: "@nestjs-crud/typeorm@file:../../packages/typeorm#../../packages/typeorm::hash=9d5953&locator=typeorm-demo%40workspace%3A."
-  checksum: 10c0/3eb905b9f812b64c30e72c5a521bb81812a5bb9a121261924c7e98e261d60aed975b24f482b3ddabb467d2f574903a9752dd8836179a339cb68883c19806d73f
+  version: 2.2.2
+  resolution: "@nestjs-crud/typeorm@file:../../packages/typeorm#../../packages/typeorm::hash=4dd8d0&locator=typeorm-demo%40workspace%3A."
+  peerDependencies:
+    "@nestjs-crud/core": ^2.0.0
+    "@nestjs/common": ^10.0.0 || ^11.0.0
+    "@nestjs/typeorm": ^10.0.0 || ^11.0.0
+    ioredis: ^5.0.0
+    mysql2: ^3.0.0
+    pg: ^8.0.0
+    redis: ^5.0.0
+    typeorm: ^0.3.0
+  peerDependenciesMeta:
+    ioredis:
+      optional: true
+    mysql2:
+      optional: true
+    pg:
+      optional: true
+    redis:
+      optional: true
+  checksum: 10c0/7e83c5a3168314537362d0bdf391ab75c06ea57a633d1e0675097219298d22e6b3c2d110398e8aed329dbb041a15916d37d147d24d69eb7c9f980566b59f46fa
   languageName: node
   linkType: hard
 
 "@nestjs-crud/util@file:../../packages/util::locator=typeorm-demo%40workspace%3A.":
-  version: 1.0.2
-  resolution: "@nestjs-crud/util@file:../../packages/util#../../packages/util::hash=26fbfa&locator=typeorm-demo%40workspace%3A."
-  checksum: 10c0/1d533b6543af2266fe4cd138cc5913f58422cc1fc35d3bcb09515760fd185bf5652641a78b0d312696ef20d9c1bcbfb9ea43d50905a954948e9d47263db3b31c
+  version: 2.2.2
+  resolution: "@nestjs-crud/util@file:../../packages/util#../../packages/util::hash=905dbc&locator=typeorm-demo%40workspace%3A."
+  checksum: 10c0/c7d9fae4bff9bb604ce1a73d6564ba5de1411f8d025c722985b8137de613bd46022bdbe636c35a871a3cd94f87bec8dde7f5f306f542122e5d7c32384a34486f
   languageName: node
   linkType: hard
 
-"@nestjs-crud/util@npm:^1.0.2":
-  version: 1.0.2
-  resolution: "@nestjs-crud/util@npm:1.0.2"
-  checksum: 10c0/364ea551a6d199c66ae8d24672851e80dd13b2477db18fb7cd5a24581e9ef889066ba0d477e32c44d6c20b0a3b604e38aaa0417341a581a743d6f262d6bbd36a
+"@nestjs-crud/util@npm:^2.2.2":
+  version: 2.2.2
+  resolution: "@nestjs-crud/util@npm:2.2.2"
+  checksum: 10c0/293aba8cb28d5ab39c59e809346d82e1c72f1921ea7ab8d62231830e49377099a5f0cf5de50c04a9201478bcbbcfe3ddb9a3144e550d7117cf910b56de0a84dc
   languageName: node
   linkType: hard
 
@@ -1762,12 +1785,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"qs@npm:^6.14.0, qs@npm:^6.14.1, qs@npm:^6.15.0":
-  version: 6.15.1
-  resolution: "qs@npm:6.15.1"
+"qs@npm:^6.14.0, qs@npm:^6.14.1, qs@npm:^6.15.2":
+  version: 6.15.2
+  resolution: "qs@npm:6.15.2"
   dependencies:
     side-channel: "npm:^1.1.0"
-  checksum: 10c0/19ee504f0ebff72598503e38cd6d9bd7b52a8ab62ae18b1e6bee3d4db58469bd65871ef1893a881bafb0f80ef2f9ab586e1f255cf25cc8d816c0f5a704721d97
+  checksum: 10c0/e6fd5f6f0aab06d480fe9ab15cebfc4ce4235303e2f91dc69a8f7f4df1e668a61c11d1cfbabacf4295cbbeb7b670ed23db45307480726259761f98e5695e93a7
   languageName: node
   linkType: hard
 
