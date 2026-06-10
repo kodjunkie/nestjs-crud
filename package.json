@@ -46,6 +46,7 @@
     "test:prisma:mysql": "yarn audit:prisma:drift && yarn prisma:generate:mysql && yarn db:prepare:prisma:mysql && PRISMA_PROVIDER=mysql DATABASE_URL=mysql://root:nestjs_crud@127.0.0.1:3316/nestjs_crud_prisma npx jest --config packages/prisma/jest.config.js",
     "format": "npx pretty-quick --pattern \"packages/**/!(*.d).ts\"",
     "lint": "npx eslint \"packages/**/!(*.d).ts\" --fix",
+    "smoke:pack": "node scripts/smoke-pack.js",
     "knip": "npx knip",
     "knip:fix": "npx knip --fix",
     "commit": "npx git-cz",
