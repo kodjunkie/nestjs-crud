@@ -1,4 +1,4 @@
-import { SCondition } from '@nestjs-crud/request/lib/types/request-query.types';
+import { SCondition } from '@nestjs-crud/request';
 import { ObjectLiteral } from '@nestjs-crud/util';
 import { ClassTransformOptions } from 'class-transformer';
 
