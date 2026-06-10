@@ -169,19 +169,24 @@ try {
 
 console.log('\n[4/4] Checking specifier resolution via real Node resolution...\n');
 
-const checkScript = ALL_CHECKS.map(spec =>
+// Write check script to a file so we avoid shell quoting / newline issues
+const checkLines = ALL_CHECKS.map(spec =>
   `try { require.resolve(${JSON.stringify(spec)}); console.log('PASS: ${spec}'); } catch(e) { console.error('FAIL: ${spec} ->', e.message.split('\\n')[0]); failed++; }`
-).join('\n');
+);
 
-const childScript = `
-let failed = 0;
-${checkScript}
-process.exit(failed > 0 ? 1 : 0);
-`;
+const childScript = [
+  "'use strict';",
+  'let failed = 0;',
+  ...checkLines,
+  "process.exit(failed > 0 ? 1 : 0);",
+].join('\n');
+
+const checkScriptPath = path.join(projectDir, 'smoke-check.js');
+fs.writeFileSync(checkScriptPath, childScript);
 
 let exitCode = 0;
 try {
-  execSync(`node -e ${JSON.stringify(childScript)}`, {
+  execSync(`node smoke-check.js`, {
     cwd: projectDir,
     stdio: 'inherit',
   });
