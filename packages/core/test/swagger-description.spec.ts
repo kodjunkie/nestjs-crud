@@ -200,20 +200,51 @@ describe('Swagger description surface', () => {
     });
   });
 
-  describe('docsLink — query param descriptions link to Query-Syntax wiki', () => {
-    @Crud({ model: { type: TestModel } })
+  describe('consumer-facing descriptions — no library internals, no external links', () => {
+    @Crud({ model: { type: TestModel }, query: { softDelete: true } })
     @Controller('docs-link-ctrl')
     class DocsLinkCtrl {}
 
-    it('filter/search/sort/join query params carry wiki/Query-Syntax# link', () => {
+    it('query param descriptions are self-contained: no wiki links, no HTML anchors', () => {
+      const params: any[] = Swagger.getParams((DocsLinkCtrl.prototype as any).getManyBase);
+      const queryParams = params.filter((p) => p?.in === 'query');
+      expect(queryParams.length).toBeGreaterThan(0);
+      for (const p of queryParams) {
+        expect(p.description).toEqual(expect.any(String));
+        expect(p.description.length).toBeGreaterThan(10);
+        expect(p.description).not.toMatch(/wiki\/Query-Syntax|<a |href=|github\.com/);
+      }
+    });
+
+    it('filter/search/sort describe their syntax inline', () => {
       const params: any[] = Swagger.getParams((DocsLinkCtrl.prototype as any).getManyBase);
       const filterParam = params.find((p) => p?.name === 'filter');
       const searchParam = params.find((p) => p?.name === 's');
       const sortParam = params.find((p) => p?.name === 'sort');
 
-      expect(filterParam?.description).toContain('wiki/Query-Syntax#');
-      expect(searchParam?.description).toContain('wiki/Query-Syntax#');
-      expect(sortParam?.description).toContain('wiki/Query-Syntax#');
+      expect(filterParam?.description).toContain('field||$operator||value');
+      expect(searchParam?.description).toContain('$cont');
+      expect(sortParam?.description).toContain('ASC');
+    });
+
+    it('operation descriptions never reference @Crud config or CrudValidationGroups', () => {
+      const map = Swagger.operationsMap('User');
+      for (const route of Object.keys(map)) {
+        expect(map[route].description).not.toMatch(/@Crud\(|CrudValidationGroups|dto: \{/);
+      }
+    });
+
+    it('query-syntax docs link appears exactly once on getMany/getOne, never elsewhere', () => {
+      const map = Swagger.operationsMap('User');
+      const linkRe = /\[Query Syntax\]\(https:\/\/github\.com\/kodjunkie\/nestjs-crud\/wiki\/Query-Syntax\)/g;
+      for (const route of Object.keys(map)) {
+        const matches = map[route].description.match(linkRe) ?? [];
+        if (route === 'getManyBase' || route === 'getOneBase') {
+          expect(matches).toHaveLength(1);
+        } else {
+          expect(matches).toHaveLength(0);
+        }
+      }
     });
   });
 
@@ -246,10 +277,10 @@ describe('Swagger description surface', () => {
     @Controller('word-ctrl')
     class WordCtrl {}
 
-    it('fields param description contains "Comma-separated resource fields to return"', () => {
+    it('fields param description contains "Comma-separated list of fields to return"', () => {
       const params: any[] = Swagger.getParams((WordCtrl.prototype as any).getManyBase);
       const fieldsParam = params.find((p) => p?.name === 'fields');
-      expect(fieldsParam?.description).toContain('Comma-separated resource fields to return');
+      expect(fieldsParam?.description).toContain('Comma-separated list of fields to return');
     });
   });
 

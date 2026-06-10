@@ -21,7 +21,6 @@ export const Swagger: any = {
   createPathParamsMeta: par.createPathParamsMeta,
   createQueryParamsMeta: par.createQueryParamsMeta,
   synthesizeBodyExample: ex.synthesizeBodyExample,
-  docsLink: par.docsLink,
 };
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

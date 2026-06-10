@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [Unreleased]
+
+### Changed
+
+- **Generated OpenAPI descriptions rewritten for API consumers.** Operation descriptions no longer reference library internals (`@Crud({ query: { softDelete: true } })`, `CrudValidationGroups`, DTO wiring) — behavior is now described in consumer terms (e.g. "If soft deletion is enabled for this resource, …", "validated with create rules"). Query-parameter descriptions are self-contained and describe their syntax inline (e.g. `field||$operator||value`).
+- **Per-parameter "Docs" links consolidated into one operation-level link.** Query-parameter descriptions no longer embed an HTML anchor each; instead the list and get-one operation descriptions carry a single Markdown "Query Syntax" reference link (CommonMark — renders in swagger-ui, Redoc, and other OpenAPI tooling). Endpoints without a query surface carry no link.
+
+### Removed
+
+- Internal `Swagger.docsLink` helper (and its export from the swagger facade) — superseded by self-contained parameter descriptions.
+
 ## [2.2.3] — 2026-06-10
 
 ### Fixed
