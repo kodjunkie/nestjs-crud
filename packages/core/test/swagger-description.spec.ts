@@ -249,8 +249,7 @@ describe('Swagger description surface', () => {
 
     it('non-soft-delete resource: no operation description mentions includeDeleted or soft-del', () => {
       const map = Swagger.operationsMap('User', false);
-      // recoverOneBase is excluded: it only registers when softDelete is ON; its description
-      // intentionally uses "soft-deleted" as a noun modifier, which is accurate regardless of flag.
+      // recoverOneBase only registers when softDelete is ON; its description always says "soft-deleted".
       const routesToCheck = Object.keys(map).filter((r) => r !== 'recoverOneBase');
       for (const route of routesToCheck) {
         expect(map[route].description).not.toMatch(/includeDeleted|soft.del/i);

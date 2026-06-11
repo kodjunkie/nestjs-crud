@@ -1,6 +1,6 @@
 import 'reflect-metadata';
 
-// Root-path import is deliberate — do not change to a relative path; it asserts the public export chain.
+// Imported via the package root so the spec exercises the public export chain.
 import { CrudController, CrudControllerFor, CrudService } from '@nestjs-crud/core';
 
 describe('CrudControllerFor type helper', () => {
