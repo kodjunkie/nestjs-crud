@@ -566,7 +566,7 @@ export class CrudRoutesFactory {
   }
 
   protected setSwaggerOperation(name: BaseRouteName) {
-    const { summary, description } = Swagger.operationsMap(this.modelName)[name];
+    const { summary, description } = Swagger.operationsMap(this.modelName, this.options.query.softDelete === true)[name];
     const override = this.options.swagger?.operations?.[name] ?? {};
     const operationId = name + this.targetProto.constructor.name + this.modelName;
     // Spread order is load-bearing: consumer override merges over base, then the
