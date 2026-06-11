@@ -20,7 +20,7 @@ export interface CrudController<T> {
  * `CrudController<T>` is an all-optional interface (a TypeScript "weak type").
  * When a controller declares only a renamed field (e.g. `contactService`) and
  * writes `implements CrudController<T>`, TypeScript raises TS2559 because the
- * class shares no properties with the interface. Use this helper instead:
+ * class shares no properties with the interface.
  *
  * @example
  * ```typescript
