@@ -7,6 +7,16 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [2.2.5] — 2026-06-11
+
+### Added
+
+- **`@nestjs-crud/core`: `CrudControllerFor<Entity, 'fieldName'>` type helper.** Type-safe alternative to `CrudController<T>` for controllers that use `serviceProperty`. When a controller declares only a renamed service field and writes `implements CrudController<T>`, TypeScript raises TS2559 ("has no properties in common") because the all-optional interface has no discriminant. `CrudControllerFor<T, P>` resolves this by producing a mapped type where the service field is named `P` (defaulting to `'service'`). Exported from `@nestjs-crud/core`. See the Controllers wiki for usage examples and the drop-`implements` alternative.
+
+### Changed
+
+- **`@nestjs-crud/core`: generated OpenAPI operation descriptions are now soft-delete–truthful.** Resources without soft-delete enabled no longer mention `includeDeleted` anywhere in their operation descriptions. Resources with soft delete enabled carry the `includeDeleted` note only on the endpoints that honour it (`getMany`, `getOne`). Library-internal validation prose (references to `CrudValidationGroups`, validation rules) has been removed from all generated descriptions.
+
 ## [2.2.4] — 2026-06-10
 
 ### Added
@@ -23,6 +33,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - **`@nestjs-crud/core` subpath exports broken in published npm tarball (affects 2.2.0–2.2.2):** Consumers importing `@nestjs-crud/core/cache`, `@nestjs-crud/core/cursor`, or `@nestjs-crud/core/query` from the published package received `ERR_PACKAGE_PATH_NOT_EXPORTED` or `MODULE_NOT_FOUND` because `packages/core/package.json` shipped no `exports` map. An `exports` map is now included so those three subpaths resolve from the tarball. The previously-required workaround paths (`@nestjs-crud/core/lib/cache`, `/lib/cursor`, `/lib/query`) continue to resolve via explicit exports entries, and exact file paths with extensions under `lib/` resolve through a `./lib/*` wildcard. Note that the exports map restricts deep imports to this documented surface: extensionless file paths and other directory paths under `lib/` — which were never public API — no longer resolve. Internal imports in `@nestjs-crud/core` that previously referenced `@nestjs-crud/request`'s internal library path are now updated to use the request package's public root, aligning emitted type declarations with the published API surface.
 - **Swagger route metadata now survives `@nestjs/swagger` 11.4.3+ exports-map changes.** Recent versions of `@nestjs/swagger` added a package `exports` map that stopped exposing `./dist/constants`, causing the four core swagger helpers to silently fall into the no-swagger degradation path and emit no OpenAPI operation, parameter, response, or tag metadata on generated CRUD routes. Core now attempts the legacy deep-require first (still preferred when the installed version exposes that path) and falls back to inlined stable `DECORATORS` metadata key strings when the deep path is blocked. The no-swagger graceful-degradation path (when `@nestjs/swagger` is genuinely not installed) is unchanged.
+- **`@nestjs-crud/core`: `qs` declared as a direct dependency.** `CrudRequestInterceptor`
+  imports `qs` at runtime but the package never declared it — resolution relied on package
+  managers hoisting the copy from `@nestjs-crud/request`. Fails under strict isolation (pnpm
+  default, Yarn Plug'n'Play). `qs` is now an explicit dependency.
 
 ---
 
@@ -88,7 +102,7 @@ Maintenance release. No consumer source changes. Resolves the v2.2.0 release-not
 
 ---
 
-## [2.1.1]
+## [2.1.1] — 2026-04-26
 
 ### Added
 
@@ -307,6 +321,9 @@ See the [v1.0.1 release](https://github.com/kodjunkie/nestjs-crud/releases/tag/v
 
 ---
 
+[Unreleased]: https://github.com/kodjunkie/nestjs-crud/compare/v2.2.5...HEAD
+[2.2.5]: https://github.com/kodjunkie/nestjs-crud/compare/v2.2.4...v2.2.5
+[2.2.4]: https://github.com/kodjunkie/nestjs-crud/compare/v2.2.3...v2.2.4
 [2.2.3]: https://github.com/kodjunkie/nestjs-crud/compare/v2.2.2...v2.2.3
 [2.2.2]: https://github.com/kodjunkie/nestjs-crud/compare/v2.2.1...v2.2.2
 [2.2.1]: https://github.com/kodjunkie/nestjs-crud/compare/v2.2.0...v2.2.1

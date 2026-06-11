@@ -22,7 +22,7 @@ const pluralize: (word: string) => string =
 const QUERY_DOCS_URL = 'https://github.com/kodjunkie/nestjs-crud/wiki/Query-Syntax';
 const QUERY_DOCS_LINE = `Full query syntax reference: [Query Syntax](${QUERY_DOCS_URL}).`;
 
-export function operationsMap(modelName: string): { [key in BaseRouteName]: { summary: string; description: string } } {
+export function operationsMap(modelName: string, softDelete = false): { [key in BaseRouteName]: { summary: string; description: string } } {
   const lower = modelName.toLowerCase();
   const lowerPlural = pluralize(lower);
 
@@ -35,9 +35,9 @@ export function operationsMap(modelName: string): { [key in BaseRouteName]: { su
         'Supports field selection (`?fields=`), search (`?s=`), filter (`?filter=`), OR',
         'filter (`?or=`), sort (`?sort=`), relation loading (`?join=`), and pagination',
         '(`?limit=`, `?offset=`, `?page=`).',
-        '',
-        'If soft deletion is enabled for this resource, soft-deleted records are excluded',
-        'by default; pass `?includeDeleted=1` to include them.',
+        ...(softDelete
+          ? ['', 'Soft-deleted records are excluded by default; pass `?includeDeleted=1` to include them.']
+          : []),
         '',
         QUERY_DOCS_LINE,
       ].join('\n'),
@@ -47,9 +47,10 @@ export function operationsMap(modelName: string): { [key in BaseRouteName]: { su
       description: [
         `Returns a single ${lower} matching the id path parameter.`,
         '',
-        'Supports field selection (`?fields=`) and relation loading (`?join=`). If soft',
-        'deletion is enabled for this resource, soft-deleted records are excluded by',
-        'default; pass `?includeDeleted=1` to include them.',
+        'Supports field selection (`?fields=`) and relation loading (`?join=`).',
+        ...(softDelete
+          ? ['', 'Soft-deleted records are excluded by default; pass `?includeDeleted=1` to include them.']
+          : []),
         '',
         QUERY_DOCS_LINE,
       ].join('\n'),
@@ -59,7 +60,7 @@ export function operationsMap(modelName: string): { [key in BaseRouteName]: { su
       description: [
         `Creates a single ${lower} from the request body.`,
         '',
-        'The request body is validated with create rules; required fields must be present.',
+        'Fields marked as required must be present in the request body.',
       ].join('\n'),
     },
     createManyBase: {
@@ -68,8 +69,8 @@ export function operationsMap(modelName: string): { [key in BaseRouteName]: { su
         `Creates multiple ${lowerPlural} in a single request.`,
         '',
         'The request body uses the wrapper shape `{ "bulk": [ ... ] }`. Each element is',
-        'validated with create rules. The bulk insert runs inside a single transaction,',
-        'so either all records are persisted or none are.',
+        'validated; required fields must be present. The bulk insert runs inside a single',
+        'transaction, so either all records are persisted or none are.',
       ].join('\n'),
     },
     updateOneBase: {
@@ -78,8 +79,7 @@ export function operationsMap(modelName: string): { [key in BaseRouteName]: { su
         `Partially updates a single ${lower} (HTTP PATCH semantics).`,
         '',
         'Only the fields present in the request body are modified; omitted fields retain',
-        'their current values. The body is validated with update rules, which typically',
-        'relax required-field constraints compared to creation.',
+        'their current values.',
       ].join('\n'),
     },
     replaceOneBase: {
@@ -88,27 +88,24 @@ export function operationsMap(modelName: string): { [key in BaseRouteName]: { su
         `Replaces a single ${lower} (HTTP PUT semantics) with the full request body.`,
         '',
         'All entity fields are substituted from the payload, not merged — values omitted',
-        'from the body are cleared to defaults. When upsert behavior is enabled for the',
-        'route, a missing target id triggers creation instead of a 404.',
+        'from the body are cleared to defaults.',
       ].join('\n'),
     },
     deleteOneBase: {
       summary: `Delete ${lower}`,
-      description: [
-        `Removes a single ${lower} by id.`,
-        '',
-        'If soft deletion is enabled for this resource, the record is soft-deleted (marked',
-        'deleted and excluded from default reads, but recoverable). Otherwise the record is',
-        'permanently deleted.',
-      ].join('\n'),
+      description: softDelete
+        ? [
+            `Soft-deletes the record (marks it deleted and excludes it from default reads;`,
+            'use the recover endpoint to restore).',
+          ].join('\n')
+        : `Permanently removes the ${lower}.`,
     },
     recoverOneBase: {
       summary: `Restore soft-deleted ${lower}`,
       description: [
         `Restores a previously soft-deleted ${lower}.`,
         '',
-        `Available only when soft deletion is enabled for this resource. Permanently deleted ${lowerPlural}`,
-        'cannot be recovered.',
+        `Permanently deleted ${lowerPlural} cannot be recovered.`,
       ].join('\n'),
     },
   };

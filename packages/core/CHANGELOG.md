@@ -3,6 +3,16 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [2.2.5] — 2026-06-11
+
+### Added
+
+- **`CrudControllerFor<Entity, 'fieldName'>` type helper exported from `@nestjs-crud/core`.** Type-safe alternative to `CrudController<T>` for controllers that use `serviceProperty`. TypeScript's weak-type rule raises TS2559 ("has no properties in common") when a controller implements `CrudController<T>` but declares only a renamed service field — the all-optional interface has no discriminant to match against. `CrudControllerFor<T, P>` produces a mapped type where the service field is named `P` (defaulting to `'service'`), resolving the check. As an alternative, `implements` can be dropped entirely — NestJS does not require it for routing to work.
+
+### Changed
+
+- **Generated OpenAPI operation descriptions are now soft-delete–truthful.** Resources without soft-delete enabled no longer mention `includeDeleted` in any operation description. Resources with soft delete enabled carry the note only on `getMany` and `getOne`, where the query parameter is actually honoured. Library-internal validation prose has been removed from all generated descriptions.
+
 ## [2.2.4] — 2026-06-10
 
 ### Changed

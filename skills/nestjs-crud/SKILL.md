@@ -6,7 +6,8 @@ description: >-
   pagination, ACL/RBAC guards via `getFeature`/`getAction` + `nest-access-control`/CASL, DTOs
   with `CrudValidationGroups`, split-query relation loading, debugging `RequestQueryException`,
   `CrudCacheNotConfiguredError`, `EBADENGINE` (Node <22), validation-fails-on-update,
-  MikroORM stale-em, savepoints on overridden writes.
+  MikroORM stale-em, savepoints on overridden writes, TS2559 "has no properties in common"
+  on `implements CrudController` with `serviceProperty` (use `CrudControllerFor`).
 ---
 
 # @nestjs-crud
@@ -144,7 +145,7 @@ Prisma 7 removed the env-URL path — driver adapter required. Schema rewrite co
 
   routes:  { exclude: ['createManyBase'], updateOneBase: { allowParamsOverride: false } },
   params:  { id: { field: 'id', type: 'uuid', primary: true } },
-  serviceProperty: 'usersService',                         // v2.2+ — defaults 'service'
+  serviceProperty: 'usersService',                         // v2.2+ — defaults 'service'; see §IntelliSense for typing
 })
 ```
 
@@ -332,6 +333,18 @@ All 4 adapters default to `new Logger(<ServiceName>)`. TypeORM/Drizzle/MikroORM 
 
 `@Crud()` wires handlers at runtime; TS can't see them. `implements CrudController<T>` restores `service` typing. From inside `@Override()`, `this.service.getMany(req)` is fully typed and idiomatic. Composing two generated handlers in one override: `get base(): CrudController<User> { return this; }`.
 
+**With `serviceProperty` (v2.2.5+):** `implements CrudController<T>` fails — TS2559 `has no properties in common`. `CrudController<T>` is all-optional (weak type); a class declaring only a renamed field shares zero properties with it. Use `CrudControllerFor<T, P>` instead:
+
+```typescript
+@Crud({ model: { type: Contact }, serviceProperty: 'contactService' })
+@Controller('contacts')
+export class ContactsController implements CrudControllerFor<Contact, 'contactService'> {
+  constructor(public contactService: ContactsCrudService) {}
+}
+```
+
+Default `CrudControllerFor<T>` ≡ `CrudController<T>`. Alternative: drop `implements` entirely — routing doesn't need it.
+
 ## Best Practices
 
 - Use `CondOperator` enum, not raw strings (`'$cont'` silently misspells)
@@ -354,6 +367,7 @@ All 4 adapters default to `new Logger(<ServiceName>)`. TypeORM/Drizzle/MikroORM 
 | Flat array instead of `{ data, count, total, page }` | `alwaysPaginate: true` inside `query:` (NOT top-level). |
 | `RequestQueryException: Invalid field 'X'` → 400 | Add to entity columns or `query.join` allow-list. |
 | `RequestQueryException: Invalid persist key 'X'` → 400 | Typo in `@CrudAuth({ persist })` against entity column. |
+| TS2559 `has no properties in common with type 'CrudController<T>'` | `serviceProperty` renamed the field; weak-type check fails. `implements CrudControllerFor<Entity, 'fieldName'>` (v2.2.5+) or drop `implements`. |
 | `EBADENGINE` on `npm install` | Node <22. Upgrade or pin to `^1.0.2`. |
 | `CrudCacheNotConfiguredError` | `@Crud cache` set but no `CacheStrategy` wired (and no TypeORM `DataSource.cache` fallback). |
 | Swagger metadata empty | `@nestjs/swagger` not installed. Library skips Swagger setup; install + restart. |
