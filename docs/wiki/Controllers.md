@@ -1010,7 +1010,7 @@ Calling a base method like `this.getManyBase(req)` fails typecheck. The methods 
 ...
 import { Crud, CrudController } from '@nestjs-crud/core';
 
-@Crud(Hero)
+@Crud({ model: { type: Hero } })
 @Controller('heroes')
 export class HeroesCrud implements CrudController<Hero> {
   constructor(public service: HeroesService) {}

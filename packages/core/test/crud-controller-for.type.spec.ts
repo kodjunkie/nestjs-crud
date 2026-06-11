@@ -1,7 +1,7 @@
 import 'reflect-metadata';
 
-import { CrudController, CrudControllerFor } from '../src/interfaces';
-import { CrudService } from '../src/services';
+// Root-path import is deliberate — do not change to a relative path; it asserts the public export chain.
+import { CrudController, CrudControllerFor, CrudService } from '@nestjs-crud/core';
 
 describe('CrudControllerFor type helper', () => {
   class Contact {}

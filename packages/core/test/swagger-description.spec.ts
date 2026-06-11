@@ -262,6 +262,7 @@ describe('Swagger description surface', () => {
       expect(map.getManyBase.description).toContain('includeDeleted');
       expect(map.getOneBase.description).toContain('includeDeleted');
       expect(map.deleteOneBase.description).not.toContain('includeDeleted');
+      expect(map.deleteOneBase.description).toMatch(/soft-delete/i);
     });
   });
 

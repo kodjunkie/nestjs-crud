@@ -49,7 +49,7 @@ export function operationsMap(modelName: string, softDelete = false): { [key in 
         '',
         'Supports field selection (`?fields=`) and relation loading (`?join=`).',
         ...(softDelete
-          ? ['Soft-deleted records are excluded by default; pass `?includeDeleted=1` to include them.']
+          ? ['', 'Soft-deleted records are excluded by default; pass `?includeDeleted=1` to include them.']
           : []),
         '',
         QUERY_DOCS_LINE,
