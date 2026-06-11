@@ -246,6 +246,23 @@ describe('Swagger description surface', () => {
         }
       }
     });
+
+    it('non-soft-delete resource: no operation description mentions includeDeleted or soft-del', () => {
+      const map = Swagger.operationsMap('User', false);
+      // recoverOneBase is excluded: it only registers when softDelete is ON; its description
+      // intentionally uses "soft-deleted" as a noun modifier, which is accurate regardless of flag.
+      const routesToCheck = Object.keys(map).filter((r) => r !== 'recoverOneBase');
+      for (const route of routesToCheck) {
+        expect(map[route].description).not.toMatch(/includeDeleted|soft.del/i);
+      }
+    });
+
+    it('soft-delete resource: getManyBase and getOneBase descriptions mention includeDeleted', () => {
+      const map = Swagger.operationsMap('User', true);
+      expect(map.getManyBase.description).toContain('includeDeleted');
+      expect(map.getOneBase.description).toContain('includeDeleted');
+      expect(map.deleteOneBase.description).not.toContain('includeDeleted');
+    });
   });
 
   describe('examples — query parameters each carry an `example` value', () => {
