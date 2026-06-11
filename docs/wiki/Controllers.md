@@ -715,6 +715,40 @@ The default `'service'` is unchanged — existing controllers continue to work w
 
 Consumers implementing `CrudController<T>` directly will note that the `service` field is now optional on the interface — the runtime contract (which field holds the service) is enforced by `serviceProperty`, not by the type itself.
 
+#### TypeScript TS2559 — "has no properties in common"
+
+When a controller declares only a renamed service field (e.g. `usersService`) and writes `implements CrudController<T>`, TypeScript may raise:
+
+```
+Type 'UsersController' has no properties in common with type 'CrudController<User>'
+```
+
+This is TypeScript's "weak type" rule: a type where every property is optional has no "discriminant" — a class that shares zero property names is rejected even if both types are structurally compatible.
+
+**Option 1 — Use `CrudControllerFor<Entity, 'fieldName'>`** (exported from `@nestjs-crud/core`):
+
+```typescript
+import { Crud, CrudControllerFor } from '@nestjs-crud/core';
+
+@Crud({ model: { type: User }, serviceProperty: 'usersService' })
+@Controller('users')
+export class UsersController implements CrudControllerFor<User, 'usersService'> {
+  constructor(public usersService: UsersService) {}
+}
+```
+
+`CrudControllerFor<T, P>` produces a mapped type where the service field is named `P` (defaulting to `'service'`), resolving the no-common-properties check.
+
+**Option 2 — Drop `implements` entirely.** NestJS does not require `implements CrudController<T>` for routing to work; the interface only adds static type-checking. If the extra type-safety is not needed, simply omit it:
+
+```typescript
+@Crud({ model: { type: User }, serviceProperty: 'usersService' })
+@Controller('users')
+export class UsersController {
+  constructor(public usersService: UsersService) {}
+}
+```
+
 ## Global options
 
 To reduce repetition across controllers, configure some options globally:
