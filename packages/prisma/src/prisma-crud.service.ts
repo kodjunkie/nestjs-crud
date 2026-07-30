@@ -3,11 +3,11 @@ import { Logger } from '@nestjs/common';
 import { CrudConfigService, CrudService } from '@nestjs-crud/core';
 
 import type { CacheStrategy } from '@nestjs-crud/core/cache';
-import { CursorCodec } from '@nestjs-crud/core/cursor';
+import { CursorCodec, resolveCursorSort } from '@nestjs-crud/core/cursor';
 import type { CursorPaginatedResponse } from '@nestjs-crud/core/cursor';
 
 import type { CreateManyDto, CrudRequest, CrudRequestOptions, GetManyDefaultResponse } from '@nestjs-crud/core';
-import type { ParsedRequestParams } from '@nestjs-crud/request';
+import type { ParsedRequestParams, QuerySort } from '@nestjs-crud/request';
 
 import { PrismaClientLike, PrismaQueryTranslatorConfig } from './interfaces';
 
@@ -301,13 +301,13 @@ export class PrismaCrudService<T extends Record<string, unknown>> extends CrudSe
     options: CrudRequestOptions,
   ): Promise<CursorPaginatedResponse<T>> {
     this.serviceConfig.logger?.debug?.('cursor pagination: bypassing cache wrap');
-    // single-sort-field requirement
-    if (!parsed.sort || parsed.sort.length !== 1) {
-      this.throwBadRequestException(
-        `Cursor pagination supports a single sort field; got: ${parsed.sort?.map((s) => s.field).join(', ') || '0'}`,
-      );
+    // Effective sort: client ?sort= first, else the route's @Crud({ query: { sort } })
+    // default, else neither — same resolution order the offset composer uses.
+    const resolution = resolveCursorSort(parsed, options.query);
+    if (resolution.error) {
+      this.throwBadRequestException(resolution.error);
     }
-    const sort = parsed.sort[0];
+    const sort = resolution.sort as QuerySort;
 
     // Decode incoming cursor (null on first page)
     const decoded = parsed.cursor ? CursorCodec.decode(parsed.cursor) : null;

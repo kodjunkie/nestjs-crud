@@ -11,6 +11,7 @@ import {
 
 import { AppModule } from './__fixture__/app/app.module';
 import { HttpExceptionFilter } from './__fixture__/app/http-exception.filter';
+import { PRISMA_CLIENT } from './__fixture__/app/users.service';
 
 const provider = process.env.PRISMA_PROVIDER as 'postgresql' | 'mysql' | undefined;
 const runSuite = provider === 'postgresql' || provider === 'mysql';
@@ -345,5 +346,59 @@ async function reseedDb(prisma: any, db: 'postgres' | 'mysql'): Promise<void> {
     // page2 carries a prev cursor (only set when decoded is non-null — confirms the cursor arg
     // is consumed by our codec, not by Prisma's built-in cursor: skip-ahead).
     expect(page2.cursor.prev).toBeTruthy();
+  });
+
+  // Cell 17: Default-sort fallback — no ?sort= against a route declaring a single-field
+  // default returns 200 with a keyset page whose next cursor decodes to that field.
+  it('cursor mode with no ?sort= falls back to the route default sort and returns 200', async () => {
+    const { body } = await request(server).get('/users-cursor-default-sort').expect(200);
+    expect(body.data.length).toBeGreaterThan(0);
+    expect(body.cursor.next).toBeTruthy();
+    const decodedJson = Buffer.from(body.cursor.next, 'base64url').toString('utf8');
+    const decoded = JSON.parse(decodedJson);
+    expect(decoded.sortField).toBe('id');
+  });
+
+  // Cell 18: First-page ordering — the reason PrismaQueryComposer.applyCursor's early
+  // return had to go. Without that fix, applyCursor never assigned orderBy when no
+  // cursor was decoded, so a defaulted first page would emit no ORDER BY at all and
+  // return rows in arbitrary database order instead of ascending primary-key order.
+  //
+  // A response-order assertion alone is not a reliable regression check here:
+  // Postgres's planner tends to satisfy a small, LIMIT-bounded, unordered scan via
+  // the primary-key index anyway, which can incidentally return ascending order even
+  // with no ORDER BY clause present. So this cell asserts both the response shape
+  // (what a consumer actually sees) and the exact `orderBy` argument Prisma's
+  // `findMany` received (what proves the fix, independent of planner behavior).
+  it('cursor mode with no ?sort= returns the first page in ascending primary-key order', async () => {
+    const prismaClient = app.get(PRISMA_CLIENT) as any;
+    const findManySpy = jest.spyOn(prismaClient.user, 'findMany');
+    try {
+      const { body } = await request(server).get('/users-cursor-default-sort').expect(200);
+      expect(body.data.map((r: any) => r.id)).toEqual([1, 2, 3, 4, 5]);
+
+      const lastCall = findManySpy.mock.calls[findManySpy.mock.calls.length - 1] as any[];
+      expect(lastCall[0].orderBy).toEqual([{ id: 'asc' }, { id: 'asc' }]);
+    } finally {
+      findManySpy.mockRestore();
+    }
+  });
+
+  // Cell 19: Multi-field route default with no ?sort= → 400 naming the route-default
+  // origin and the declared field count. Never silently falls back to default[0].
+  it('cursor mode with a multi-field route default and no ?sort= returns 400 naming the route default', async () => {
+    const { body } = await request(server).get('/users-cursor-multi-sort').expect(400);
+    expect(body.message).toMatch(/single sort field/i);
+    expect(body.message).toMatch(/route's @Crud\(\{ query: \{ sort \} \}\) default declares 2 fields/);
+  });
+
+  // Cell 20: No sort anywhere (neither client nor route default) → 400 naming both
+  // remedies, with no legacy count-suffix wording.
+  it('cursor mode with no ?sort= and no route default returns 400 naming both remedies', async () => {
+    const { body } = await request(server).get('/users-cursor').expect(400);
+    expect(body.message).toMatch(/single sort field/i);
+    expect(body.message).toMatch(/\?sort=field,ASC/);
+    expect(body.message).toMatch(/@Crud\(\{ query: \{ sort \} \}\)/);
+    expect(body.message).not.toMatch(/got:/);
   });
 });
