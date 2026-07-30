@@ -38,7 +38,23 @@ export class UsersController implements CrudController<User> {
 
 `limit` is required in cursor mode — either `query.limit`, `query.maxLimit`, or a per-request `?limit=N` must resolve to a finite value. Cursor pagination over an unbounded result set defeats its purpose; missing the `limit` returns `400 Bad Request`.
 
-A single sort field is required (the library auto-appends the primary key as a stable tie-breaker). Multi-sort and cursor pagination together return `400 Bad Request` — see [Caveats](#caveats).
+A single sort field is required (the library auto-appends the primary key as a stable tie-breaker). Multi-sort and cursor pagination together return `400 Bad Request` — see [Caveats](#caveats) and [Sort resolution](#sort-resolution).
+
+## Sort resolution
+
+Cursor mode needs exactly one sort field. The library appends the primary key as a tie-breaker automatically, so you supply zero fields or one, never more.
+
+The effective sort resolves in order: the request's `?sort=` query parameter first, then the route's `@Crud({ query: { sort } })` default when the request supplies none. This is the same order offset mode already uses.
+
+Nothing is inferred past those two sources. A route with no default and a request with no `?sort=` returns `400` — the library does not fall back to primary-key order. A route default declaring two or more fields also returns `400`, even though a single-field default works fine. Using the first field of an over-specified default would hide a route misconfiguration instead of catching it.
+
+Available from v2.2.6.
+
+| Condition | Message |
+| --- | --- |
+| Request query string supplies 2+ sort fields | `Cursor pagination supports a single sort field; the request query string supplied ${n} fields: ${fields}` |
+| Route default declares 2+ sort fields and the request supplies none | `Cursor pagination supports a single sort field; the route's @Crud({ query: { sort } }) default declares ${n} fields: ${fields}` |
+| Neither the request nor the route supplies a sort field | `Cursor pagination supports a single sort field; none was provided — pass ?sort=field,ASC in the request query string, or set @Crud({ query: { sort } }) on the route` |
 
 ## Response shape
 
@@ -111,7 +127,7 @@ The cursor token is a base64-url-encoded JSON object containing `{ sortField, so
 Five additional caveats:
 
 1. **Cursor mode bypasses the query cache.** The unified `CacheStrategy` wrap is skipped on cursor reads. Per-cursor cache key cardinality is unbounded — every cursor token is a unique key, so caching cursor reads pollutes the cache with one-shot entries that are never reused. Use offset mode for cacheable list responses.
-2. **Single sort field required.** Multi-sort with `pagination: 'cursor'` returns `400 Bad Request`. The library appends the primary key as the tie-breaker automatically; consumers supply zero or one explicit sort field. Mismatch between the cursor's encoded `sortField` and the request's sort field also returns `400`.
+2. **Single sort field required.** Multi-sort with `pagination: 'cursor'` returns `400 Bad Request`. The library appends the primary key as the tie-breaker automatically; consumers supply zero or one explicit sort field. Mismatch between the cursor's encoded `sortField` and the request's sort field also returns `400`. See [Sort resolution](#sort-resolution) for where that field comes from and the exact 400 messages.
 3. **`limit` required.** Missing `limit` returns `400 Bad Request`. Set it on the controller via `query.limit` / `query.maxLimit`, or per-request via `?limit=N`.
 4. **Cursor stability under concurrent writes.** A row deleted between forward and back navigation is simply absent from the result — keyset comparison still resolves the page boundary correctly. Inserts that fall between two cursor positions appear on the next forward fetch.
 5. **Token length capped.** Cursor tokens beyond 1024 characters return `400 Bad Request` (DoS guard against payload-of-doom decode attempts). Standard tokens are well under 100 characters; any payload longer than the cap is by definition tampered or malformed.
