@@ -269,4 +269,16 @@ const runSuite = !dialect || dialect === 'mysql' || dialect === 'postgres';
     const { body } = await request(server).get(`/users-cursor-no-limit?sort=id,ASC`).expect(400);
     expect(body.message).toMatch(/cursor pagination requires a limit/i);
   });
+
+  // Cell 16: Route-declared default sort — no ?sort= param returns 200 and the next
+  // cursor decodes to the route's declared default field, proving the fallback (not
+  // incidental ordering) drove the page.
+  it('cursor mode with no ?sort= falls back to the route default sort and returns 200', async () => {
+    const { body } = await request(server).get(`/users-cursor-default-sort`).expect(200);
+    expect(body.data.length).toBeGreaterThan(0);
+    expect(body.cursor).toBeDefined();
+    expect(body.cursor.next).toBeTruthy();
+    const decoded = JSON.parse(Buffer.from(body.cursor.next, 'base64url').toString('utf8'));
+    expect(decoded.sortField).toBe('id');
+  });
 });
