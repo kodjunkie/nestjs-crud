@@ -127,8 +127,12 @@ export class PrismaQueryComposer implements QueryComposer<any> {
   }
 
   /**
-   * Apply keyset cursor WHERE + ORDER BY (with PK tie-breaker) on top of the
-   * already-composed Prisma arg-object. Skipped silently when `decoded` is null.
+   * Apply the cursor-mode field allowlist + ORDER BY (with PK tie-breaker) on
+   * top of the already-composed Prisma arg-object. The allowlist check and the
+   * ORDER BY assignment run on every call, including the first page — a
+   * defaulted sort field reaches `orderBy` on the same path a client-supplied
+   * field does. Only the keyset WHERE composition is gated on a decoded
+   * cursor, since there is no prior page position to resume from.
    *
    * SQLi guard: validates `sort.field` via the same `entityColumns` allowlist
    * used by `compileSort`.
@@ -139,28 +143,35 @@ export class PrismaQueryComposer implements QueryComposer<any> {
    * @since 2.2.0
    */
   public applyCursor(out: any, decoded: CursorPayload | null, sort: QuerySort): any {
-    if (!decoded) return out;
-
     if (!this.entityColumns.includes(sort.field)) {
       this.onBadRequest(`Invalid sort field: '${sort.field}'`);
     }
 
     const isAsc = sort.order === 'ASC';
-    const isForward = decoded.dir === 'next';
+    // No decoded cursor means a first page, which is forward by definition.
+    const isForward = !decoded || decoded.dir === 'next';
     const op = isAsc === isForward ? 'gt' : 'lt';
     const dir: 'asc' | 'desc' = isAsc === isForward ? 'asc' : 'desc';
     const idField = this.entityPrimaryColumns[0];
 
-    const cursorWhere = {
-      OR: [
-        { [sort.field]: { [op]: decoded.sortValue } },
-        { AND: [{ [sort.field]: decoded.sortValue }, { [idField]: { [op]: decoded.id } }] },
-      ],
-    };
-
-    // Compose with existing where (keep AUTH + soft-delete + search) — never overwrite.
-    out.where = out.where ? { AND: [out.where, cursorWhere] } : cursorWhere;
+    // ORDER BY with PK tie-breaker applies on every cursor request, first
+    // page included — without it a defaulted first page would emit no
+    // ORDER BY at all and return rows in arbitrary database order.
     out.orderBy = [{ [sort.field]: dir }, { [idField]: dir }];
+
+    // Keyset WHERE stays confined to non-first pages — there is no prior
+    // cursor position to resume from on the first page.
+    if (decoded) {
+      const cursorWhere = {
+        OR: [
+          { [sort.field]: { [op]: decoded.sortValue } },
+          { AND: [{ [sort.field]: decoded.sortValue }, { [idField]: { [op]: decoded.id } }] },
+        ],
+      };
+
+      // Compose with existing where (keep AUTH + soft-delete + search) — never overwrite.
+      out.where = out.where ? { AND: [out.where, cursorWhere] } : cursorWhere;
+    }
 
     return out;
   }
