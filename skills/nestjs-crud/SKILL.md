@@ -161,7 +161,7 @@ Switches `getManyBase` to keyset cursor mode. Response: `{ data, count, cursor: 
 
 - Cursor = opaque base64url JSON `{sortField, sortValue, id, dir}`. **NOT signed** — authorization stays in `@CrudAuth`. Cursor opacity ≠ access boundary.
 - `@CrudAuth` filter applies BEFORE cursor (auth merges into `parsed.search` at the interceptor; cursor `WHERE` ANDs on top at the service). Cursor pages are subsets of the `@CrudAuth`-filtered result set — same isolation guarantees as offset mode.
-- Single sort field + auto-PK tail; multi-sort + cursor → 400. Requires `limit` or `maxLimit` (missing → 400). Tampered/wrong-sort cursor → 400.
+- Sort: `?sort=` else route `query.sort` default (default honored v2.2.6+); single field + auto-PK tail. Multi-sort or no sort at all → 400. Requires `limit` or `maxLimit` (missing → 400). Tampered/wrong-sort cursor → 400.
 - Cursor mode bypasses cache wrap (per-cursor-key cardinality unbounded). On hot endpoints, pair with `@nestjs/throttler`.
 - Honored across all 4 adapters via per-adapter `QueryComposer.applyCursor`. Prisma's built-in `cursor:` arg intentionally bypassed (single-column unique-key only).
 
@@ -371,7 +371,7 @@ Default `CrudControllerFor<T>` ≡ `CrudController<T>`. Alternative: drop `imple
 | `EBADENGINE` on `npm install` | Node <22. Upgrade or pin to `^1.0.2`. |
 | `CrudCacheNotConfiguredError` | `@Crud cache` set but no `CacheStrategy` wired (and no TypeORM `DataSource.cache` fallback). |
 | Swagger metadata empty | `@nestjs/swagger` not installed. Library skips Swagger setup; install + restart. |
-| Cursor: `Cursor pagination supports a single sort field` → 400 | Multi-sort + cursor not supported. Use one sort field. |
+| Cursor: `Cursor pagination supports a single sort field` → 400 | Multi-sort unsupported — use one field. No sort at all: pass `?sort=` or set `query.sort` (default honored v2.2.6+; earlier needs explicit `?sort=`). |
 | Cursor: `Cursor pagination requires a limit` → 400 | Cursor mode needs `query.limit` or `maxLimit`. |
 | Cursor: `Invalid cursor` → 400 | Tampered, expired schema, or wrong sort field on this route. |
 | MikroORM: stale entity / `em.flush()` doesn't persist | Subclass cached `em` in ctor. Use `getEm()` thunk; never store `em` as field. |
