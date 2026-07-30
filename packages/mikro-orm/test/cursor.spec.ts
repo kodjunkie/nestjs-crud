@@ -289,4 +289,35 @@ const runSuite = dialect === 'postgres' || dialect === 'mysql';
     const { body } = await request(server).get(`/users-cursor-no-limit?sort=id,ASC`).expect(400);
     expect(body.message).toMatch(/cursor pagination requires a limit/i);
   });
+
+  // Cell 16: Route-declared default sort — no ?sort= param returns 200 and the next
+  // cursor decodes to the route's declared default field, proving the fallback (not
+  // incidental ordering) drove the page.
+  it('cursor mode with no ?sort= falls back to the route default sort and returns 200', async () => {
+    const { body } = await request(server).get(`/users-cursor-default-sort`).expect(200);
+    expect(body.data.length).toBeGreaterThan(0);
+    expect(body.cursor).toBeDefined();
+    expect(body.cursor.next).toBeTruthy();
+    const decoded = JSON.parse(Buffer.from(body.cursor.next, 'base64url').toString('utf8'));
+    expect(decoded.sortField).toBe('id');
+  });
+
+  // Cell 17: Multi-field route default — still 400, message identifies the route default
+  // (not the request) as the origin and reports the field count.
+  it('cursor mode with a multi-field route default and no ?sort= returns 400 naming the route default', async () => {
+    const { body } = await request(server).get(`/users-cursor-multi-sort`).expect(400);
+    expect(body.message).toMatch(/single sort field/i);
+    expect(body.message).toContain('2');
+    expect(body.message).toMatch(/@Crud\(\{ query: \{ sort \} \}\)/);
+  });
+
+  // Cell 18: No sort anywhere — declared neither by the client nor by the route — still
+  // 400, and the message names both remedies with no legacy count-suffix wording (D-04).
+  it('cursor mode with no ?sort= and no route default returns 400 naming both remedies', async () => {
+    const { body } = await request(server).get(`/users-cursor`).expect(400);
+    expect(body.message).toMatch(/single sort field/i);
+    expect(body.message).toMatch(/\?sort=/);
+    expect(body.message).toMatch(/@Crud\(\{ query: \{ sort \} \}\)/);
+    expect(body.message).not.toMatch(/got:/);
+  });
 });
