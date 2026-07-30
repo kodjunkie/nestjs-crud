@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [Unreleased]
+
+### Fixed
+
+- **`resolveCursorSort` added to the cursor module, reachable via `@nestjs-crud/core/cursor`.** Internal helper the four adapter packages call to resolve a cursor-mode request's effective sort field: the request's `?sort=` first, then the route's `@Crud({ query: { sort } })` default. It stays off the root `@nestjs-crud/core` entry point, so this is not new public API.
+
 ## [2.2.5] — 2026-06-11
 
 ### Added

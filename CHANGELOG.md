@@ -7,6 +7,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [Unreleased]
+
+### Fixed
+
+- **Cursor-mode `getMany` now honors a route's default sort.** When a cursor-mode request omits `?sort=`, the library falls back to the route's `@Crud({ query: { sort } })` default before applying the single-sort-field guard, matching how offset mode has always resolved sort. Applies to `@nestjs-crud/typeorm`, `@nestjs-crud/drizzle`, `@nestjs-crud/mikro-orm`, and `@nestjs-crud/prisma`. A route default that declares two or more sort fields still returns `400`, with a message that now states how many fields the default declares and that they came from the route configuration. A request with no sort anywhere — no `?sort=` and no route default — also still returns `400`, with a message that now names both fixes instead of reporting a field count of zero.
+
 ## [2.2.5] — 2026-06-11
 
 ### Added
