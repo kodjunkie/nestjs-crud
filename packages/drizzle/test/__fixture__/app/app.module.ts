@@ -9,6 +9,8 @@ import { UsersCachedController } from './users-cached.controller';
 import { UsersController } from './users.controller';
 import { UsersCursorController } from './users-cursor.controller';
 import { UsersCursorNoLimitController } from './users-cursor-no-limit.controller';
+import { UsersCursorDefaultSortController } from './users-cursor-default-sort.controller';
+import { UsersCursorMultiSortController } from './users-cursor-multi-sort.controller';
 import { UsersService, DRIZZLE_DB, DRIZZLE_TABLE } from './users.service';
 
 @Module({})
@@ -19,7 +21,14 @@ export class AppModule {
 
     return {
       module: AppModule,
-      controllers: [UsersController, UsersCachedController, UsersCursorController, UsersCursorNoLimitController],
+      controllers: [
+        UsersController,
+        UsersCachedController,
+        UsersCursorController,
+        UsersCursorNoLimitController,
+        UsersCursorDefaultSortController,
+        UsersCursorMultiSortController,
+      ],
       providers: [{ provide: DRIZZLE_DB, useValue: db }, { provide: DRIZZLE_TABLE, useValue: table }, UsersService],
       exports: [UsersService],
     };
