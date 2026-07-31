@@ -13,6 +13,15 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - **Cursor-mode `getMany` now honors a route's default sort.** When a cursor-mode request omits `?sort=`, the library falls back to the route's `@Crud({ query: { sort } })` default before applying the single-sort-field guard, matching how offset mode has always resolved sort. Applies to `@nestjs-crud/typeorm`, `@nestjs-crud/drizzle`, `@nestjs-crud/mikro-orm`, and `@nestjs-crud/prisma`. A route default that declares two or more sort fields still returns `400`, with a message that now states how many fields the default declares and that they came from the route configuration. A request with no sort anywhere — no `?sort=` and no route default — also still returns `400`, with a message that now names both fixes instead of reporting a field count of zero.
 
+### Security
+
+This release closes every dependabot alert accumulated since 2.2.5: 56 advisories, all closed through dependency and lockfile updates, none through dismissal.
+
+- 39 of the alerts lived in the root dependency tree used to build and test the library; the other 17 lived only in the standalone `typeorm-demo` example app.
+- The most severe fix, a critical archive-extraction denial-of-service in `tar`, affected build tooling in both the root workspace and the example app; both trees now resolve a patched version. No published package was affected.
+- No advisory in this sweep reached the installed dependency closure of a published `@nestjs-crud` package. The one alert scoped to a published package's peer range, on `typeorm`, was already resolved by an earlier commit before this sweep began.
+- One item carries forward rather than closing outright: `@nestjs-crud/typeorm`'s peer range on `typeorm` still admits older, vulnerable releases for consumers who pin low, and tightening that range is peer-floor work already planned for the next minor.
+
 ## [2.2.5] — 2026-06-11
 
 ### Added
