@@ -1,7 +1,7 @@
 {
   "name": "@nestjs-crud/request",
   "description": "NestJs CRUD for RESTful APIs - request query builder",
-  "version": "2.2.5",
+  "version": "2.2.6",
   "license": "MIT",
   "main": "lib/index.js",
   "typings": "lib/index.d.ts",
@@ -58,7 +58,7 @@
     "build": "npx tsc -b"
   },
   "dependencies": {
-    "@nestjs-crud/util": "^2.2.5",
+    "@nestjs-crud/util": "^2.2.6",
     "qs": "^6.15.2"
   }
 }

@@ -1576,8 +1576,8 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@nestjs-crud/core@workspace:packages/core"
   dependencies:
-    "@nestjs-crud/request": "npm:^2.2.5"
-    "@nestjs-crud/util": "npm:^2.2.5"
+    "@nestjs-crud/request": "npm:^2.2.6"
+    "@nestjs-crud/util": "npm:^2.2.6"
     deepmerge: "npm:^4.3.1"
     pluralize: "npm:^8.0.0"
     qs: "npm:^6.15.2"
@@ -1669,11 +1669,11 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@nestjs-crud/request@npm:^2.2.5, @nestjs-crud/request@workspace:packages/request":
+"@nestjs-crud/request@npm:^2.2.6, @nestjs-crud/request@workspace:packages/request":
   version: 0.0.0-use.local
   resolution: "@nestjs-crud/request@workspace:packages/request"
   dependencies:
-    "@nestjs-crud/util": "npm:^2.2.5"
+    "@nestjs-crud/util": "npm:^2.2.6"
     qs: "npm:^6.15.2"
   languageName: unknown
   linkType: soft
@@ -1702,7 +1702,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@nestjs-crud/util@npm:^2.2.5, @nestjs-crud/util@workspace:packages/util":
+"@nestjs-crud/util@npm:^2.2.6, @nestjs-crud/util@workspace:packages/util":
   version: 0.0.0-use.local
   resolution: "@nestjs-crud/util@workspace:packages/util"
   languageName: unknown

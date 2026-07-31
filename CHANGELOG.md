@@ -7,7 +7,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
-## [Unreleased]
+## [2.2.6] — 2026-07-31
 
 ### Fixed
 
@@ -336,7 +336,8 @@ See the [v1.0.1 release](https://github.com/kodjunkie/nestjs-crud/releases/tag/v
 
 ---
 
-[Unreleased]: https://github.com/kodjunkie/nestjs-crud/compare/v2.2.5...HEAD
+[Unreleased]: https://github.com/kodjunkie/nestjs-crud/compare/v2.2.6...HEAD
+[2.2.6]: https://github.com/kodjunkie/nestjs-crud/compare/v2.2.5...v2.2.6
 [2.2.5]: https://github.com/kodjunkie/nestjs-crud/compare/v2.2.4...v2.2.5
 [2.2.4]: https://github.com/kodjunkie/nestjs-crud/compare/v2.2.3...v2.2.4
 [2.2.3]: https://github.com/kodjunkie/nestjs-crud/compare/v2.2.2...v2.2.3
