@@ -8,6 +8,7 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 ### Fixed
 
 - **Cursor-mode `getMany` resolves sort through the shared core helper.** A route-declared single-field default sort now applies when the request omits `?sort=`, matching offset mode's resolution order. See the root CHANGELOG for the full behavior description.
+- **Cursor-mode first page now always orders by the sort field plus a primary-key tie-breaker.** Previously the first page of a cursor request (no `?cursor=` yet) could return ties in unspecified order, risking skipped or duplicated rows once pagination continued. The ordering guarantee now applies from the first page onward.
 
 ## [2.2.5] — 2026-06-11
 

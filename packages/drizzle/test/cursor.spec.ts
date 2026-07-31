@@ -2,6 +2,8 @@ import { INestApplication } from '@nestjs/common';
 import { APP_FILTER } from '@nestjs/core';
 import { Test } from '@nestjs/testing';
 import * as request from 'supertest';
+import { Pool as PgPool } from 'pg';
+import * as mysql2Promise from 'mysql2/promise';
 
 import { AppModule } from './__fixture__/app/app.module';
 import { HttpExceptionFilter } from './__fixture__/app/http-exception.filter';
@@ -317,5 +319,45 @@ const runSuite = dialect === 'postgres' || dialect === 'mysql';
     expect(body.message).toMatch(/\?sort=/);
     expect(body.message).toMatch(/@Crud\(\{ query: \{ sort \} \}\)/);
     expect(body.message).not.toMatch(/got:/);
+  });
+
+  // Cell 19: First-page ordering — the reason DrizzleQueryComposer.applyCursor's
+  // early return had to go. Without that fix, applyCursor never assigned
+  // ORDER BY when no cursor was decoded, so a defaulted first page relied
+  // entirely on applyToQuery's plain sort branch (sort field only, no PK
+  // tie-breaker). A response-order assertion alone is not a reliable
+  // regression check here: the DB planner tends to satisfy a small,
+  // LIMIT-bounded, unordered scan via the primary-key index anyway, which can
+  // incidentally return ascending order even with no ORDER BY clause present.
+  // So this cell asserts both the response shape (what a consumer actually
+  // sees) and the exact ORDER BY SQL fragment the driver received (proof
+  // independent of planner behavior) — mirroring the Prisma Cell 18 spy
+  // pattern one level lower, at the driver boundary.
+  it('cursor mode with no ?sort= returns the first page in ascending primary-key order', async () => {
+    const driverPoolPrototype: any =
+      dialect === 'postgres' ? PgPool.prototype : (mysql2Promise as any).PromisePool.prototype;
+    const querySpy = jest.spyOn(driverPoolPrototype, 'query');
+    try {
+      const { body } = await request(server).get('/users-cursor-default-sort').expect(200);
+      expect(body.data.map((r: any) => r.id)).toEqual([1, 2, 3, 4, 5]);
+
+      const emittedSql = querySpy.mock.calls
+        .map((args) => {
+          const first = args[0] as any;
+          return typeof first === 'string' ? first : (first?.text ?? first?.sql ?? '');
+        })
+        .filter((sqlText: string) => /from\s+[`"]?users[`"]?/i.test(sqlText))
+        .pop();
+
+      expect(emittedSql).toBeDefined();
+      // Dialect/alias-agnostic: an optional quoted table prefix before each
+      // `id` reference, comma-separated, both ascending — proves two ORDER BY
+      // entries were emitted (sort field + PK tie-breaker) rather than one.
+      expect(emittedSql as string).toMatch(
+        /order by\s+(?:[`"]?\w+[`"]?\.)?[`"]?id[`"]?\s+asc\s*,\s*(?:[`"]?\w+[`"]?\.)?[`"]?id[`"]?\s+asc/i,
+      );
+    } finally {
+      querySpy.mockRestore();
+    }
   });
 });

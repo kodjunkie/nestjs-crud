@@ -169,8 +169,12 @@ export class MikroOrmQueryComposer<T extends object> implements QueryComposer<Qu
   }
 
   /**
-   * Apply keyset cursor WHERE + ORDER BY (with PK tie-breaker) on top of the
-   * already-composed query. Skipped silently when `decoded` is null (first page).
+   * Apply the cursor-mode field allowlist + ORDER BY (with PK tie-breaker) on
+   * top of the already-composed query. The allowlist check and the ORDER BY
+   * assignment run on every call, including the first page — a defaulted
+   * sort field reaches `orderBy` on the same path a client-supplied field
+   * does. Only the keyset WHERE composition is gated on a decoded cursor,
+   * since there is no prior page position to resume from.
    *
    * SQLi guard: validates `sort.field` via the same `propertiesMap` allowlist
    * used by `mapSort`.
@@ -183,30 +187,39 @@ export class MikroOrmQueryComposer<T extends object> implements QueryComposer<Qu
    * @since 2.2.0
    */
   public applyCursor(qb: QueryBuilder<T>, decoded: CursorPayload | null, sort: QuerySort): QueryBuilder<T> {
-    if (!decoded) return qb;
-
     if (!this.propertiesMap[sort.field]) {
       this.onBadRequest(`Invalid sort field: '${sort.field}'`);
     }
 
     const isAsc = sort.order === 'ASC';
-    const isForward = decoded.dir === 'next';
+    // No decoded cursor means a first page, which is forward by definition.
+    const isForward = !decoded || decoded.dir === 'next';
     const op = isAsc === isForward ? '$gt' : '$lt';
     const dir: 'ASC' | 'DESC' = isAsc === isForward ? 'ASC' : 'DESC';
     const idField = this.entityPrimaryColumns[0];
 
-    // Smart-query OR-decomposed shape — same predicate structure as
-    // TypeORM/Drizzle/Prisma adapters. MikroORM v7 QB types narrow generics
-    // in ESM-quirky ways; the existing applyToQuery body uses (qb as any)
-    // for the same reason.
-    (qb as any).andWhere({
-      $or: [
-        { [sort.field]: { [op]: decoded.sortValue } },
-        { $and: [{ [sort.field]: decoded.sortValue }, { [idField]: { [op]: decoded.id } }] },
-      ],
-    });
-    // Re-apply ORDER BY with PK tie-breaker
-    (qb as any).orderBy({ [sort.field]: dir, [idField]: dir });
+    // ORDER BY with PK tie-breaker applies on every cursor request, first
+    // page included — without it a defaulted first page would emit no
+    // ORDER BY at all and return rows in arbitrary database order. Passed as
+    // an array of single-key maps (not one merged object) so a sort field
+    // equal to the PK tie-breaker field doesn't collapse into a single key
+    // and silently drop the second clause.
+    (qb as any).orderBy([{ [sort.field]: dir }, { [idField]: dir }]);
+
+    // Keyset WHERE stays confined to non-first pages — there is no prior
+    // cursor position to resume from on the first page.
+    if (decoded) {
+      // Smart-query OR-decomposed shape — same predicate structure as
+      // TypeORM/Drizzle/Prisma adapters. MikroORM v7 QB types narrow generics
+      // in ESM-quirky ways; the existing applyToQuery body uses (qb as any)
+      // for the same reason.
+      (qb as any).andWhere({
+        $or: [
+          { [sort.field]: { [op]: decoded.sortValue } },
+          { $and: [{ [sort.field]: decoded.sortValue }, { [idField]: { [op]: decoded.id } }] },
+        ],
+      });
+    }
 
     return qb;
   }
