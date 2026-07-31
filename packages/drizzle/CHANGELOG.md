@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [2.2.6] — 2026-07-31
+
+### Fixed
+
+- **Cursor-mode `getMany` resolves sort through the shared core helper.** A route-declared single-field default sort now applies when the request omits `?sort=`, matching offset mode's resolution order. See the root CHANGELOG for the full behavior description.
+- **Cursor-mode first page now always orders by the sort field plus a primary-key tie-breaker.** Previously the first page of a cursor request (no `?cursor=` yet) could return ties in unspecified order, risking skipped or duplicated rows once pagination continued. The ordering guarantee now applies from the first page onward.
+
 ## [2.2.5] — 2026-06-11
 
 Version-only republish — no package-specific source changes. Bumped in lockstep with the rest of the monorepo. See the [root CHANGELOG.md](../../CHANGELOG.md#225--2026-06-11) for full release details.

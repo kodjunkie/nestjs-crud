@@ -1,3 +1,4 @@
+import { jest } from '@jest/globals';
 import { INestApplication } from '@nestjs/common';
 import { APP_FILTER } from '@nestjs/core';
 import { Test } from '@nestjs/testing';
@@ -288,5 +289,92 @@ const runSuite = dialect === 'postgres' || dialect === 'mysql';
     // doGetManyCursor sees getTake() return null and throws BadRequestException.
     const { body } = await request(server).get(`/users-cursor-no-limit?sort=id,ASC`).expect(400);
     expect(body.message).toMatch(/cursor pagination requires a limit/i);
+  });
+
+  // Cell 16: Route-declared default sort — no ?sort= param returns 200 and the next
+  // cursor decodes to the route's declared default field, proving the fallback (not
+  // incidental ordering) drove the page.
+  it('cursor mode with no ?sort= falls back to the route default sort and returns 200', async () => {
+    const { body } = await request(server).get(`/users-cursor-default-sort`).expect(200);
+    expect(body.data.length).toBeGreaterThan(0);
+    expect(body.cursor).toBeDefined();
+    expect(body.cursor.next).toBeTruthy();
+    const decoded = JSON.parse(Buffer.from(body.cursor.next, 'base64url').toString('utf8'));
+    expect(decoded.sortField).toBe('id');
+  });
+
+  // Cell 17: Multi-field route default — still 400, message identifies the route default
+  // (not the request) as the origin and reports the field count.
+  it('cursor mode with a multi-field route default and no ?sort= returns 400 naming the route default', async () => {
+    const { body } = await request(server).get(`/users-cursor-multi-sort`).expect(400);
+    expect(body.message).toMatch(/single sort field/i);
+    expect(body.message).toContain('2');
+    expect(body.message).toMatch(/@Crud\(\{ query: \{ sort \} \}\)/);
+  });
+
+  // Cell 18: No sort anywhere — declared neither by the client nor by the route — still
+  // 400, and the message names both remedies with no legacy count-suffix wording (D-04).
+  it('cursor mode with no ?sort= and no route default returns 400 naming both remedies', async () => {
+    const { body } = await request(server).get(`/users-cursor`).expect(400);
+    expect(body.message).toMatch(/single sort field/i);
+    expect(body.message).toMatch(/\?sort=/);
+    expect(body.message).toMatch(/@Crud\(\{ query: \{ sort \} \}\)/);
+    expect(body.message).not.toMatch(/got:/);
+  });
+
+  // Cell 19: First-page PK tie-breaker — the reason MikroOrmQueryComposer.applyCursor's
+  // early return had to go. Without that fix, applyCursor never re-assigned
+  // ORDER BY when no cursor was decoded, so a first page relied entirely on
+  // applyToQuery's plain sort branch (sort field only, no PK tie-breaker).
+  // MikroORM's `orderBy()` is keyed by field name and REPLACES the whole
+  // clause on every call, so `sort=id` (the same field as the PK) can't
+  // distinguish "one clause" from "two identical clauses" — this cell
+  // therefore sorts by `isActive` (a field distinct from the `id` tie-breaker,
+  // and tie-prone: most seeded users share isActive=true) so the fixed
+  // composer's second `orderBy()` call is structurally observable: it must
+  // carry BOTH `isActive` and `id`, not just `isActive`.
+  //
+  // A response-order assertion alone is not a reliable regression check
+  // here: the DB planner tends to satisfy a small, LIMIT-bounded,
+  // unordered-among-ties scan via the primary-key index anyway, which can
+  // incidentally return ascending id order even without an explicit PK
+  // tie-breaker. So this cell asserts the exact ORDER BY SQL fragment the
+  // driver connection received — proof independent of planner behavior —
+  // mirroring the Prisma Cell 18 spy pattern one level lower, at the
+  // driver-connection boundary.
+  it('cursor mode first page with a tie-prone sort field emits the PK tie-breaker in ORDER BY', async () => {
+    const appOrm = app.get(MikroORM);
+    const connection = appOrm.em.getConnection();
+    const executeSpy = jest.spyOn(connection, 'execute');
+    try {
+      const { body } = await request(server).get('/users-cursor?sort=isActive,ASC').expect(200);
+      expect(body.data.length).toBeGreaterThan(0);
+      expect(body.cursor.next).toBeTruthy();
+
+      const emittedSql = executeSpy.mock.calls
+        .map((args) => {
+          const first = args[0] as any;
+          if (typeof first === 'string') return first;
+          if (first && typeof first.toSQL === 'function') return first.toSQL().sql as string;
+          return '';
+        })
+        .filter((sqlText: string) => /from\s+[`"]?users[`"]?/i.test(sqlText))
+        .pop();
+
+      expect(emittedSql).toBeDefined();
+      const normalized = emittedSql as string;
+      const orderByIdx = normalized.search(/order by/i);
+      expect(orderByIdx).toBeGreaterThanOrEqual(0);
+      const orderByClause = normalized.slice(orderByIdx);
+      // `isActive` maps to the `is_active` column via MikroORM's default
+      // naming strategy; the PK tie-breaker column is plain `id`. Both must
+      // appear as distinct ORDER BY terms, sort field before tie-breaker.
+      const sortFieldIdx = orderByClause.search(/is_active/i);
+      const idFieldIdx = orderByClause.search(/\bid\b/i);
+      expect(sortFieldIdx).toBeGreaterThanOrEqual(0);
+      expect(idFieldIdx).toBeGreaterThan(sortFieldIdx);
+    } finally {
+      executeSpy.mockRestore();
+    }
   });
 });

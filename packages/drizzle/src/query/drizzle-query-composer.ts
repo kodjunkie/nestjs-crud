@@ -208,15 +208,19 @@ export class DrizzleQueryComposer implements QueryComposer<AnyDrizzleSelect> {
   }
 
   /**
-   * Apply keyset cursor WHERE + ORDER BY (with PK tie-breaker) on top of the
-   * already-composed query. Skipped silently when `decoded` is null (first page).
+   * Apply the cursor-mode field allowlist + ORDER BY (with PK tie-breaker) on
+   * top of the already-composed query. The allowlist check and the ORDER BY
+   * assignment run on every call, including the first page — a defaulted
+   * sort field reaches `orderBy` on the same path a client-supplied field
+   * does. Only the keyset WHERE composition is gated on a decoded cursor,
+   * since there is no prior page position to resume from.
    *
    * Emits the canonical OR-decomposed keyset shape from Drizzle's official
    * cursor-pagination guide:
    *   `(sortCol cmp v) OR (sortCol = v AND idCol cmp id)`
    * with `cmp = gt` for forward+ASC and back+DESC, `lt` for the inverse.
    * ORDER BY uses `asc/desc` helpers and adds the PK tie-breaker so ties on the
-   * sort column resolve deterministically.
+   * sort column resolve deterministically, first page included.
    *
    * SQLi guard: validates `sort.field` via the same `columnsMap` allowlist used
    * by `mapSort` (D-05b invariant). Unknown fields short-circuit through
@@ -225,30 +229,37 @@ export class DrizzleQueryComposer implements QueryComposer<AnyDrizzleSelect> {
    * @since 2.2.0
    */
   public applyCursor(q: AnyDrizzleSelect, decoded: CursorPayload | null, sort: QuerySort): AnyDrizzleSelect {
-    if (!decoded) return q;
-
     const sortCol = this.columnsMap[sort.field];
     const idField = this.entityPrimaryColumns[0];
     const idCol = this.columnsMap[idField];
     if (!sortCol) this.onBadRequest(`Invalid sort field: '${sort.field}'`);
 
     const isAsc = sort.order === 'ASC';
-    const isForward = decoded.dir === 'next';
+    // No decoded cursor means a first page, which is forward by definition.
+    const isForward = !decoded || decoded.dir === 'next';
     const cmp = isAsc === isForward ? gt : lt;
     const dirFn = isAsc === isForward ? asc : desc;
 
-    // `as any` casts bridge runtime cursor payload values (`unknown` after JSON
-    // decode) into Drizzle's column-typed operator signatures. The runtime types
-    // round-trip through CursorCodec; the values are bound through Drizzle's
-    // parameterization, so SQLi exposure is on `sortField` (guarded above), not
-    // on these values.
-    q.where(
-      or(
-        cmp(sortCol, decoded.sortValue as any),
-        and(eq(sortCol, decoded.sortValue as any), cmp(idCol, decoded.id as any)),
-      ),
-    );
+    // ORDER BY with PK tie-breaker applies on every cursor request, first
+    // page included — without it a defaulted first page would emit no
+    // ORDER BY at all and return rows in arbitrary database order.
     q.orderBy(dirFn(sortCol), dirFn(idCol));
+
+    // Keyset WHERE stays confined to non-first pages — there is no prior
+    // cursor position to resume from on the first page.
+    if (decoded) {
+      // `as any` casts bridge runtime cursor payload values (`unknown` after JSON
+      // decode) into Drizzle's column-typed operator signatures. The runtime types
+      // round-trip through CursorCodec; the values are bound through Drizzle's
+      // parameterization, so SQLi exposure is on `sortField` (guarded above), not
+      // on these values.
+      q.where(
+        or(
+          cmp(sortCol, decoded.sortValue as any),
+          and(eq(sortCol, decoded.sortValue as any), cmp(idCol, decoded.id as any)),
+        ),
+      );
+    }
 
     return q;
   }

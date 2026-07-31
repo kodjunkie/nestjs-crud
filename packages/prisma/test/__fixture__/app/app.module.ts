@@ -2,6 +2,8 @@ import { DynamicModule, Module } from '@nestjs/common';
 
 import { UsersCachedController } from './users-cached.controller';
 import { UsersCursorController } from './users-cursor.controller';
+import { UsersCursorDefaultSortController } from './users-cursor-default-sort.controller';
+import { UsersCursorMultiSortController } from './users-cursor-multi-sort.controller';
 import { UsersCursorNoLimitController } from './users-cursor-no-limit.controller';
 import { UsersController } from './users.controller';
 import { UsersService, PRISMA_CLIENT } from './users.service';
@@ -26,7 +28,14 @@ export class AppModule {
 
     return {
       module: AppModule,
-      controllers: [UsersController, UsersCachedController, UsersCursorController, UsersCursorNoLimitController],
+      controllers: [
+        UsersController,
+        UsersCachedController,
+        UsersCursorController,
+        UsersCursorNoLimitController,
+        UsersCursorDefaultSortController,
+        UsersCursorMultiSortController,
+      ],
       providers: [{ provide: PRISMA_CLIENT, useValue: prismaClient }, UsersService],
       exports: [UsersService],
     };

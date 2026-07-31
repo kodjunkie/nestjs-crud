@@ -6,6 +6,8 @@ import { UsersCachedController } from './users-cached.controller';
 import { UsersController } from './users.controller';
 import { UsersCursorController } from './users-cursor.controller';
 import { UsersCursorNoLimitController } from './users-cursor-no-limit.controller';
+import { UsersCursorDefaultSortController } from './users-cursor-default-sort.controller';
+import { UsersCursorMultiSortController } from './users-cursor-multi-sort.controller';
 import { UsersRepoController } from './users-repo.controller';
 import { UsersService } from './users.service';
 import { UsersRepoService } from './users-repo.service';
@@ -25,6 +27,8 @@ export class AppModule {
         UsersCachedController,
         UsersCursorController,
         UsersCursorNoLimitController,
+        UsersCursorDefaultSortController,
+        UsersCursorMultiSortController,
       ],
       providers: [UsersService, UsersRepoService],
       exports: [UsersService, UsersRepoService],

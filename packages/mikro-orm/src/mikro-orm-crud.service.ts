@@ -9,9 +9,9 @@ import {
   prepareEntityBeforeSave as prepareEntityBeforeSaveUtil,
 } from '@nestjs-crud/core';
 import type { CacheStrategy } from '@nestjs-crud/core/cache';
-import { CursorCodec } from '@nestjs-crud/core/cursor';
+import { CursorCodec, resolveCursorSort } from '@nestjs-crud/core/cursor';
 import type { CursorPaginatedResponse } from '@nestjs-crud/core/cursor';
-import { ParsedRequestParams } from '@nestjs-crud/request';
+import { ParsedRequestParams, QuerySort } from '@nestjs-crud/request';
 import { Logger, LoggerService, NotFoundException } from '@nestjs/common';
 import { ClassType, hasLength, isArrayFull, isNil, isObject } from '@nestjs-crud/util';
 import {
@@ -458,13 +458,13 @@ export class MikroOrmCrudService<T extends object> extends CrudService<T> {
     options: CrudRequestOptions,
   ): Promise<CursorPaginatedResponse<T>> {
     this.logger.debug?.('cursor pagination: bypassing cache wrap');
-    // single-sort-field requirement
-    if (!parsed.sort || parsed.sort.length !== 1) {
-      this.throwBadRequestException(
-        `Cursor pagination supports a single sort field; got: ${parsed.sort?.map((s) => s.field).join(', ') || '0'}`,
-      );
+    // Effective sort: client ?sort= first, else the route's @Crud({ query: { sort } })
+    // default, else neither — same resolution order the offset composer uses.
+    const resolution = resolveCursorSort(parsed, options.query);
+    if (resolution.error) {
+      this.throwBadRequestException(resolution.error);
     }
-    const sort = parsed.sort[0];
+    const sort = resolution.sort as QuerySort;
 
     // Decode incoming cursor (null on first page)
     const decoded = parsed.cursor ? CursorCodec.decode(parsed.cursor) : null;

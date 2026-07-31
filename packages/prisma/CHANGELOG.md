@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [2.2.6] — 2026-07-31
+
+### Fixed
+
+- **Cursor-mode `getMany` resolves sort through the shared core helper.** A route-declared single-field default sort now applies when the request omits `?sort=`, matching offset mode's resolution order. See the root CHANGELOG for the full behavior description.
+- **The sort-field allowlist check and `ORDER BY` clause now apply to the first cursor page, not only later pages.** `PrismaQueryComposer.applyCursor` previously skipped both when the request carried no cursor token, so a first page relying on a default sort could come back in database order instead of the declared order. Both now run unconditionally; only the keyset `WHERE` composition stays gated on a decoded cursor.
+
 ## [2.2.5] — 2026-06-11
 
 Version-only republish — no package-specific source changes. Bumped in lockstep with the rest of the monorepo. See the [root CHANGELOG.md](../../CHANGELOG.md#225--2026-06-11) for full release details.

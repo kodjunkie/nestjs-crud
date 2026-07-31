@@ -10,7 +10,7 @@ load-bearing on a user-facing app.
 
 ## Prerequisites
 
-- Node 20+
+- Node 24+
 - Yarn (any modern version — this folder does not share the repo's Yarn 4.12 pin)
 - Postgres reachable on `localhost:5455` — easiest via the repo-root `compose.yml`:
   ```bash
