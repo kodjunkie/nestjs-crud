@@ -12,7 +12,7 @@
 ## Install
 
 ```shell
-npm i @nestjs-crud/mikro-orm @mikro-orm/core @mikro-orm/knex
+npm i @nestjs-crud/mikro-orm @mikro-orm/core @mikro-orm/sql
 ```
 
 ## Usage

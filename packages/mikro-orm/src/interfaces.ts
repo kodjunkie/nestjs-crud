@@ -1,5 +1,5 @@
 import { EntityMetadata, EntityProperty } from '@mikro-orm/core';
-import type { QueryBuilder } from '@mikro-orm/knex';
+import type { QueryBuilder } from '@mikro-orm/sql';
 import type { JoinResolver } from '@nestjs-crud/core';
 
 export type DbDialect = 'postgresql' | 'mysql' | 'sqlite' | 'mongo' | 'mssql';

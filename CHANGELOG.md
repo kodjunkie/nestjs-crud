@@ -22,6 +22,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **`@nestjs-crud/request` is now the only package that depends on `qs`.** `@nestjs-crud/core` no longer lists `qs` as a dependency. Its request interceptor passes the raw query string to `RequestQueryParser.parseQuery()`, which parses it with `qs`. Parsing results are unchanged, and core still gets `qs` through `@nestjs-crud/request`.
 - **`RequestQueryParser.parseQuery()` accepts a raw query string** (the part of the URL after `?`) as well as a parsed query object.
 
+### Fixed
+
+- **`@nestjs-crud/mikro-orm`'s published types now resolve without an undeclared dependency.** The package's emitted `.d.ts` files imported `QueryBuilder` from `@mikro-orm/knex`, a package `@nestjs-crud/mikro-orm` never declared as a dependency or peer. TypeScript projects that didn't happen to have `@mikro-orm/knex` installed couldn't resolve the adapter's types. The types now come from `@mikro-orm/sql`, the MikroORM 7 package that ships `QueryBuilder`. `@mikro-orm/sql` `^7.0.0` is a new peer dependency of `@nestjs-crud/mikro-orm`; every MikroORM 7 SQL driver (`@mikro-orm/postgresql`, `@mikro-orm/mysql`, `@mikro-orm/sqlite`) already depends on it, so installs that already have a driver need no action.
+
 ### Security
 
 - **`@nestjs-crud/typeorm` requires `typeorm` 0.3.30 or later on the 0.3 line.** The peer range moves from `^0.3.0` to `^0.3.30 || ^1.0.0`. The old floor admitted older, vulnerable 0.3 releases for consumers who pinned low, the item carried forward from 2.2.6.

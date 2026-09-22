@@ -4,7 +4,7 @@ import type { QueryComposer, WhereBuilder } from '@nestjs-crud/core/query';
 import { ParsedRequestParams, QuerySort } from '@nestjs-crud/request';
 import { objKeys } from '@nestjs-crud/util';
 import { EntityProperty, FilterQuery } from '@mikro-orm/core';
-import type { QueryBuilder } from '@mikro-orm/knex';
+import type { QueryBuilder } from '@mikro-orm/sql';
 
 export interface MikroOrmQueryComposerConfig<T extends object> {
   entityColumns: string[];

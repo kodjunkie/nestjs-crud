@@ -45,6 +45,7 @@
   },
   "peerDependencies": {
     "@mikro-orm/core": "^7.0.0",
+    "@mikro-orm/sql": "^7.0.0",
     "@nestjs-crud/core": "^2.2.6",
     "@nestjs-crud/request": "^2.2.6",
     "@nestjs-crud/util": "^2.2.6",

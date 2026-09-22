@@ -2,7 +2,7 @@ import { CrudRequestOptions, QueryTranslator } from '@nestjs-crud/core';
 import type { CursorPayload } from '@nestjs-crud/core/cursor';
 import { ParsedRequestParams, QuerySort, SCondition } from '@nestjs-crud/request';
 import { EntityClass, EntityManager, FilterQuery } from '@mikro-orm/core';
-import type { QueryBuilder } from '@mikro-orm/knex';
+import type { QueryBuilder } from '@mikro-orm/sql';
 
 import { MikroOrmQueryTranslatorConfig } from './interfaces';
 import { MikroOrmFetchHelper } from './query/mikro-orm-fetch-helper';

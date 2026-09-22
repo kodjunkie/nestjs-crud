@@ -14,6 +14,10 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 - **Requires `@nestjs-crud/core` 2.2.6 or later.** The `@nestjs-crud/core`, `@nestjs-crud/request` and `@nestjs-crud/util` peer ranges move from `^2.0.0` to `^2.2.6`. This package calls core helpers added after 2.0.0, so an older core satisfied the old range without providing them.
 
+### Fixed
+
+- **Published types now resolve without an undeclared dependency.** The package's emitted `.d.ts` files imported `QueryBuilder` from `@mikro-orm/knex`, a package this package never declared as a dependency or peer. TypeScript projects that didn't happen to have `@mikro-orm/knex` installed couldn't resolve the adapter's types. The types now come from `@mikro-orm/sql`, the MikroORM 7 package that ships `QueryBuilder`. `@mikro-orm/sql` `^7.0.0` is a new peer dependency; every MikroORM 7 SQL driver (`@mikro-orm/postgresql`, `@mikro-orm/mysql`, `@mikro-orm/sqlite`) already depends on it, so installs that already have a driver need no action.
+
 ## [2.2.6] — 2026-07-31
 
 ### Fixed

@@ -21,7 +21,7 @@ Before upgrading:
   - `@nestjs/typeorm`: `^10.0.0 || ^11.0.0` (typeorm package only)
   - `typeorm`: `^0.3.0` (typeorm package, same as v1)
   - `drizzle-orm`: `>=0.45.2` (drizzle package; the bump closes the GHSA-rqvj-q4hg-7v6c SQL injection)
-  - `@mikro-orm/core` and `@mikro-orm/knex`: `^7.0.0` (mikro-orm package; the bump from v6 closes GHSA-77w7-9cgx-2c6w and GHSA-942q-cgq2-jp5q)
+  - `@mikro-orm/core` and `@mikro-orm/sql`: `^7.0.0` (mikro-orm package; the bump from v6 closes GHSA-77w7-9cgx-2c6w and GHSA-942q-cgq2-jp5q)
   - `@prisma/client`: `>=5.0.0` (prisma package, new in v2)
 
 ## High-blast breaking changes

@@ -4,7 +4,7 @@ import type { CacheStrategy } from '@nestjs-crud/core/cache';
 import type { FetchHelper, FetchHelperFindOneOpts } from '@nestjs-crud/core/query';
 import { ParsedRequestParams } from '@nestjs-crud/request';
 import { EntityClass, EntityManager } from '@mikro-orm/core';
-import type { QueryBuilder } from '@mikro-orm/knex';
+import type { QueryBuilder } from '@mikro-orm/sql';
 import { Logger, LoggerService } from '@nestjs/common';
 
 export interface MikroOrmFetchHelperConfig {
@@ -99,8 +99,9 @@ export class MikroOrmFetchHelper<T extends object> implements FetchHelper<QueryB
    */
   public createQueryBuilder(entityClass: EntityClass<T>): QueryBuilder<T> {
     const em = this.config.getEm();
-    // @internal — EntityManager.createQueryBuilder is not in the @mikro-orm/core
-    // type surface; it is provided by @mikro-orm/knex at runtime.
+    // @internal — createQueryBuilder is not on the @mikro-orm/core `EntityManager` type;
+    // it is provided at runtime by the SQL driver's entity manager (`SqlEntityManager`
+    // from `@mikro-orm/sql`).
     return (em as unknown as { createQueryBuilder: (cls: EntityClass<T>) => QueryBuilder<T> }).createQueryBuilder(
       entityClass,
     );

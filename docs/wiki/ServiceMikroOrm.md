@@ -5,7 +5,7 @@ A CRUD service for databases using MikroORM.
 ## Install
 
 ```shell
-npm i @nestjs-crud/mikro-orm @mikro-orm/core @mikro-orm/knex
+npm i @nestjs-crud/mikro-orm @mikro-orm/core @mikro-orm/sql
 npm i @mikro-orm/postgresql pg # Postgres
 npm i @mikro-orm/mysql mysql2  # MySQL
 ```
@@ -74,7 +74,7 @@ export class CompaniesController implements CrudController<Company> {
 
 ### MikroORM v7 required
 
-Peer-deps moved from `>=6.0.0` to `^7.0.0` for `@mikro-orm/core` and `@mikro-orm/knex`.
+Peer-deps moved from `>=6.0.0` to `^7.0.0` for `@mikro-orm/core` and `@mikro-orm/sql`.
 
 ### Transactions
 

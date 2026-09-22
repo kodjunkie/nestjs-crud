@@ -25,7 +25,7 @@ import type { JoinResolver } from '@nestjs-crud/core';
 import type { WhereBuilder } from '@nestjs-crud/core/query';
 import type { ParsedRequestParams } from '@nestjs-crud/request';
 import type { EntityProperty, FilterQuery } from '@mikro-orm/core';
-import type { QueryBuilder } from '@mikro-orm/knex';
+import type { QueryBuilder } from '@mikro-orm/sql';
 
 import { MikroOrmQueryComposer } from '../../src/query/mikro-orm-query-composer';
 

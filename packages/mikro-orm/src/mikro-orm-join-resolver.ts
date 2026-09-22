@@ -2,7 +2,7 @@ import { getAllowedColumns, JoinOption, JoinOptions, JoinResolver } from '@nestj
 import { QueryJoin } from '@nestjs-crud/request';
 import { hasLength, isArrayFull, objKeys } from '@nestjs-crud/util';
 import { EntityMetadata } from '@mikro-orm/core';
-import type { QueryBuilder } from '@mikro-orm/knex';
+import type { QueryBuilder } from '@mikro-orm/sql';
 
 import { MikroOrmAllowedRelation, MikroOrmJoinResolverConfig } from './interfaces';
 
@@ -79,8 +79,11 @@ export class MikroOrmJoinResolver implements JoinResolver<QueryBuilder<object>> 
       return;
     }
 
-    // @internal — QB does not expose leftJoinAndSelect/joinAndSelect/populate in its
-    // TypeScript declaration; these are runtime-only methods surfaced by @mikro-orm/knex.
+    // @internal — the QB here is typed from `@mikro-orm/sql`'s `QueryBuilder`, which
+    // does declare `leftJoinAndSelect`, `joinAndSelect` and `populate`. The cast plus
+    // the `typeof ... === 'function'` checks below stay: this resolver feature-detects
+    // the join methods at runtime and falls back to `populate` for query-builder
+    // stand-ins (e.g. test mocks) that don't implement them.
     const q = query as unknown as Record<string, (...a: unknown[]) => void>;
     if (typeof q['leftJoinAndSelect'] === 'function' && options.select !== false) {
       const joinFn = options.required ? 'joinAndSelect' : 'leftJoinAndSelect';
