@@ -8,7 +8,7 @@ import { INestApplication } from '@nestjs/common';
 import { APP_FILTER } from '@nestjs/core';
 import { Test } from '@nestjs/testing';
 import { CrudConfigService, MockCacheStrategy } from '@nestjs-crud/core';
-import * as request from 'supertest';
+import request from 'supertest';
 
 import { AppModule } from './__fixture__/app/app.module';
 import { HttpExceptionFilter } from './__fixture__/app/http-exception.filter';

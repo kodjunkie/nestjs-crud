@@ -30,7 +30,7 @@ export function makePrismaClient(dialect: Dialect): any {
   // site (seeds.ts, app.module.ts, real-db-smoke.spec.ts).
   // This file lives at packages/prisma/test/__fixture__/make-prisma-client.ts,
   // so node_modules is 4 levels up.
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
+
   const { PrismaClient } = require('../../../../node_modules/.prisma/client-smoke');
 
   const url = process.env.DATABASE_URL;

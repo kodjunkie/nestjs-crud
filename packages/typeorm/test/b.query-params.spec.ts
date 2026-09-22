@@ -4,7 +4,7 @@ import { Test } from '@nestjs/testing';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { RequestQueryBuilder } from '@nestjs-crud/request';
 import 'jest-extended';
-import * as request from 'supertest';
+import request from 'supertest';
 
 import { Company } from './__fixture__/app/companies';
 import { withCache } from './__fixture__/app/orm.config';

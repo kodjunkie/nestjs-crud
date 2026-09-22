@@ -5,7 +5,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { Crud } from '@nestjs-crud/core';
 import { RequestQueryBuilder } from '@nestjs-crud/request';
-import * as request from 'supertest';
+import request from 'supertest';
 import { Company } from './__fixture__/app/companies';
 import { Device } from './__fixture__/app/devices';
 import { withCache } from './__fixture__/app/orm.config';

@@ -4,7 +4,7 @@ import { Test } from '@nestjs/testing';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { Crud, CrudAuth } from '@nestjs-crud/core';
-import * as request from 'supertest';
+import request from 'supertest';
 import { withCache } from './__fixture__/app/orm.config';
 import { User } from './__fixture__/app/users';
 import { UserProfile } from './__fixture__/app/users-profiles';

@@ -1,11 +1,6 @@
 import { RequestQueryBuilder } from '@nestjs-crud/request';
 import { isObjectFull } from '@nestjs-crud/util';
-import * as deepmergeNs from 'deepmerge';
-// CJS default-interop: deepmerge ships only `main: dist/cjs.js` (no ESM exports).
-// Under Jest ESM (ts-jest ESM preset + transformIgnorePatterns exception), `import *`
-// wraps the CJS module in a namespace — the callable sits at `.default`.
-// Under Node/tsc CJS compilation, `import *` is the callable directly.
-const deepmerge: typeof deepmergeNs = (deepmergeNs as any).default ?? deepmergeNs;
+import deepmerge from 'deepmerge';
 
 import { CrudGlobalConfig } from '../interfaces';
 

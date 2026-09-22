@@ -1,7 +1,7 @@
 import { Controller, INestApplication } from '@nestjs/common';
 import { APP_FILTER } from '@nestjs/core';
 import { Test } from '@nestjs/testing';
-import * as request from 'supertest';
+import request from 'supertest';
 
 import { CrudGlobalConfig } from '../src/interfaces';
 import { CrudConfigService } from '../src/module/crud-config.service';

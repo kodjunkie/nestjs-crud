@@ -19,7 +19,7 @@ import { INLINED_FALLBACK } from '../src/crud/swagger/swagger-constants';
  */
 describe('swagger-constants inlined fallback vs installed @nestjs/swagger', () => {
   const swaggerRoot = path.dirname(require.resolve('@nestjs/swagger/package.json'));
-  // eslint-disable-next-line @typescript-eslint/no-var-requires, global-require
+
   const real = require(path.join(swaggerRoot, 'dist', 'constants.js'));
 
   it('DECORATORS_PREFIX matches the installed module', () => {

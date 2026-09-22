@@ -11,9 +11,9 @@ import { TestService } from './__fixture__/services';
 // so it requires BOTH @nestjs/swagger and @nestjs/testing at runtime. When either
 // is absent (no-swagger sentinel CI matrix cell), the describe block self-skips
 // rather than failing with a module-load error.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+
 const swagger: any = safeRequire('@nestjs/swagger');
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+
 const testing: any = safeRequire('@nestjs/testing');
 const describeMaybe = swagger && testing ? describe : describe.skip;
 
@@ -42,7 +42,6 @@ describeMaybe('Swagger OpenAPI document snapshot', () => {
 
   const ID_BASED_ROUTES = new Set(['getOneBase', 'updateOneBase', 'replaceOneBase', 'deleteOneBase', 'recoverOneBase']);
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   async function buildDocument(controllers: any[]): Promise<any> {
     const moduleRef = await testing.Test.createTestingModule({
       controllers,
@@ -59,7 +58,6 @@ describeMaybe('Swagger OpenAPI document snapshot', () => {
     }
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   function collectOperations(document: any): any[] {
     const ops: any[] = [];
     for (const pathKey of Object.keys(document.paths || {})) {

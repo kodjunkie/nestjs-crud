@@ -12,7 +12,7 @@
  * @see packages/typeorm/test/sort-sqli.regression.spec.ts (source matrix)
  */
 import { BadRequestException } from '@nestjs/common';
-// eslint-disable-next-line @typescript-eslint/no-require-imports
+
 const Database = require('better-sqlite3');
 import { getTableColumns, getTableName } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/better-sqlite3';

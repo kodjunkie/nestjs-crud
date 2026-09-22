@@ -27,7 +27,6 @@ export class MikroOrmJoinResolver implements JoinResolver<QueryBuilder<object>> 
 
   private readonly relationsHash: Map<string, MikroOrmAllowedRelation> = new Map();
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   constructor(config: MikroOrmJoinResolverConfig<any>) {
     this.metadata = config.metadata as EntityMetadata<object>;
     this.onBadRequest = config.onBadRequest;

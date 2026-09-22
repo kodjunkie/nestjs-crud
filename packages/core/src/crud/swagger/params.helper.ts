@@ -11,19 +11,16 @@ import { BaseRouteName } from '../../types';
 import { R } from '../reflection.helper';
 import { swaggerConst } from './swagger-constants';
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function setParams(metadata: unknown, func: any): void {
   if (swaggerConst) {
     R.set(swaggerConst.DECORATORS.API_PARAMETERS, metadata, func);
   }
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function getParams(func: any): any[] {
   return swaggerConst ? R.get(swaggerConst.DECORATORS.API_PARAMETERS, func) || [] : [];
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function createPathParamsMeta(options: ParamsOptions): any[] {
   return swaggerConst
     ? objKeys(options).map((param) => ({
@@ -36,7 +33,6 @@ export function createPathParamsMeta(options: ParamsOptions): any[] {
     : [];
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function getQueryParamsNames(): any {
   const qbOptions = RequestQueryBuilder.getOptions();
   const name = (n) => {

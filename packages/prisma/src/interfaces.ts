@@ -1,7 +1,6 @@
 import type { JoinResolver } from '@nestjs-crud/core';
 import type { CacheStrategy } from '@nestjs-crud/core/cache';
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export interface PrismaQueryTranslatorConfig<_T> {
   entityColumns: string[];
 

@@ -14,28 +14,24 @@ import { swaggerConst } from './swagger-constants';
 export const swagger = safeRequire('@nestjs/swagger', () => require('@nestjs/swagger'));
 export { swaggerConst };
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function setResponseOk(metadata: unknown, func: any): void {
   if (swaggerConst) {
     R.set(swaggerConst.DECORATORS.API_RESPONSE, metadata, func);
   }
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function getResponseOk(func: any): any {
   return swaggerConst ? R.get(swaggerConst.DECORATORS.API_RESPONSE, func) || {} : {};
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function getExtraModels(target: unknown): any[] {
   return swaggerConst ? R.get(swaggerConst.API_EXTRA_MODELS, target) || [] : [];
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function setExtraModels(swaggerModels: any): void {
   if (swaggerConst) {
     const meta = getExtraModels(swaggerModels.get);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
     const models: any[] = [
       ...meta,
       ...Object.keys(swaggerModels)
@@ -46,7 +42,6 @@ export function setExtraModels(swaggerModels: any): void {
   }
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function createResponseMeta(name: BaseRouteName, options: MergedCrudOptions, swaggerModels: any): any {
   if (!swagger) {
     return {};
@@ -67,7 +62,7 @@ export function createResponseMeta(name: BaseRouteName, options: MergedCrudOptio
   // {Model}ResponseDto, etc.) so the emitted prose points at the schema shown in
   // Swagger UI's schema tree.
   const successEntry = buildSuccessEntry(name, options, swaggerModels);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
   const meta: Record<number, any> = { ...successEntry };
 
   // 400 is emitted on every generated route. 401 is owned by the factory layer
@@ -90,9 +85,8 @@ export function createResponseMeta(name: BaseRouteName, options: MergedCrudOptio
 function buildSuccessEntry(
   name: BaseRouteName,
   options: MergedCrudOptions,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
   swaggerModels: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
 ): Record<number, any> {
   const { routes, query } = options;
 

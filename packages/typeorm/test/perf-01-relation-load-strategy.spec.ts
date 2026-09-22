@@ -27,7 +27,7 @@ import { Test } from '@nestjs/testing';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { Crud, CrudController, CrudRequest, Override, ParsedRequest } from '@nestjs-crud/core';
-import * as request from 'supertest';
+import request from 'supertest';
 
 import { Company } from './__fixture__/app/companies';
 import { Project } from './__fixture__/app/projects';
@@ -197,9 +197,9 @@ describe('TypeORM relationLoadStrategy opt-in', () => {
       //     return the primary key (`id`) on every row.
       const qTopCols = Object.keys(qFirst).sort();
       const jTopCols = Object.keys(jFirst).sort();
-      // eslint-disable-next-line no-console
+
       console.log(`[Test 5 audit] top-level user columns under 'query': ${JSON.stringify(qTopCols)}`);
-      // eslint-disable-next-line no-console
+
       console.log(`[Test 5 audit] top-level user columns under 'join':  ${JSON.stringify(jTopCols)}`);
       // Invariants we WILL assert: primary key always present.
       expect(qFirst.id).toBeDefined();
@@ -215,15 +215,14 @@ describe('TypeORM relationLoadStrategy opt-in', () => {
       // Severity guard: relation MUST be present under at least one strategy
       // — if undefined under both, surface as deviation.
       if (!qWithCompany || !jWithCompany) {
-        // eslint-disable-next-line no-console
         console.warn('[Test 5] no user with company in first 3 rows — divergence audit incomplete');
       } else {
         // Document divergence in test output (NOT a hard assertion):
         const qCols = Object.keys(qWithCompany.company).sort();
         const jCols = Object.keys(jWithCompany.company).sort();
-        // eslint-disable-next-line no-console
+
         console.log(`[Test 5 audit] company columns under 'query': ${JSON.stringify(qCols)}`);
-        // eslint-disable-next-line no-console
+
         console.log(`[Test 5 audit] company columns under 'join':  ${JSON.stringify(jCols)}`);
         // The DIVERGENCE: under 'query', TypeORM's setFindOptions ignores our
         // JoinOption.allow allowlist and loads ALL company columns. Under

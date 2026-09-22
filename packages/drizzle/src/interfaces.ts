@@ -46,7 +46,7 @@ export interface DrizzleAllowedRelation {
  *
  * @since 2.0.0
  */
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
+
 export interface DrizzleQueryTranslatorConfig<_T extends Record<string, unknown>> {
   entityColumns: string[];
 

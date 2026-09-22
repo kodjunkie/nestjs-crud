@@ -12,21 +12,8 @@ import {
   isNil,
   isUndefined,
 } from '@nestjs-crud/util';
-// ESM-safe callable: pluralize ships CJS-only. Same dual-shape unwrap as deepmerge below.
-import * as pluralizeNs from 'pluralize';
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const pluralize: (word: string) => string =
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  typeof (pluralizeNs as any) === 'function' ? (pluralizeNs as any) : (pluralizeNs as any).default;
-import * as deepmergeNs from 'deepmerge';
-// ESM-safe callable: deepmerge ships CJS-only. Under Jest ESM (--experimental-vm-modules),
-// `import * as` yields a namespace where the function lives at .default. Under ts-jest CJS
-// compilation for the other 5 packages, the namespace IS the callable function directly.
-// Normalise to a callable regardless of how the module loader wrapped the CJS export.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const deepmerge: typeof deepmergeNs = (
-  typeof (deepmergeNs as any).default === 'function' ? (deepmergeNs as any).default : deepmergeNs
-) as typeof deepmergeNs;
+import deepmerge from 'deepmerge';
+import pluralize from 'pluralize';
 
 import { R } from './reflection.helper';
 import { SerializeHelper } from './serialize.helper';
@@ -566,7 +553,9 @@ export class CrudRoutesFactory {
   }
 
   protected setSwaggerOperation(name: BaseRouteName) {
-    const { summary, description } = Swagger.operationsMap(this.modelName, this.options.query.softDelete === true)[name];
+    const { summary, description } = Swagger.operationsMap(this.modelName, this.options.query.softDelete === true)[
+      name
+    ];
     const override = this.options.swagger?.operations?.[name] ?? {};
     const operationId = name + this.targetProto.constructor.name + this.modelName;
     // Spread order is load-bearing: consumer override merges over base, then the
@@ -652,11 +641,7 @@ export class CrudRoutesFactory {
     // Consumer-fn may return the full bulk wrapper when it inspects route === 'createManyBase'.
     // Detect and pass through without double-wrapping.
     const alreadyBulk =
-      name === 'createManyBase' &&
-      single &&
-      typeof single === 'object' &&
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      Array.isArray((single as any).bulk);
+      name === 'createManyBase' && single && typeof single === 'object' && Array.isArray((single as any).bulk);
     const example = name === 'createManyBase' && !alreadyBulk ? { bulk: [single] } : single;
     // SwaggerModule's api-parameters explorer removes the reflected body param
     // whenever an explicit body param is emitted on the same operation; the
@@ -701,7 +686,6 @@ export class CrudRoutesFactory {
         : [pluralize(this.modelName)];
 
     if (this.options.swagger?.tagWithVersion === true) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const common: any = safeRequire('@nestjs/common/constants') || safeRequire('@nestjs/common');
       const versionMetaKey = common?.VERSION_METADATA;
       if (versionMetaKey) {

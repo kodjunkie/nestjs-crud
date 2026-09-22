@@ -12,16 +12,12 @@
  * @since 2.0.0
  */
 export interface DrizzleClient {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   select: (...args: any[]) => any;
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   insert: (...args: any[]) => any;
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   update: (...args: any[]) => any;
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   delete: (...args: any[]) => any;
 
   transaction: <T>(

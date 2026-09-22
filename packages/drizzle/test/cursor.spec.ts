@@ -1,7 +1,7 @@
 import { INestApplication } from '@nestjs/common';
 import { APP_FILTER } from '@nestjs/core';
 import { Test } from '@nestjs/testing';
-import * as request from 'supertest';
+import request from 'supertest';
 import { Pool as PgPool } from 'pg';
 import * as mysql2Promise from 'mysql2/promise';
 
