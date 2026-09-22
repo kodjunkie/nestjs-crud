@@ -6,14 +6,14 @@ description: >-
   pagination, ACL/RBAC guards via `getFeature`/`getAction` + `nest-access-control`/CASL, DTOs
   with `CrudValidationGroups`, split-query relation loading, nested `?join=` 400 `Invalid join`,
   npm `ERESOLVE` on `ioredis`, debugging `RequestQueryException`,
-  `CrudCacheNotConfiguredError`, `EBADENGINE` (Node <22), validation-fails-on-update,
+  `CrudCacheNotConfiguredError`, `EBADENGINE` (Node <22.12), validation-fails-on-update,
   MikroORM stale-em, savepoints on overridden writes, TS2559 "has no properties in common"
   on `implements CrudController` with `serviceProperty` (use `CrudControllerFor`).
 ---
 
 # @nestjs-crud
 
-Auto-generates RESTful CRUD endpoints from `@Crud()`. Four adapters: TypeORM, Drizzle, MikroORM, Prisma. Node 22+. NestJS 10–12, TypeORM 0.3.30+ or 1.x (NestJS 12 + TypeORM 1 since v2.3; NestJS 12 is ESM-only → Node 22.12+ for `require(esm)`). [CHANGELOG](https://github.com/kodjunkie/nestjs-crud/blob/master/CHANGELOG.md).
+Auto-generates RESTful CRUD endpoints from `@Crud()`. Four adapters: TypeORM, Drizzle, MikroORM, Prisma. Node 22.12+ (NestJS 12 is ESM-only → Node's `require(esm)`, which arrives at 22.12). NestJS 10–12, TypeORM 0.3.30+ or 1.x (NestJS 12 + TypeORM 1 since v2.3). [CHANGELOG](https://github.com/kodjunkie/nestjs-crud/blob/master/CHANGELOG.md).
 
 ## Install
 
@@ -376,7 +376,7 @@ Default `CrudControllerFor<T>` ≡ `CrudController<T>`. Alternative: drop `imple
 | 400 `Field "X" is not allowed` / `Invalid field: 'X'` / `Invalid sort field: 'X'` / `Unknown column: X` | Add to entity columns or `query.join` allow-list. |
 | 400 `@CrudAuth persist: invalid key(s) "X"` | Typo in `@CrudAuth({ persist })` against entity column. |
 | TS2559 `has no properties in common with type 'CrudController<T>'` | `serviceProperty` renamed the field; weak-type check fails. `implements CrudControllerFor<Entity, 'fieldName'>` (v2.2.5+) or drop `implements`. |
-| `EBADENGINE` on `npm install` | Node <22. Upgrade or pin to `^1.0.2`. |
+| `EBADENGINE` on `npm install` | Node <22.12. Upgrade or pin to `^1.0.2`. |
 | `CrudCacheNotConfiguredError` | `@Crud cache` set but no `CacheStrategy` wired (and no TypeORM `DataSource.cache` fallback). |
 | Cursor: `Cursor pagination supports a single sort field` → 400 | Multi-sort unsupported — use one field. No sort at all: pass `?sort=` or set `query.sort` (default honored v2.2.6+; earlier needs explicit `?sort=`). |
 | Cursor: `Cursor pagination requires a limit` → 400 | Cursor mode needs `query.limit` or `maxLimit`. |

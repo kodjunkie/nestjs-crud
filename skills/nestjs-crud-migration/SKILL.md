@@ -61,7 +61,7 @@ grep -rE "@CrudAuth|CrudAuth\s*\(\s*\{" src/
 grep -rE "cache:\s*[0-9]+|cache:\s*true" src/
 
 # 13. Node version
-node --version  # must be >=22; install refuses otherwise
+node --version  # must be >=22.12; install refuses otherwise
 
 # 14. Swagger snapshot tests or direct operationsMap import (v2 rewrites text + changes internal shape)
 grep -rE "toMatchSnapshot.*swagger|toMatchSnapshot.*apioperation|Swagger\.operationsMap" src/ test/
@@ -94,7 +94,7 @@ grep -rE "toMatchSnapshot.*swagger|toMatchSnapshot.*apioperation|Swagger\.operat
 | **Write-path transactions** READ COMMITTED on update/replace/deleteOne | Low normal; medium with consumer outer-tx | §D |
 | **Cache fail-fast** — `@Crud cache` without backend → throws | Medium (was silent in v1) | §D |
 | **Swagger default text rewrite** + `Swagger.operationsMap` shape change | Snapshot-test consumers only | §D |
-| **`engines.node: ">=22"`** | Install refuses on Node <22 | §E |
+| **`engines.node: ">=22.12"`** | Install refuses on Node <22.12 | §E |
 
 ## §A. Strict Column-Name Allowlist
 
@@ -180,7 +180,7 @@ Common errors: `TypeError: this.translator.count is not a function`, `TypeError:
 
 ## §E. Packaging
 
-- All packages declare `"engines": { "node": ">=22.0.0" }`. `npm install` refuses on Node <22.
+- All packages declare `"engines": { "node": ">=22.12.0" }` (NestJS 12 is ESM-only and loads via Node's `require(esm)`, which arrives at 22.12). `npm install` refuses on Node <22.12.
 - `peerDependencies` declared on every adapter package. Install warns if peers missing.
 - `@nestjs/common` peer range: `^10.0.0 || ^11.0.0` (v2.0+); `|| ^12.0.0` added in v2.3.
 - v2.1.1+: `@nestjs/swagger` declared as optional `peerDependency` on `@nestjs-crud/core` (`peerDependenciesMeta.optional: true`); consumers without swagger get no install warning.
@@ -299,12 +299,15 @@ Upgrade every `@nestjs-crud/*` package together. Code changes only if you use ne
 
 | Peer | v2.2.x | v2.3.0 | Consumer impact |
 |------|--------|--------|-----------------|
-| `@nestjs/common` (+ `@nestjs/swagger` on core, `@nestjs/typeorm` on typeorm) | `^10 \|\| ^11` | `+ ^12.0.0` | NestJS 12 is ESM-only; packages stay CJS → Node 22.12+ (`require(esm)`); Jest needs `NODE_OPTIONS=--experimental-vm-modules` |
+| `@nestjs/common` (+ `@nestjs/typeorm` on typeorm) | `^10 \|\| ^11` | `+ ^12.0.0` | NestJS 12 is ESM-only; packages stay CJS → Node 22.12+ (`require(esm)`); Jest needs `NODE_OPTIONS=--experimental-vm-modules` |
+| `@nestjs/swagger` (optional, core) | `^10 \|\| ^11 \|\| ^12` | `^7 \|\| ^8 \|\| ^11 \|\| ^12` | `^10` never existed on npm; the corrected range's `^7`/`^8` pair with NestJS 10 |
 | `typeorm` | `^0.3.0` | `^0.3.30 \|\| ^1.0.0` | Below 0.3.30 → peer warning; bump TypeORM |
 | `redis` (adapters) | `^5.0.0` | `^5.0.0 \|\| ^6.0.0` | node-redis 6 clients work unchanged |
+| `ioredis` (optional, adapters) | `^5.0.0` | `^5.0.0 \|\| ^6.0.0` | ioredis 6 clients now accepted |
 | `class-validator` (core) | `^0.14.0` | `^0.14.0 \|\| ^0.15.0` | 0.15.x no longer warns |
 | `@nestjs-crud/core` on adapters (+ `request`/`util` on mikro-orm) | `^2.0.0` | `^2.2.6` | Older core → peer warning |
 | `@mikro-orm/sql` (mikro-orm) | — | `^7.0.0` (new) | Every MikroORM 7 SQL driver already depends on it; fixes adapter `.d.ts` importing undeclared `@mikro-orm/knex` |
+| `drizzle-orm` (drizzle) | `>=0.45.2` | `^0.45.2` | Unbounded range now capped; drizzle-orm 1.x is prerelease-only, not yet supported |
 
 `RequestQueryParser.parseQuery()` also accepts a raw query string (additive); `@nestjs-crud/core` no longer depends on `qs` directly.
 
@@ -338,7 +341,7 @@ Migration-only — runtime issues live in `nestjs-crud` SKILL §Common Issues.
 | TS: `Cannot find module '@mikro-orm/knex'` from `@nestjs-crud/mikro-orm` types | v2.2.x `.d.ts` imported an undeclared package | Upgrade to v2.3 (types from `@mikro-orm/sql`) |
 | npm `ERESOLVE` on `ioredis` (TypeORM 1.x + NestJS 12) | TypeORM peers `ioredis@^5`; npm resolves 6 for NestJS 12 | `npm install ioredis@^5` or `"overrides": { "ioredis": "^5.0.4" }` |
 | npm install peer warnings | peerDeps declared in v2 | Install peers explicitly |
-| `EBADENGINE: Unsupported engine` | Node <22 | Upgrade Node 22+, or stay on v1.0.x |
+| `EBADENGINE: Unsupported engine` | Node <22.12 | Upgrade Node 22.12+, or stay on v1.0.x |
 
 ## Stay-On Pin
 
