@@ -2,7 +2,7 @@
  * TypeORM parity harness for the cross-adapter parity suite.
  *
  * Uses better-sqlite3 DataSource with a minimal entity. Builds a
- * TypeOrmQueryComposer with a throwing `onBadRequest` stub (PATTERNS.md §5).
+ * TypeOrmQueryComposer with a throwing `onBadRequest` stub.
  *
  * Exports `buildTypeOrmComposer()` — the factory used by query-composer-parity.spec.ts.
  */
@@ -145,7 +145,7 @@ export async function teardownTypeOrmDataSource(): Promise<void> {
 }
 
 // ---------------------------------------------------------------------------
-// Throwing stub — NEVER jest.fn() on a security path (PATTERNS.md §5)
+// Throwing stub — NEVER jest.fn() on a security path
 // ---------------------------------------------------------------------------
 
 const throwingOnBadRequest = (msg: string): never => {

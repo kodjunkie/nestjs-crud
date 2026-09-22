@@ -4,7 +4,7 @@
 // (@prisma/adapter-pg for Postgres, @prisma/adapter-mariadb for MySQL) from
 // the URL the db.{postgres,mysql}.ts setEnv() helpers populate.
 //
-// D-05 invariant: packages/prisma/src/** is untouched — the runtime contract
+// Invariant: packages/prisma/src/** is untouched — the runtime contract
 // PrismaCrudService consumes (delegates: findMany, count, create, update,
 // delete, $transaction) is satisfied identically by a driver-adapter-built
 // PrismaClient as by a config-URL-built one.

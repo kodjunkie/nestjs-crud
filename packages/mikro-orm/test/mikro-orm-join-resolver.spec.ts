@@ -3,7 +3,7 @@
  * `applyJoins`. Mirrors the shape of
  * `packages/typeorm/test/typeorm-join-resolver.spec.ts`.
  *
- * The MikroORM resolver is the D-05b dotted-path SQLi gate: its
+ * The MikroORM resolver is the dotted-path SQLi gate: its
  * `getAllowedColumnsFor(relation)` feeds the translator's mapSort
  * allowlist. A zero-size Set MUST short-circuit to `onBadRequest` upstream.
  *

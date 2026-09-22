@@ -1,7 +1,7 @@
 /**
  * Nyquist allowlist spec for `DrizzleJoinResolver.getAllowedColumnsFor`.
  * Mirrors the shape of `packages/typeorm/test/map-sort-allowlist.spec.ts`
- * (hit/miss matrix for dotted-path sort allowlist — the D-05b SQLi
+ * (hit/miss matrix for dotted-path sort allowlist — the SQLi
  * mitigation surface). Unknown relation OR unknown relation-column is
  * rejected BEFORE the identifier reaches Drizzle's SQL builder.
  *
@@ -40,7 +40,7 @@ const licenses = sqliteTable('licenses', {
   profileId: integer('profile_id'),
 });
 
-describe('DrizzleJoinResolver.getAllowedColumnsFor (D-05b allowlist)', () => {
+describe('DrizzleJoinResolver.getAllowedColumnsFor (dotted-path SQLi allowlist)', () => {
   let resolver: DrizzleJoinResolver;
 
   beforeEach(() => {

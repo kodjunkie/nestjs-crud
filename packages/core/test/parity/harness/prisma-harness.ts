@@ -19,7 +19,7 @@ import { PrismaJoinResolver } from '@nestjs-crud/prisma/prisma-join-resolver';
 import { REFERENCE_DATASET } from '../scondition-matrix';
 
 // ---------------------------------------------------------------------------
-// Throwing stub — NEVER jest.fn() on a security path (PATTERNS.md §5)
+// Throwing stub — NEVER jest.fn() on a security path
 // ---------------------------------------------------------------------------
 
 const throwingOnBadRequest = (msg: string): never => {

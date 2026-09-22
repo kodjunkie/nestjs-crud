@@ -8,7 +8,7 @@
  *
  * System-Under-Test: `MikroOrmQueryComposer` — the dotted-path SQLi invariant concentrates there post-decomposition.
  *
- * Harness contract (PATTERNS.md §5 + input-sanitizer.spec.ts:11-22):
+ * Harness contract (input-sanitizer.spec.ts:11-22):
  * `onBadRequest` MUST throw. A `jest.fn()` stub would let a miss return
  * silently — masking the exact bug this regression gate exists to close.
  *

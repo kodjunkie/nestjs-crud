@@ -9,7 +9,7 @@
  * SUT retargeted from `TypeOrmQueryTranslator` to
  * `TypeOrmQueryComposer` (the dotted-path SQLi invariant concentrates in the composer).
  *
- * Harness contract (PATTERNS.md §5): `onBadRequest` MUST throw. A silent
+ * Harness contract: `onBadRequest` MUST throw. A silent
  * no-op stub would let a miss pass through undetected, masking the bug the
  * spec exists to prove closed.
  *
@@ -47,7 +47,7 @@ const emptyParsed = {
   includeDeleted: 0,
 } as any;
 
-describe('TypeOrmQueryComposer mapSort allowlist (D-05b)', () => {
+describe('TypeOrmQueryComposer mapSort allowlist (dotted-path SQLi)', () => {
   let dataSource: DataSource;
   let repo: Repository<TranslatorEntity>;
   let composer: TypeOrmQueryComposer<TranslatorEntity>;

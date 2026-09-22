@@ -35,7 +35,7 @@ export interface PrismaFetchHelperConfig {
   /** Entity name used as cache-key prefix (required when cacheStrategy is set). */
   entityName?: string;
 
-  /** Optional logger threaded into withCacheErrorPolicy (FIX 2). */
+  /** Optional logger threaded into withCacheErrorPolicy. */
   logger?: {
     warn?: (msg: string) => void;
     error?: (msg: string, trace?: string) => void;
@@ -61,7 +61,7 @@ export class PrismaFetchHelper implements FetchHelper<any> {
     parsed?: ParsedRequestParams,
     options?: CrudRequestOptions,
   ): Promise<R> {
-    // D-11 fail-fast: throw UNCONDITIONALLY if @Crud cache set without strategy
+    // Fail fast: throw UNCONDITIONALLY if @Crud cache set without strategy
     // AND consumer did not bypass. No "[200, 500] adjust based on" — matches TypeORM behavior.
     this.assertStrategyOrPassThrough(parsed, options);
 
@@ -72,7 +72,7 @@ export class PrismaFetchHelper implements FetchHelper<any> {
       if (select) args.select = select;
       else if (include) args.include = include;
       // Merge Accelerate context arg if present (Accelerate strategy attaches via wrap;
-      // ttl already in seconds per FIX 1 ms→s conversion in PrismaAccelerateCacheStrategy.wrap).
+      // ttl already in seconds via the ms→s conversion in PrismaAccelerateCacheStrategy.wrap).
       const ctx = PrismaAccelerateCacheStrategy.currentContext.getStore();
       if (ctx?.cacheStrategy) args.cacheStrategy = ctx.cacheStrategy;
       return delegate.findFirst(args);
@@ -91,13 +91,13 @@ export class PrismaFetchHelper implements FetchHelper<any> {
     parsed: ParsedRequestParams,
     options: CrudRequestOptions,
   ): Promise<R[]> {
-    // D-11 fail-fast (UNCONDITIONAL).
+    // Fail fast (UNCONDITIONAL).
     this.assertStrategyOrPassThrough(parsed, options);
 
     const fetchFn = async (): Promise<unknown[]> => {
       const delegate = this.config.getDelegate(); // thunk — fresh per closure run
       const args = { ...qb };
-      // Merge Accelerate context arg if present (ttl in seconds per FIX 1)
+      // Merge Accelerate context arg if present (ttl in seconds)
       const ctx = PrismaAccelerateCacheStrategy.currentContext.getStore();
       if (ctx?.cacheStrategy) args.cacheStrategy = ctx.cacheStrategy;
       return delegate.findMany(args);
@@ -128,8 +128,8 @@ export class PrismaFetchHelper implements FetchHelper<any> {
   /**
    * Internal cache wrapper used by `findOneOrFail`. Both `executeMany` and
    * `findOneOrFail` derive the cache key from the SAME `buildCacheKey(entityName, parsed)`
-   * util (D-06 — full request fingerprint). TTL sourced from `options.query.cache`
-   * via `getEffectiveTtl` (D-10 — no hard-coded TTL fallback).
+   * util — a full request fingerprint. TTL sourced from `options.query.cache`
+   * via `getEffectiveTtl` — no hard-coded TTL fallback.
    *
    * If `parsed` or `options` is undefined (e.g. legacy callers without request
    * context), the wrap is skipped — fetchFn runs directly. NO 1000ms default.
@@ -147,7 +147,7 @@ export class PrismaFetchHelper implements FetchHelper<any> {
   }
 
   /**
-   * FIX 2 — apply `cacheErrorPolicy` from CrudConfigService.config.query.cacheErrorPolicy.
+   * Apply `cacheErrorPolicy` from CrudConfigService.config.query.cacheErrorPolicy.
    * Mirrors the TypeORM/MikroORM/Drizzle helpers exactly.
    */
   private async withCacheErrorPolicy<R>(wrapped: () => Promise<R>, fetchFn: () => Promise<R>): Promise<R> {
@@ -166,8 +166,8 @@ export class PrismaFetchHelper implements FetchHelper<any> {
   }
 
   /**
-   * Extract the per-request TTL from `options.query.cache` (sole production source per D-10).
-   * Returns `undefined` when the option is unset, false, or non-positive. Units = MILLISECONDS (FIX 1).
+   * Extract the per-request TTL from `options.query.cache` (the sole production source).
+   * Returns `undefined` when the option is unset, false, or non-positive. Units = MILLISECONDS.
    */
   private getEffectiveTtl(options: CrudRequestOptions): number | undefined {
     const optsCache = options?.query?.cache;
@@ -181,13 +181,13 @@ export class PrismaFetchHelper implements FetchHelper<any> {
   private shouldCache(parsed: ParsedRequestParams, options: CrudRequestOptions): boolean {
     if (!this.getResolvedStrategy() || !this.config.entityName) return false;
     if (this.getEffectiveTtl(options) === undefined) return false;
-    if (parsed.options?.cache === false) return false; // D-13 bypass-read
+    if (parsed.options?.cache === false) return false; // per-request bypass-read
     if (parsed.cache === 0) return false; // legacy numeric bypass
     return true;
   }
 
   /**
-   * D-11 fail-fast: throw `CrudCacheNotConfiguredError` UNCONDITIONALLY when:
+   * Fail fast: throw `CrudCacheNotConfiguredError` UNCONDITIONALLY when:
    * - `@Crud cache` is set (positive TTL), AND
    * - consumer did NOT bypass (`?cache=0` or `parsed.options.cache === false`), AND
    * - `cacheStrategy` is undefined.

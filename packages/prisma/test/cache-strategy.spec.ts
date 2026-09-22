@@ -1,7 +1,7 @@
-// Wave 2 plan 21-04: cache-strategy integration spec
+// Prisma cache-strategy integration spec.
 // Exercises the production TTL wiring path: fixture UsersCachedController declares
 // @Crud({ query: { cache: 5000 } }) so PrismaFetchHelper.getEffectiveTtl(options)
-// returns 5000 from options.query.cache at request time (D-10 contract).
+// returns 5000 from options.query.cache at request time.
 
 import { INestApplication } from '@nestjs/common';
 import { APP_FILTER } from '@nestjs/core';
@@ -97,10 +97,10 @@ const dialect = (provider === 'mysql' ? 'mysql' : 'postgres') as 'postgres' | 'm
     expect(wrapSpy).not.toHaveBeenCalled();
   });
 
-  it('throws CrudCacheNotConfiguredError when @Crud cache set without strategy (D-11 unconditional)', async () => {
+  it('throws CrudCacheNotConfiguredError when @Crud cache set without strategy (thrown unconditionally)', async () => {
     // Reset removes the global strategy. The UsersCachedController declares
     // @Crud({ query: { cache: 5000 } }) — now no strategy is wired.
-    // Per D-11, PrismaFetchHelper.assertStrategyOrPassThrough throws
+    // PrismaFetchHelper.assertStrategyOrPassThrough throws
     // CrudCacheNotConfiguredError UNCONDITIONALLY — no status-range ambiguity.
     // The plain Error subclass propagates as 5xx under the default Nest filter.
     CrudConfigService.reset();

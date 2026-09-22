@@ -70,7 +70,7 @@ export interface DrizzleQueryTranslatorConfig<_T extends Record<string, unknown>
   /** Entity name for cache-key prefix. Required when cacheStrategy is set. */
   entityName?: string;
 
-  /** Optional logger threaded into FetchHelper for cacheErrorPolicy warnings (FIX 2). */
+  /** Optional logger threaded into FetchHelper for cacheErrorPolicy warnings. */
   logger?: import('@nestjs/common').LoggerService;
 }
 

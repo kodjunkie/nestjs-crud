@@ -17,7 +17,7 @@ module.exports = {
   testMatch: ['<rootDir>/packages/prisma/test/**/*.spec.ts'],
   testTimeout: 30000,
   forceExit: true,
-  // D-12: scope coverage collection to this adapter's own src tree.
+  // Scope coverage collection to this adapter's own src tree.
   collectCoverageFrom: [
     'packages/prisma/src/**/*.ts',
     '!packages/prisma/src/**/*.d.ts',
@@ -26,11 +26,11 @@ module.exports = {
     '!**/__stubs__/**',
     '!**/__fixture__/**',
   ],
-  // D-12: per-package coverage floor. Statements/Functions/Lines hit 80%+;
+  // Per-package coverage floor. Statements/Functions/Lines hit 80%+;
   // Branches at 75% — lowered for branches only to lock in current floor.
   // Lifting branches to 80% requires additional negative-path test scenarios
-  // for the prisma adapter (Phase 11+). Plan 10-09 SUMMARY documents the
-  // deviation; honest floor > false 80% advertisement.
+  // for the prisma adapter. This deviation is intentional and documented —
+  // an honest floor beats a false 80% advertisement.
   coverageThreshold: {
     global: {
       lines: 80,

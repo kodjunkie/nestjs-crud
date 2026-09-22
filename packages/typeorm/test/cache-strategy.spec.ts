@@ -1,7 +1,7 @@
-// Wave 2 plan 21-02: cache-strategy integration spec
+// TypeORM cache-strategy integration spec.
 // Exercises the production TTL wiring path: fixture controller declares
 // @Crud({ query: { cache: 5000 } }) so FetchHelper's getEffectiveTtl(options)
-// returns 5000 from options.query.cache at request time (D-10 contract).
+// returns 5000 from options.query.cache at request time.
 
 import { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
@@ -64,8 +64,8 @@ const runSuite = !dialect || dialect === 'mysql' || dialect === 'postgres';
     expect(b.status).toBe(200);
     expect(b.body).toEqual(a.body);
     // Production-wiring check: wrap is invoked with the ttl from @Crud option (5000ms).
-    // Proves getEffectiveTtl(options) sourced TTL from options.query.cache (D-10)
-    // and that ttl is in MILLISECONDS uniformly (FIX 1).
+    // Proves getEffectiveTtl(options) sourced TTL from options.query.cache
+    // and that ttl is in MILLISECONDS uniformly.
     expect(wrapSpy).toHaveBeenCalled();
     const wrapCalls = wrapSpy.mock.calls;
     expect(wrapCalls.some((args: unknown[]) => args[2] === 5000)).toBe(true);

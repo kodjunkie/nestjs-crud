@@ -463,7 +463,7 @@ describe('TypeOrmQueryTranslator', () => {
     });
   });
 
-  describe('applyToQuery — mapSort D-05b allowlist integration', () => {
+  describe('applyToQuery — mapSort dotted-path SQLi allowlist integration', () => {
     it('throws BadRequestException on unknown single-segment sort field', () => {
       expect(() => applyAll({ sort: [{ field: 'ssn', order: 'ASC' }] })).toThrow(BadRequestException);
     });

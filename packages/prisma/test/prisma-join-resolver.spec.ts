@@ -9,7 +9,7 @@ const allowedColumnsByRelation: Record<string, string[]> = {
 const makeResolver = (): PrismaJoinResolver => new PrismaJoinResolver({ relationFields, allowedColumnsByRelation });
 
 describe('PrismaJoinResolver', () => {
-  describe('getAllowedColumnsFor (D-05b SQLi mitigation surface)', () => {
+  describe('getAllowedColumnsFor (dotted-path SQLi mitigation surface)', () => {
     it('returns the configured column set for a known relation', () => {
       const resolver = makeResolver();
       const cols = resolver.getAllowedColumnsFor('company');

@@ -22,7 +22,7 @@ const runSuite = !dialect || dialect === 'mysql' || dialect === 'postgres';
     await app?.close();
   });
 
-  // Cell 1: Forward navigation across 3 pages — no skip/repeat rows
+  // Forward navigation across 3 pages — no skip/repeat rows
   it('forward navigation across 3 pages returns no skip/repeat rows', async () => {
     const seenIds = new Set<number>();
     let cursor: string | null = null;
@@ -42,7 +42,7 @@ const runSuite = !dialect || dialect === 'mysql' || dialect === 'postgres';
     expect(seenIds.size).toBeGreaterThanOrEqual(5);
   });
 
-  // Cell 2: End-of-stream — cursor.next === null
+  // End-of-stream — cursor.next === null
   it('end-of-stream returns cursor.next === null', async () => {
     let cursor: string | null = null;
     let lastBody: any = null;
@@ -56,7 +56,7 @@ const runSuite = !dialect || dialect === 'mysql' || dialect === 'postgres';
     expect(lastBody.cursor.next).toBeNull();
   });
 
-  // Cell 3: Back-direction cursor — prior page in correct order
+  // Back-direction cursor — prior page in correct order
   it('back-direction cursor.prev returns prior page in correct order', async () => {
     const page1 = (await request(server).get(`/users-cursor?sort=id,ASC`).expect(200)).body;
     expect(page1.cursor.next).toBeTruthy();
@@ -66,7 +66,7 @@ const runSuite = !dialect || dialect === 'mysql' || dialect === 'postgres';
     expect(back.data.map((r: any) => r.id)).toEqual(page1.data.map((r: any) => r.id));
   });
 
-  // Cell 4: Round-trip forward+back — identical rows as forward page 1
+  // Round-trip forward+back — identical rows as forward page 1
   it('round-trip forward+back returns identical rows', async () => {
     const page1 = (await request(server).get(`/users-cursor?sort=id,ASC`).expect(200)).body;
     const page2 = (await request(server).get(`/users-cursor?sort=id,ASC&cursor=${page1.cursor.next}`).expect(200)).body;
@@ -74,7 +74,7 @@ const runSuite = !dialect || dialect === 'mysql' || dialect === 'postgres';
     expect(back.data.map((r: any) => r.id)).toEqual(page1.data.map((r: any) => r.id));
   });
 
-  // Cell 5: Stability under writes — insert mid-pagination, cursor still resolves correctly
+  // Stability under writes — insert mid-pagination, cursor still resolves correctly
   it('cursor stable when row inserted mid-pagination', async () => {
     const page1 = (await request(server).get(`/users-cursor?sort=id,ASC`).expect(200)).body;
     expect(page1.cursor.next).toBeTruthy();
@@ -96,19 +96,19 @@ const runSuite = !dialect || dialect === 'mysql' || dialect === 'postgres';
     }
   });
 
-  // Cell 6: Multi-sort + cursor → 400 BadRequest
+  // Multi-sort + cursor → 400 BadRequest
   it('multi-sort + cursor returns 400 BadRequest', async () => {
     const { body } = await request(server).get(`/users-cursor?sort=id,ASC&sort=createdAt,DESC`).expect(400);
     expect(body.message).toMatch(/single sort field/i);
   });
 
-  // Cell 7: Invalid cursor → 400 BadRequest
+  // Invalid cursor → 400 BadRequest
   it('invalid cursor returns 400 BadRequest', async () => {
     const { body } = await request(server).get(`/users-cursor?sort=id,ASC&cursor=!!!nonsense!!!`).expect(400);
     expect(body.message).toMatch(/Invalid cursor/);
   });
 
-  // Cell 8: @CrudAuth filter still applies — cursor pages are subset of offset pages
+  // @CrudAuth filter still applies — cursor pages are subset of offset pages
   it('@CrudAuth filter still applies in cursor mode', async () => {
     // /users-cursor does not restrict by company param; /users restricts by companyId.
     // Both share the same underlying UsersService. Verify cursor response ids are valid user ids.
@@ -121,7 +121,7 @@ const runSuite = !dialect || dialect === 'mysql' || dialect === 'postgres';
     }
   });
 
-  // Cell 9: Soft-delete still applies in cursor mode — deleted row absent from cursor pages
+  // Soft-delete still applies in cursor mode — deleted row absent from cursor pages
   it('soft-delete still applies in cursor mode', async () => {
     // POST a throwaway user instead of targeting a seeded row. The seeded users
     // (ids 1..21, including user 5 with companyId=1, profileId=5) are shared by
@@ -154,7 +154,7 @@ const runSuite = !dialect || dialect === 'mysql' || dialect === 'postgres';
     expect(allIds.has(targetId)).toBe(false);
   });
 
-  // Cell 10: Response shape — no total/page/pageCount keys
+  // Response shape — no total/page/pageCount keys
   it('response shape has no total/page/pageCount keys', async () => {
     const { body } = await request(server).get(`/users-cursor?sort=id,ASC`).expect(200);
     expect(body.total).toBeUndefined();
@@ -165,12 +165,12 @@ const runSuite = !dialect || dialect === 'mysql' || dialect === 'postgres';
     expect(body.cursor.prev).toBeNull();
   });
 
-  // Cell 11: SQLi guard — ?sort=id;DROP rejected
+  // SQLi guard — ?sort=id;DROP rejected
   it('SQLi guard rejects sort field with semicolon via existing allowlist', async () => {
     await request(server).get(`/users-cursor?sort=id;DROP,ASC`).expect(400);
   });
 
-  // Cell 12: Descending sort works symmetrically
+  // Descending sort works symmetrically
   it('descending sort works symmetrically', async () => {
     const page1 = (await request(server).get(`/users-cursor?sort=id,DESC`).expect(200)).body;
     expect(page1.data.length).toBeGreaterThan(0);
@@ -187,7 +187,7 @@ const runSuite = !dialect || dialect === 'mysql' || dialect === 'postgres';
     expect(minP1).toBeGreaterThan(maxP2);
   });
 
-  // Cell 13: PK tie-breaker — deterministic order when sort field has equal values
+  // Primary-key tie-breaker — deterministic order when sort field has equal values
   it('PK tie-breaker on sort-field ties returns deterministic order', async () => {
     // Sort by companyId (integer) — all seeded users share companyId=1, so every row
     // ties on the sort column. The PK tie-breaker (ORDER BY companyId ASC, id ASC)
@@ -248,7 +248,7 @@ const runSuite = !dialect || dialect === 'mysql' || dialect === 'postgres';
     }
   });
 
-  // Cell 14: Cursor mode bypasses Phase 21 cache wrap — response shape proves direct builder.getMany() path
+  // Cursor mode bypasses the cache wrap — response shape proves direct builder.getMany() path
   it('cursor mode bypasses cache wrap (response shape proves direct path, not cached offset)', async () => {
     // Two identical cursor requests — both must return cursor shape (not offset/cached shape).
     const r1 = (await request(server).get(`/users-cursor?sort=id,ASC`).expect(200)).body;
@@ -262,7 +262,7 @@ const runSuite = !dialect || dialect === 'mysql' || dialect === 'postgres';
     expect(r1.data.map((r: any) => r.id)).toEqual(r2.data.map((r: any) => r.id));
   });
 
-  // Cell 15: Missing limit + cursor → 400 (uses auxiliary /users-cursor-no-limit fixture controller)
+  // Missing limit + cursor → 400 (uses auxiliary /users-cursor-no-limit fixture controller)
   it('missing limit and cursor mode returns 400 BadRequest', async () => {
     // /users-cursor-no-limit has @Crud({ query: { pagination: 'cursor' } }) with NO limit/maxLimit.
     // doGetManyCursor sees getTake() return null and throws BadRequestException.
@@ -270,7 +270,7 @@ const runSuite = !dialect || dialect === 'mysql' || dialect === 'postgres';
     expect(body.message).toMatch(/cursor pagination requires a limit/i);
   });
 
-  // Cell 16: Route-declared default sort — no ?sort= param returns 200 and the next
+  // Route-declared default sort — no ?sort= param returns 200 and the next
   // cursor decodes to the route's declared default field, proving the fallback (not
   // incidental ordering) drove the page.
   it('cursor mode with no ?sort= falls back to the route default sort and returns 200', async () => {
@@ -282,7 +282,7 @@ const runSuite = !dialect || dialect === 'mysql' || dialect === 'postgres';
     expect(decoded.sortField).toBe('id');
   });
 
-  // Cell 17: Multi-field route default — still 400, message identifies the route default
+  // Multi-field route default — still 400, message identifies the route default
   // (not the request) as the origin and reports the field count.
   it('cursor mode with a multi-field route default and no ?sort= returns 400 naming the route default', async () => {
     const { body } = await request(server).get(`/users-cursor-multi-sort`).expect(400);
@@ -291,8 +291,8 @@ const runSuite = !dialect || dialect === 'mysql' || dialect === 'postgres';
     expect(body.message).toMatch(/@Crud\(\{ query: \{ sort \} \}\)/);
   });
 
-  // Cell 18: No sort anywhere — declared neither by the client nor by the route — still
-  // 400, and the message names both remedies with no legacy count-suffix wording (D-04).
+  // No sort anywhere — declared neither by the client nor by the route — still
+  // 400, and the message names both remedies with no legacy count-suffix wording.
   it('cursor mode with no ?sort= and no route default returns 400 naming both remedies', async () => {
     const { body } = await request(server).get(`/users-cursor`).expect(400);
     expect(body.message).toMatch(/single sort field/i);
@@ -301,7 +301,7 @@ const runSuite = !dialect || dialect === 'mysql' || dialect === 'postgres';
     expect(body.message).not.toMatch(/got:/);
   });
 
-  // Cell 19: Effective-sort mismatch regression — a cursor minted against the resolved
+  // Effective-sort mismatch regression — a cursor minted against the resolved
   // default sort field must still trip the mismatch guard when replayed with an explicit
   // ?sort= naming a different field, proving the guard compares against the *effective*
   // sort (post-fallback), not only the client-supplied one.

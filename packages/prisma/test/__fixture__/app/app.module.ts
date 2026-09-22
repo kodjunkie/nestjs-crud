@@ -21,7 +21,7 @@ export class AppModule {
     // Prisma v7: PrismaClient ctor no longer accepts `datasources`/`datasourceUrl`
     // and does not auto-read env.DATABASE_URL. The shared factory wires the
     // correct driver adapter (@prisma/adapter-pg / @prisma/adapter-mariadb)
-    // from the URL populated by setEnv() above. See D-01 amendment.
+    // from the URL populated by setEnv() above (env-driven URL wiring).
 
     const { makePrismaClient } = require('../make-prisma-client');
     const prismaClient = makePrismaClient(dialect);

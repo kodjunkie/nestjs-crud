@@ -15,7 +15,7 @@ export interface DrizzleFetchHelperConfig {
   cacheStrategy?: CacheStrategy;
   /** Entity name for cache-key prefix. Required when cacheStrategy is set. */
   entityName?: string;
-  /** Optional logger threaded into withCacheErrorPolicy (FIX 2). */
+  /** Optional logger threaded into withCacheErrorPolicy. */
   logger?: LoggerService;
 }
 
@@ -69,7 +69,7 @@ export class DrizzleFetchHelper implements FetchHelper<AnyDrizzleSelect> {
     const fetchFn = async (): Promise<unknown[]> => (await qb) as unknown as unknown[];
 
     if (!this.shouldCache(parsed, options)) {
-      // D-11 fail-fast: if @Crud cache option is set but no strategy is wired, throw.
+      // Fail fast: if @Crud cache option is set but no strategy is wired, throw.
       this.assertStrategyOrPassThrough(parsed, options);
       return (await fetchFn()) as unknown as R[];
     }
@@ -93,9 +93,9 @@ export class DrizzleFetchHelper implements FetchHelper<AnyDrizzleSelect> {
 
   /**
    * Internal cache wrapper used by `findOneOrFail`. Both reads derive the cache
-   * key from the SAME `buildCacheKey(entityName, parsed)` util (D-06 — full request
-   * fingerprint). TTL sourced from `options.query.cache` via `getEffectiveTtl`
-   * (D-10 — no hard-coded TTL fallback).
+   * key from the SAME `buildCacheKey(entityName, parsed)` util — a full request
+   * fingerprint. TTL sourced from `options.query.cache` via `getEffectiveTtl` —
+   * no hard-coded TTL fallback.
    *
    * If `parsed` or `options` is undefined (legacy callers without request context),
    * the wrap is SKIPPED — fetchFn runs directly. NO 1000ms default.
@@ -117,7 +117,7 @@ export class DrizzleFetchHelper implements FetchHelper<AnyDrizzleSelect> {
   }
 
   /**
-   * FIX 2 — apply `cacheErrorPolicy` from CrudConfigService.config.query.cacheErrorPolicy.
+   * Apply `cacheErrorPolicy` from CrudConfigService.config.query.cacheErrorPolicy.
    * Mirrors the TypeORM/MikroORM/Prisma helpers exactly.
    */
   private async withCacheErrorPolicy<R>(wrapped: () => Promise<R>, fetchFn: () => Promise<R>): Promise<R> {
@@ -136,8 +136,8 @@ export class DrizzleFetchHelper implements FetchHelper<AnyDrizzleSelect> {
   }
 
   /**
-   * Extract the per-request TTL from `options.query.cache` (sole production source per D-10).
-   * Returns `undefined` when the option is unset, false, or non-positive. Units = MILLISECONDS (FIX 1).
+   * Extract the per-request TTL from `options.query.cache` (the sole production source).
+   * Returns `undefined` when the option is unset, false, or non-positive. Units = MILLISECONDS.
    */
   private getEffectiveTtl(options: CrudRequestOptions): number | undefined {
     const optsCache = options?.query?.cache;
@@ -151,13 +151,13 @@ export class DrizzleFetchHelper implements FetchHelper<AnyDrizzleSelect> {
   private shouldCache(parsed: ParsedRequestParams, options: CrudRequestOptions): boolean {
     if (!this.getResolvedStrategy() || !this.config.entityName) return false;
     if (this.getEffectiveTtl(options) === undefined) return false;
-    if (parsed.options?.cache === false) return false; // D-13 bypass-read
+    if (parsed.options?.cache === false) return false; // per-request bypass-read
     if (parsed.cache === 0) return false; // legacy numeric bypass
     return true;
   }
 
   /**
-   * D-11 fail-fast: if the consumer set `@Crud({ query: { cache } })` but did NOT
+   * Fail fast: if the consumer set `@Crud({ query: { cache } })` but did NOT
    * wire a strategy, throw `CrudCacheNotConfiguredError`. Mirrors TypeORM behavior.
    * Skips the throw when bypass is requested (consumer explicitly opted out for this read).
    */

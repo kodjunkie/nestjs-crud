@@ -191,8 +191,8 @@ describe('PrismaQueryComposer', () => {
       expect(result.include?.company).toBe(true);
     });
 
-    // L2 guard: to-one soft-delete MUST stay at parent where, never inside include
-    it('L2: to-one relation soft-delete routes to parent where, include remains true (not object)', () => {
+    // To-one soft-delete MUST stay at parent where, never inside include
+    it('to-one relation soft-delete routes to parent where, include remains true (not object)', () => {
       // SCondition dotted-path 'company.deletedAt' with $isnull → parent where.company.deletedAt = null
       const parsed = {
         ...emptyParsed,
@@ -211,8 +211,8 @@ describe('PrismaQueryComposer', () => {
       expect(result.where).toBeDefined();
     });
 
-    // L3 guard: include does NOT auto-inject deletedAt filter
-    it('L3: include does NOT auto-filter soft-deleted relations (consumer opt-in only)', () => {
+    // include does NOT auto-inject a deletedAt filter
+    it('include does NOT auto-filter soft-deleted relations (consumer opt-in only)', () => {
       const parsed = { ...emptyParsed };
       const options = {
         query: { join: { company: { eager: true } }, softDelete: true },

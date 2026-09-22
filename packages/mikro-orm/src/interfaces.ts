@@ -36,9 +36,9 @@ export interface MikroOrmQueryTranslatorConfig<_T extends object> {
   joinResolver: JoinResolver<QueryBuilder<object>>;
   /** Optional BYO cache backend. Threaded into FetchHelper for read-path wrapping. */
   cacheStrategy?: import('@nestjs-crud/core/cache').CacheStrategy;
-  /** Entity class name for cache-key prefix derivation (D-06). */
+  /** Entity class name for cache-key prefix derivation. */
   entityName?: string;
-  /** Optional logger threaded into FetchHelper for cacheErrorPolicy warnings (FIX 2). */
+  /** Optional logger threaded into FetchHelper for cacheErrorPolicy warnings. */
   logger?: import('@nestjs/common').LoggerService;
 }
 

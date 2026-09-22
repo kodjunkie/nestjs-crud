@@ -15,7 +15,7 @@ import { TypeOrmWhereBuilder } from '../src/query/typeorm-where-builder';
 import { TypeOrmJoinResolver } from '../src/typeorm-join-resolver';
 import { TranslatorEntity, TranslatorRelation } from './__fixture__/translator-entity';
 
-// CONTRACT (PATTERNS.md §5 + input-sanitizer.spec.ts:11-22):
+// CONTRACT (input-sanitizer.spec.ts:11-22):
 // `onBadRequest` MUST throw. A silent no-op stub would let a miss return
 // silently — the SQLi bug masked by the test harness. Always a throwing stub.
 const throwingOnBadRequest = (msg: string): never => {
@@ -44,7 +44,7 @@ const makeComposer = (
   });
 };
 
-describe('TypeOrmQueryComposer mapSort dotted-path SQLi regression (D-05a/D-05b)', () => {
+describe('TypeOrmQueryComposer mapSort dotted-path SQLi regression', () => {
   let dataSource: DataSource;
   let repo: Repository<TranslatorEntity>;
   let composer: TypeOrmQueryComposer<TranslatorEntity>;

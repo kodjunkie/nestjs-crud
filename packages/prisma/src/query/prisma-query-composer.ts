@@ -12,10 +12,10 @@ import type { ParsedRequestParams, QuerySort } from '@nestjs-crud/request';
  * `relation` + `column` against `joinResolver.getAllowedColumnsFor(relation)`
  * before any identifier reaches Prisma's orderBy.
  *
- * Spike landmines respected:
- * - L1: no `previewFeatures = ["relationJoins"]` forced
- * - L2: to-one relation soft-delete compiles to parent-level `where`, NEVER inside `include`
- * - L3: `include` does NOT auto-filter soft-deleted relations (consumer opt-in only)
+ * Constraints respected:
+ * - No `previewFeatures = ["relationJoins"]` forced
+ * - To-one relation soft-delete compiles to parent-level `where`, NEVER inside `include`
+ * - `include` does NOT auto-filter soft-deleted relations (consumer opt-in only)
  *
  * @since 2.0.0
  */
@@ -114,7 +114,7 @@ export class PrismaQueryComposer implements QueryComposer<any> {
       whereParts.push(searchWhere);
     }
 
-    // 2. Soft-delete (L2: parent-level only; L3: no auto-filter in include)
+    // 2. Soft-delete (parent-level only; include does not auto-filter)
     if (this.entityHasDeleteColumn && this.softDeleteColumn && !parsed.includeDeleted && queryOptions.softDelete) {
       whereParts.push({ [this.softDeleteColumn]: null });
     }
@@ -280,8 +280,8 @@ export class PrismaQueryComposer implements QueryComposer<any> {
   /**
    * Build a Prisma `include` object for eager/requested joins.
    *
-   * L3: include does NOT auto-inject deletedAt filter (consumer opt-in only).
-   * L2: to-one filtered include is NEVER emitted — consumer routes filters
+   * `include` does NOT auto-inject a deletedAt filter (consumer opt-in only).
+   * A to-one filtered include is NEVER emitted — consumer routes filters
    *     to parent where via SCondition dotted-path (handled by WhereBuilder).
    *
    * // TODO: to-many filtered include support (future work)
@@ -325,8 +325,8 @@ export class PrismaQueryComposer implements QueryComposer<any> {
     // Eager joins from options.query.join
     for (const [field, opts] of Object.entries(joinOptions)) {
       if (this.relationFields.includes(field)) {
-        // L3: emit true only — no auto-deletedAt injection
-        // L2: to-one filtered include NEVER emitted; to-many filter is future work
+        // Emit true only — no auto-deletedAt injection
+        // To-one filtered include NEVER emitted; to-many filter is future work
         // TODO: to-many filtered include support
         include[field] = true;
       } else if (opts) {
@@ -338,7 +338,7 @@ export class PrismaQueryComposer implements QueryComposer<any> {
     if (parsed.join?.length) {
       for (const join of parsed.join) {
         if (this.relationFields.includes(join.field) && !(join.field in include)) {
-          // L3: emit true only
+          // Emit true only — no auto-deletedAt injection
           include[join.field] = true;
         }
       }

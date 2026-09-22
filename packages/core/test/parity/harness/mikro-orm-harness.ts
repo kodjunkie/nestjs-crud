@@ -24,7 +24,7 @@ import { MikroOrmQueryComposer } from '@nestjs-crud/mikro-orm/query/mikro-orm-qu
 import { REFERENCE_DATASET, RefUser } from '../scondition-matrix';
 
 // ---------------------------------------------------------------------------
-// Throwing stub — NEVER jest.fn() on a security path (PATTERNS.md §5)
+// Throwing stub — NEVER jest.fn() on a security path
 // ---------------------------------------------------------------------------
 
 const throwingOnBadRequest = (msg: string): never => {
@@ -98,7 +98,7 @@ function makeMockQb(): { qb: any; state: MockQbState } {
 
 // ---------------------------------------------------------------------------
 // Recording stub for the orphan-nested-join guard — a plain-function double,
-// never a mock framework spy, on this security path (PATTERNS.md §5).
+// never a mock framework spy, on this security path.
 // Exposes leftJoinAndSelect, joinAndSelect and populate, matching the
 // feature-detection MikroOrmJoinResolver performs before falling back
 // between them.

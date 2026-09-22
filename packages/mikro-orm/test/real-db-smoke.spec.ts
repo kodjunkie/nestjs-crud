@@ -92,7 +92,7 @@ const runSuite = dialect === 'postgres' || dialect === 'mysql';
   });
 
   // Scenario 4: GET /users?sort=email,ASC — verifies sort traverses full pipeline (QueryComposer)
-  // This also validates D-05b: if the SQLi guard regresses, the allowlist check throws and the
+  // This also validates the dotted-path allowlist: if the SQLi guard regresses, the allowlist check throws and the
   // test would fail with 400 instead of 200.
   it('S4: GET /users sorted by email ASC returns users in ascending email order', async () => {
     const query = qb.sortBy({ field: 'email', order: 'ASC' }).query();

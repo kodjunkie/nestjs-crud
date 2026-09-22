@@ -76,8 +76,8 @@ export class TypeOrmFetchHelper<T extends ObjectLiteral> implements FetchHelper<
   /**
    * Internal cache wrapper used by both `executeMany` and `findOneOrFail`.
    * Both methods derive the cache key from the SAME `buildCacheKey(entityName, parsed)`
-   * util (D-06 — full request fingerprint). TTL sourced from `options.query.cache`
-   * via `getEffectiveTtl` (D-10 — no hard-coded TTL fallback).
+   * util — a full request fingerprint. TTL sourced from `options.query.cache`
+   * via `getEffectiveTtl` — no hard-coded TTL fallback.
    *
    * If `parsed` or `options` is undefined (e.g. legacy callers without request
    * context), the wrap is skipped — fetchFn runs directly.
@@ -130,7 +130,7 @@ export class TypeOrmFetchHelper<T extends ObjectLiteral> implements FetchHelper<
   }
 
   /**
-   * Extract the per-request TTL from `options.query.cache` (sole production source per D-10).
+   * Extract the per-request TTL from `options.query.cache` (the sole production source).
    * Returns `undefined` when the option is unset, false, or non-positive. Units = MILLISECONDS.
    */
   private getEffectiveTtl(options: CrudRequestOptions): number | undefined {
@@ -141,14 +141,14 @@ export class TypeOrmFetchHelper<T extends ObjectLiteral> implements FetchHelper<
 
   /**
    * Cache predicate: requires a strategy, an entityName, a positive TTL,
-   * and that the per-request bypass flag is NOT explicitly false (D-13).
+   * and that the per-request bypass flag is NOT explicitly false.
    * The legacy numeric `parsed.cache === 0` check is preserved as a fallback
    * for clients that haven't migrated to the new `parsed.options.cache` boolean.
    */
   private shouldCache(parsed: ParsedRequestParams, options: CrudRequestOptions, strategy: CacheStrategy): boolean {
     if (!strategy || !this.config.entityName) return false;
     if (this.getEffectiveTtl(options) === undefined) return false;
-    if (parsed.options?.cache === false) return false; // D-13 bypass-read
+    if (parsed.options?.cache === false) return false; // per-request bypass-read
     if (parsed.cache === 0) return false; // legacy numeric bypass
     return true;
   }

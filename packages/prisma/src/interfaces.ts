@@ -24,7 +24,7 @@ export interface PrismaQueryTranslatorConfig<_T> {
   /** Entity name used as cache-key prefix. Required when cacheStrategy is set. */
   entityName?: string;
 
-  /** Optional logger passed into PrismaFetchHelper for cacheErrorPolicy warnings (FIX 2). */
+  /** Optional logger passed into PrismaFetchHelper for cacheErrorPolicy warnings. */
   logger?: {
     error: (msg: string, trace?: string) => void;
     warn?: (msg: string) => void;

@@ -5,7 +5,7 @@
  * any identifier reaches `sql.identifier`. Drizzle's SQL builder does NOT
  * parameterize column identifiers, so the allowlist is the only defense.
  *
- * Harness contract (PATTERNS.md §5): `onBadRequest` MUST throw. A `jest.fn()`
+ * Harness contract: `onBadRequest` MUST throw. A `jest.fn()`
  * stub would let a miss return silently — masking the exact bug this
  * regression gate exists to close.
  *

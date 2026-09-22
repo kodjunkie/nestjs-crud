@@ -1,10 +1,10 @@
 /**
  * Relation-load-strategy integration spec.
  *
- * RED gate: this spec MUST fail before Task 3 lands (composer doesn't yet honor
- * `relationLoadStrategy: 'query'`, so under the 'query' branch joins are
- * skipped — `company` and `company.projects` come back undefined, and the
- * row-count parity assertion fails).
+ * This spec fails if the composer stops honoring `relationLoadStrategy: 'query'`:
+ * joins under the 'query' branch would be skipped, `company` and
+ * `company.projects` would come back undefined, and the row-count parity
+ * assertion would fail.
  *
  * Coverage:
  *  - Test 1: row-count parity between 'query' and 'join' strategies on deep
@@ -13,7 +13,7 @@
  *    `company.projects`.
  *  - Test 3 (dotted-path sort SQLi regression): `?sort=company.invalid_col,ASC` returns 400
  *    under the 'query' branch — proves SQLi sort-allowlist still fires.
- *  - Test 4 (open-question #5 smoke): `setFindOptions` + `query.cache(...)`
+ *  - Test 4 (smoke): `setFindOptions` + `query.cache(...)`
  *    coexist (skipped if cache provider not configured in fixture).
  *  - Test 5 (alias-select parity audit — divergence documentation): top-level
  *    `?fields=` honored under 'query'; relation-level `JoinOption.allow` is a
@@ -153,20 +153,20 @@ describe('TypeORM relationLoadStrategy opt-in', () => {
         .query({ join: ['company'], sort: 'company.invalid_col,ASC' });
       expect(res.status).toBe(400);
       // mapSort throws `Invalid column '<col>' for relation '<relation>'` per
-      // typeorm-query-composer.ts mapSort branch — D-05b guard.
+      // typeorm-query-composer.ts mapSort branch — the dotted-path SQLi guard.
       expect(JSON.stringify(res.body)).toMatch(/Invalid column.*invalid_col.*company/);
     });
   });
 
-  describe('Test 4 (open question #5 smoke): cache + setFindOptions coexist', () => {
+  describe('Test 4: cache + setFindOptions coexist', () => {
     // withCache config has no cache provider configured (orm.config.ts only
-    // sets connection params; cache is not enabled). Skip explicitly so the
-    // intent is logged for the SUMMARY.
+    // sets connection parameters; cache is not enabled). Skip explicitly so
+    // the test report shows the case exists but did not run.
     it.skip('cache+strategy smoke skipped: fixture orm.config has no cache provider', async () => {
       // To enable: add `cache: { type: "database" }` (or redis) to withCache
-      // and remove .skip. This test was deferred per RESEARCH open question #5
-      // because enabling DB cache requires schema changes (new query_cache
-      // table) that are out of scope for this spec.
+      // and remove .skip. This test was deferred because enabling DB cache
+      // requires schema changes (new query_cache table) that are out of
+      // scope for this spec.
     });
   });
 

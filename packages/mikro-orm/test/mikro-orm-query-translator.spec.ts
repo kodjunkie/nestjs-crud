@@ -6,7 +6,7 @@
  * Covers 9 describe blocks:
  *   1. buildWhere — operators
  *   2. applyToQuery → WHERE
- *   3. applyToQuery → sort (D-05b allowlist on dotted paths)
+ *   3. applyToQuery → sort (allowlist on dotted paths)
  *   4. applyToQuery → pagination
  *   5. applyToQuery → field selection
  *   6. applyToQuery → soft-delete
@@ -15,7 +15,7 @@
  *   9. findOneOrFail
  *
  * All specs use `@mikro-orm/sqlite` in-memory em. `onBadRequest` is a
- * throwing stub (security-path contract — PATTERNS.md §5).
+ * throwing stub (security-path contract).
  *
  * di-scope-awareness: translator ctor receives a fresh
  * `() => em.fork()` thunk; never a captured em.
@@ -195,7 +195,7 @@ describe('MikroOrmQueryTranslator', () => {
   });
 
   // ---------------------------------------------------------------------------
-  describe('applyToQuery → sort (D-05b allowlist)', () => {
+  describe('applyToQuery → sort (dotted-path SQLi allowlist)', () => {
     it('allows a known own-field sort', () => {
       const parsed = { ...emptyParsed, sort: [{ field: 'name', order: 'ASC' as const }] };
       expect(() => translator.applyToQuery(qb(), parsed, emptyOptions)).not.toThrow();
