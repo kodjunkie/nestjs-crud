@@ -20,16 +20,14 @@ npm install @nestjs-crud/core @nestjs-crud/mikro-orm
 npm install @nestjs-crud/request
 ```
 
-**Required peer deps (install explicitly — v1 does NOT declare them):**
+**Required peer deps. v1 declares only some of them (undeclared ones marked ✗), so install all explicitly:**
 
 - `@nestjs-crud/core` peers: `class-validator`, `class-transformer`
-- `@nestjs-crud/typeorm` ALSO needs: `typeorm`, `@nestjs/typeorm`, `@nestjs/common`
-- `@nestjs-crud/drizzle` ALSO needs: `drizzle-orm` (≥ 0.36.0), `@nestjs/common`
+- `@nestjs-crud/typeorm` ALSO needs: `typeorm` ✗, `@nestjs/typeorm` ✗, `@nestjs/common` ✗. It declares no peers.
+- `@nestjs-crud/drizzle` ALSO needs: `drizzle-orm` (≥ 0.36.0), `@nestjs/common` ✗
 - `@nestjs-crud/mikro-orm` ALSO needs: `@mikro-orm/core` (≥ 6.0.0), `@mikro-orm/knex` (≥ 6.0.0), `@nestjs/common`
 
-`npm install` will NOT warn if you forget. Symptoms at runtime: `TypeError: repo.createQueryBuilder is not a function` or `Cannot find module 'typeorm'`. Fixed in v2 (every adapter declares full peers).
-
-Swagger optional — install `@nestjs/swagger` to enable; library `safeRequire`-skips when absent.
+`npm install` will NOT warn about ✗ peers. Symptoms at runtime: `TypeError: repo.createQueryBuilder is not a function` or `Cannot find module 'typeorm'`. Fixed in v2 (every adapter declares full peers).
 
 ## Global Defaults — `CrudConfigService.load()`
 
@@ -125,7 +123,7 @@ constructor(@InjectRepository(User) repo: EntityRepository<User>) {
 | `PATCH`  | `/users/:id`         | `updateOneBase`  |
 | `PUT`    | `/users/:id`         | `replaceOneBase` |
 | `DELETE` | `/users/:id`         | `deleteOneBase`  |
-| `POST`   | `/users/:id/recover` | `recoverOneBase` |
+| `PATCH`  | `/users/:id/recover` | `recoverOneBase` |
 
 ## Query Params (Frontend → Backend)
 
@@ -257,18 +255,16 @@ export class User {
 
 Install `@nestjs/swagger` — auto-generates. Library `safeRequire`-skips when absent.
 
-**v2 heads-up:** `ParamOption.enum`'s `SwaggerEnumType` is internal-import-pathed in v1 (`@nestjs/swagger/dist/types/swagger-enum.type`); v2 inlines it (one-line swap if you import same path directly). v2 also rewrites default Swagger text + adds `@Crud({ swagger: {...} })` override surface — snapshot-test OpenAPI? Expect drift. See `nestjs-crud-migration` skill §Swagger.
+**v2 heads-up:** `ParamOption.enum`'s `SwaggerEnumType` is internal-import-pathed in v1 (`@nestjs/swagger/dist/types/swagger-enum.type`); v2 inlines it (one-line swap if you import same path directly). v2 also rewrites default Swagger text + adds `@Crud({ swagger: {...} })` override surface — snapshot-test OpenAPI? Expect drift. See `nestjs-crud-migration` skill §C–§D.
 
 ## Best Practices
 
 - **`CondOperator` enum, never raw strings.** `'$cont'` silently misspells; `CondOperator.CONTAINS` is TypeScript-checked.
 - **`CrudValidationGroups` constants, never magic strings.** `'update'` !== `CrudValidationGroups.UPDATE`.
-- **`@ParsedBody()` not `@Body()` in write overrides.** `@Body()` bypasses group selection.
 - **Always `exclude` sensitive fields in `query` config.** Without it, `?fields=password` returns it.
 - **Always `allow`-list join fields on sensitive relations.** Without `allow`, joined relation returns all columns.
 - **Use `search` for AND/OR composition; `filter` is AND-only.** Raw: `?s={"$or":[{"name":{"$contL":"a"}},{"email":{"$contL":"a"}}]}`
 - **Set `maxLimit` server-side — never trust client `limit` alone.** Client omitting `limit` returns all rows without `maxLimit`.
-- **`@UseGuards()` on controller class, not individual routes.** Runs before `CrudRequestInterceptor` resolves `property` from `req`.
 
 ## Common Issues
 
@@ -281,7 +277,7 @@ Install `@nestjs/swagger` — auto-generates. Library `safeRequire`-skips when a
 | Flat array instead of `{ data, count, total, page, pageCount }` | Set `alwaysPaginate: true` inside `query:` (NOT top-level) or via `CrudConfigService.load()`. |
 | `TypeError: repo.createQueryBuilder is not a function` / `Cannot find module 'typeorm'` | Adapter peer not installed. v1 doesn't declare peers — install per §Install list manually. |
 | Swagger metadata empty | `@nestjs/swagger` not installed. `safeRequire` skips Swagger setup; install + restart. |
-| `@CrudAuth` filter applies but persisted writes have wrong values (or missing) | **v1 silently drops typos in `@CrudAuth({ persist: {...} })` against entity columns.** Auth-filter bypass on writes. Audit every persist block by hand. v2 throws `RequestQueryException`. |
+| `@CrudAuth` filter applies but persisted writes have wrong values (or missing) | Typo in a `persist` key, silently dropped (see §`@CrudAuth` footgun). Fix the key. |
 | MikroORM: stale entity across requests / `em.flush()` doesn't persist | Subclass cached `em` at constructor time, breaking per-request identity-map isolation. Resolve `em` fresh inside every method. v2 enforces structurally via `getEm` thunk. |
 | `@Crud({ query: { cache: N } })` does nothing on Drizzle/MikroORM | Only TypeORM honors `cache` in v1. Drizzle/MikroORM silently no-op. Use ORM's native cache primitive at app layer. v2: unified `CacheStrategy` interface across all 4 adapters. |
 
