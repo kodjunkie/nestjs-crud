@@ -9,6 +9,7 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 - **NestJS 12 support.** The `@nestjs/common` peer range now accepts `^12.0.0` alongside `^10.0.0 || ^11.0.0`.
 - **node-redis 6 support.** The `redis` peer range moves from `^5.0.0` to `^5.0.0 || ^6.0.0`. The Redis cache strategy works unchanged with a node-redis 6 client.
+- **ioredis 6 support (optional peer).** The `ioredis` peer range moves from `^5.0.0` to `^5.0.0 || ^6.0.0`, on the evidence of the Redis cache-strategy spec running against a live ioredis 6 client. The 5.x line stays claimed and is exercised separately by the oldest-peer CI profiles.
 
 ### Changed
 

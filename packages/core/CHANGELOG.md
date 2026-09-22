@@ -7,7 +7,7 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 ### Added
 
-- **NestJS 12 support.** Peer ranges for `@nestjs/common` and the optional `@nestjs/swagger` now accept `^12.0.0` alongside `^10.0.0 || ^11.0.0`.
+- **NestJS 12 support.** The `@nestjs/common` peer range now accepts `^12.0.0` alongside `^10.0.0 || ^11.0.0`. The optional `@nestjs/swagger` peer also accepts `^12.0.0` — see Fixed, below, for its full corrected range.
 - **class-validator 0.15 support.** Peer range moves from `^0.14.0` to `^0.14.0 || ^0.15.0`.
 
 ### Changed
@@ -16,6 +16,10 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 - **`toRedisLike()` error message names node-redis v5 or v6.** When a cache client is neither node-redis, ioredis nor a `RedisLike`, the `TypeError` now reads "Cache backend client must be a node-redis (v5 or v6) instance, …" instead of "(v5)".
 - **`qs` removed from `dependencies`.** `CrudRequestInterceptor` now passes the raw query string to `RequestQueryParser.parseQuery()` from `@nestjs-crud/request`, which owns `qs` parsing. Parsed requests are unchanged. `qs` still installs through `@nestjs-crud/request`.
 - **`@Crud()` now throws when a join option is eager but one of its ancestors is not eager** (for example `'profile.licenses': { eager: true }` without an eager `profile`). Previously the TypeORM adapter failed on every request to that route, and the other adapters silently skipped the nested join. Fix it by marking every ancestor eager, or by removing `eager` from the nested entry.
+
+### Fixed
+
+- **The optional `@nestjs/swagger` peer range no longer names a major npm never published.** The range was `^10.0.0 || ^11.0.0 || ^12.0.0` — there has never been a published `@nestjs/swagger` major 10. It is now `^7.0.0 || ^8.0.0 || ^11.0.0 || ^12.0.0`, the majors that actually pair with NestJS 10, proven by CI cells that install `@nestjs/swagger` 7 and 8 alongside NestJS 10.
 
 ## [2.2.6] — 2026-07-31
 
