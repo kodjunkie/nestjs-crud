@@ -68,6 +68,12 @@ yarn test:coverage # coverage report
 
 **MikroORM seed CLIs use `tsx`, not `ts-node --esm`.** `db:prepare:mikro-orm:*` runs via `npx tsx` for ESM-native `.ts` execution without the `NODE_OPTIONS` dance. Don't switch the seed CLIs back to `ts-node --esm` — the jest test runs (which DO need `--experimental-vm-modules`) and the seed CLIs (which don't) are intentionally separate.
 
+### CI and packaging verification
+
+- **Node floor.** Every package requires Node.js 22.12.0 or later (`engines.node`), enforced by `scripts/check-manifest-contracts.js` and proved live by a dedicated CI job that runs on exactly Node 22.12.0 — NestJS 12 loads through Node's `require(esm)` support, which arrives at that version.
+- **Packed-consumer install checks.** `scripts/smoke-pack.js --pm=<npm|yarn|pnpm> --strict-peers` packs all seven packages and installs them into a throwaway consumer project under each package manager's strict peer mode; `--expect-ioredis-eresolve` is an npm-only canary that watches for the known `typeorm`/`ioredis` `ERESOLVE` conflict and fails loudly once it stops reproducing, signaling that the documented workaround can be dropped.
+- **Oldest-peer profiles.** `scripts/oldest-peers.js` overrides root dependencies to the oldest claimed NestJS and TypeORM majors and re-runs the test suites against them, so the oldest peer ranges are proved in CI rather than only declared in `peerDependencies`.
+
 ### Test categories
 
 - **`packages/core/test/`** — Unit tests for decorators, interceptors, config service. No database needed.

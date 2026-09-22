@@ -18,6 +18,10 @@ nestjs-crud ships as a Yarn workspaces monorepo. Four adapters, plus the core fr
 - [**@nestjs-crud/prisma**](https://www.npmjs.com/package/@nestjs-crud/prisma) — `PrismaCrudService` base class, new in v2.0.0 ([ServicePrisma](https://github.com/kodjunkie/nestjs-crud/wiki/ServicePrisma))
 - [**@nestjs-crud/util**](https://www.npmjs.com/package/@nestjs-crud/util) — internal shared helpers (you won't install this directly)
 
+## Requirements
+
+Node.js 22.12.0 or later. NestJS 12 ships as ESM only, and these packages are CommonJS — they load it through Node's `require(esm)` support, which arrives at 22.12.0.
+
 ## Guides
 
 - [Controllers](https://github.com/kodjunkie/nestjs-crud/wiki/Controllers) — `@Crud()` options, overrides, auth, validation

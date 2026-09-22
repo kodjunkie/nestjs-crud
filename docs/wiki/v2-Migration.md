@@ -15,7 +15,7 @@
 
 Before upgrading:
 
-- **Node.js >=22.0.0.** Every `package.json` declares it in `engines.node`. Yarn or npm on Node <22 warns, or fails with `--engine-strict`.
+- **Node.js >=22.0.0.** Every `package.json` declares it in `engines.node`. Yarn or npm on Node <22 warns, or fails with `--engine-strict`. Raised to `>=22.12.0` in v2.3.0 — see the [CHANGELOG](https://github.com/kodjunkie/nestjs-crud/blob/master/CHANGELOG.md).
 - **Peer-dependency ranges at v2.0.0.** Later releases widened some of these; the [CHANGELOG](https://github.com/kodjunkie/nestjs-crud/blob/master/CHANGELOG.md) lists the current ranges.
   - `@nestjs/common`: `^10.0.0 || ^11.0.0` (all 4 adapter packages)
   - `@nestjs/typeorm`: `^10.0.0 || ^11.0.0` (typeorm package only)
@@ -179,7 +179,7 @@ Most consumers won't notice these behavior changes. Each item names its source f
 - **Mutation methods run inside transactions.** `updateOne`, `replaceOne` and `deleteOne` wrap their read-modify-write in a `READ COMMITTED` transaction on all 4 adapters (TypeORM `QueryRunner`, Drizzle `db.transaction`, MikroORM `em.transactional`, Prisma `$transaction`). That closes the v1 read-modify-write race. You'll notice only if you relied on the old non-atomic behavior.
 - **`relationLoadStrategy: 'query'` opt-in (TypeORM only).** A new per-controller and per-request switch. If you opt in, read the [RelationLoadStrategy](https://github.com/kodjunkie/nestjs-crud/wiki/RelationLoadStrategy) page for the alias-select caveat. (Source: `packages/typeorm/src/query/typeorm-query-composer.ts`.)
 - **Inline `SwaggerEnumType`.** `packages/core/src/interfaces/params-options.interface.ts` now inlines the type instead of importing it from an internal `@nestjs/swagger` path. You see a change only if you imported that internal type.
-- **Node >=22 enforced.** All 7 packages declare `engines.node >=22.0.0`; see [Prerequisites](#prerequisites).
+- **Node >=22 enforced.** All 7 packages declare `engines.node >=22.0.0`; see [Prerequisites](#prerequisites). Raised to `>=22.12.0` in v2.3.0.
 
 ## New features
 

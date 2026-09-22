@@ -7,7 +7,7 @@
 
 > The API follows the same patterns as TypeORM. See the [MikroORM service docs](https://github.com/kodjunkie/nestjs-crud/wiki/ServiceMikroOrm) for full MikroORM adapter API.
 
-> **Node 22+ required.** This package depends on `@mikro-orm/core ^7.0.0` (peer-dep, bumped in v2.0.0 from v6) which uses pure ESM. Run tests via `yarn test:mikro-orm` only — bare `npx jest packages/mikro-orm/test/...` fails with `SyntaxError: Cannot use 'import.meta' outside a module`. See [CONTRIBUTING.md](https://github.com/kodjunkie/nestjs-crud/blob/master/CONTRIBUTING.md#mikroorm-esm-caveat) for the full ESM caveat.
+> **Node 22.12.0 or later required.** NestJS 12 ships as ESM only, and this package is CommonJS; it loads NestJS 12 through Node's `require(esm)` support, which arrives at 22.12.0. MikroORM 7 itself declares a higher floor, `>=22.17.0`; installing on exactly 22.12.0 can print an advisory `EBADENGINE` warning naming it, which is informational, not a failure. This package also depends on `@mikro-orm/core ^7.0.0` (peer-dep, bumped in v2.0.0 from v6) which uses pure ESM. Run tests via `yarn test:mikro-orm` only — bare `npx jest packages/mikro-orm/test/...` fails with `SyntaxError: Cannot use 'import.meta' outside a module`. See [CONTRIBUTING.md](https://github.com/kodjunkie/nestjs-crud/blob/master/CONTRIBUTING.md#mikroorm-esm-caveat) for the full ESM caveat.
 
 ## Install
 

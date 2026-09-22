@@ -23,7 +23,7 @@ interface CacheStrategy {
 
 Wire one strategy globally via `CrudConfigService.load`. All controllers using `@Crud({ query: { cache } })` will use it.
 
-Strategies accept both `redis` (node-redis v5 or v6) and `ioredis` clients. Auto-connect on first op — no explicit `await redis.connect()` needed.
+Strategies accept both `redis` (node-redis v5 or v6) and `ioredis` (`^5.0.0 || ^6.0.0`) clients. Auto-connect on first op — no explicit `await redis.connect()` needed.
 
 ```ts
 // Option A — node-redis (v5 or v6)

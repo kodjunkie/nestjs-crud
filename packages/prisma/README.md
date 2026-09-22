@@ -9,6 +9,8 @@
 
 ## Install
 
+Requires Node.js 22.12.0 or later — NestJS 12 ships as ESM only, and this package is CommonJS; it loads NestJS 12 through Node's `require(esm)` support, which arrives at 22.12.0.
+
 ```shell
 npm i @nestjs-crud/prisma @prisma/client
 npm i -D prisma

@@ -12,6 +12,8 @@ npm i mysql2                   # MySQL
 
 The DB driver is declared as an optional `peerDependency` on `@nestjs-crud/drizzle` — install whichever your backend uses.
 
+The `drizzle-orm` peer range is `^0.45.2`. drizzle-orm's 1.x line exists only as a release candidate — there is no stable 1.x release to test against — so it isn't supported yet; the range widens once a stable 1.x passes a CI cell.
+
 ## Usage
 
 Start with a Drizzle **table**:

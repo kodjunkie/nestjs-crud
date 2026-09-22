@@ -2,6 +2,8 @@ A CRUD service for databases using MikroORM.
 
 > The API mirrors TypeORM. See [ServiceTypeorm](https://github.com/kodjunkie/nestjs-crud/wiki/ServiceTypeorm) for the full API surface.
 
+> MikroORM 7 declares its own Node floor, `>=22.17.0`, higher than this project's own `>=22.12.0`. Installing on exactly 22.12.0 can print an advisory `EBADENGINE` warning naming `@mikro-orm/core` or `@mikro-orm/sql`; it is informational, not a failure.
+
 ## Install
 
 ```shell

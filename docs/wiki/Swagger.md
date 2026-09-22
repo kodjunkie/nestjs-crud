@@ -2,7 +2,7 @@
 
 Describe the API surface for `@Crud()`-generated routes. `@nestjs-crud/core` auto-generates operation summaries, per-route markdown descriptions, error responses, request-body examples, and query-parameter documentation. Consumers can override or opt out via `@Crud({ swagger: {...} })`.
 
-> `@nestjs/swagger` is an optional peer dependency. When it is not installed, `@nestjs-crud/core` silently skips all Swagger decoration via `safeRequire`. See [Swagger-less mode](#swagger-less-mode) below.
+> `@nestjs/swagger` is an optional peer dependency, accepting `^7.0.0 || ^8.0.0 || ^11.0.0 || ^12.0.0` — swagger 7 and 8 pair with NestJS 10, swagger 11 pairs with NestJS 11, and swagger 12 pairs with NestJS 12. When `@nestjs/swagger` is not installed, `@nestjs-crud/core` silently skips all Swagger decoration via `safeRequire`. See [Swagger-less mode](#swagger-less-mode) below.
 
 ## Quickstart
 
