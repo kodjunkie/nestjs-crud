@@ -133,6 +133,12 @@ const tempPkg = {
     '@nestjs-crud/drizzle': tFile('drizzle'),
     '@nestjs-crud/mikro-orm': tFile('mikro-orm'),
     '@nestjs-crud/prisma': tFile('prisma'),
+    // typeorm 1.x declares an optional ioredis peer at ^5, while NestJS 12's
+    // microservices package declares an optional ioredis peer of any version,
+    // which npm resolves to 6.x and then rejects with ERESOLVE. Consumers
+    // installing with npm need the same pin (see the TypeORM adapter README).
+    // Remove this once typeorm's optional ioredis peer accepts 6.x.
+    ioredis: '^5.0.4',
   },
   overrides: {
     '@nestjs-crud/core': tFile('core'),

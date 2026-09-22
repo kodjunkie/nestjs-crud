@@ -10,6 +10,8 @@ npm i mysql2                   # MySQL
 
 The DB driver is declared as an optional `peerDependency` on `@nestjs-crud/typeorm` — install whichever your backend uses.
 
+With TypeORM 1.x, `npm install` can fail with `ERESOLVE` because typeorm's optional `ioredis` peer (`^5`) conflicts with NestJS 12's optional `ioredis` peer, which npm resolves to 6.x. Fix it by adding `ioredis@^5` to your app's dependencies, or `"overrides": { "ioredis": "^5.0.4" }` to its `package.json`.
+
 ## Usage
 
 Start with a TypeORM **entity**:

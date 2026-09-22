@@ -8,7 +8,7 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 ### Added
 
 - **NestJS 12 support.** The `@nestjs/common` peer range and the `@nestjs/typeorm` peer range now accept `^12.0.0` alongside `^10.0.0 || ^11.0.0`.
-- **TypeORM 1.x support.** The `typeorm` peer range accepts `^1.0.0`. The test suite runs on TypeORM 1.1.1.
+- **TypeORM 1.x support.** The `typeorm` peer range accepts `^1.0.0`. The test suite runs on TypeORM 1.1.1. Installing with npm can hit an `ERESOLVE` conflict, because TypeORM 1.1.1's optional `ioredis` peer (`^5`) conflicts with NestJS 12's optional `ioredis` peer, which npm resolves to 6.x — add `ioredis@^5` to your app's dependencies, or an `"overrides": { "ioredis": "^5.0.4" }` entry to its `package.json`, to work around it.
 - **node-redis 6 support.** The `redis` peer range moves from `^5.0.0` to `^5.0.0 || ^6.0.0`. The Redis cache strategy works unchanged with a node-redis 6 client.
 
 ### Changed
