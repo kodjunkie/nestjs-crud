@@ -20,6 +20,42 @@ import type { ParsedRequestParams, QuerySort } from '@nestjs-crud/request';
  * @since 2.0.0
  */
 
+/**
+ * Return every proper dotted prefix of `field`, shallow to deep.
+ *
+ * `ancestorPaths('a.b.c')` returns `['a', 'a.b']`.
+ * `ancestorPaths('a')` returns `[]`.
+ */
+function ancestorPaths(field: string): string[] {
+  const segments = field.split('.');
+  const paths: string[] = [];
+
+  for (let i = 1; i < segments.length; i++) {
+    paths.push(segments.slice(0, i).join('.'));
+  }
+
+  return paths;
+}
+
+/**
+ * Given the set of fields being joined, return the first field (in array
+ * order) that has a missing ancestor, or `undefined` when every field's
+ * ancestors are all present in the same set.
+ */
+function findOrphanJoin(joinedFields: readonly string[]): string | undefined {
+  const joined = new Set(joinedFields);
+
+  for (const field of joinedFields) {
+    const missing = ancestorPaths(field).some((ancestor) => !joined.has(ancestor));
+
+    if (missing) {
+      return field;
+    }
+  }
+
+  return undefined;
+}
+
 // Type debt: Prisma client delegate types are model-specific structural — adapters pin `any` at the piece boundary and carry forward.
 export interface PrismaQueryComposerConfig {
   entityColumns: string[];
@@ -253,6 +289,37 @@ export class PrismaQueryComposer implements QueryComposer<any> {
   private getIncludeObject(parsed: ParsedRequestParams, options: CrudRequestOptions): Record<string, any> | undefined {
     const queryOptions = options?.query ?? {};
     const joinOptions: JoinOptions = (queryOptions as any).join ?? {};
+
+    // Orphan-nested-join guard: every ancestor of a candidate join field
+    // (requested or eager, at any depth) must also be a candidate. Runs
+    // before any include entry is built and before Prisma ever sees the
+    // resulting arguments.
+    const allowedJoinFields = Object.keys(joinOptions);
+    const joinCandidates: string[] = [];
+    const seenJoinCandidates = new Set<string>();
+
+    for (const field of allowedJoinFields) {
+      if (joinOptions[field]?.eager && !seenJoinCandidates.has(field)) {
+        joinCandidates.push(field);
+        seenJoinCandidates.add(field);
+      }
+    }
+
+    if (parsed.join?.length) {
+      for (const join of parsed.join) {
+        if (allowedJoinFields.includes(join.field) && !seenJoinCandidates.has(join.field)) {
+          joinCandidates.push(join.field);
+          seenJoinCandidates.add(join.field);
+        }
+      }
+    }
+
+    const orphanJoin = findOrphanJoin(joinCandidates);
+    if (orphanJoin) {
+      this.onBadRequest(`Invalid join: '${orphanJoin}'`);
+      return undefined;
+    }
+
     const include: Record<string, any> = {};
 
     // Eager joins from options.query.join

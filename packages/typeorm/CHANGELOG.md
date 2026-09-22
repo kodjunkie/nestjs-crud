@@ -14,10 +14,17 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 ### Changed
 
 - **Requires `@nestjs-crud/core` 2.2.6 or later.** The `@nestjs-crud/core` peer range moves from `^2.0.0` to `^2.2.6`. This package calls core helpers added after 2.0.0, so an older core satisfied the old range without providing them.
+- **Under `relationLoadStrategy: 'query'`, an orphan nested join no longer loads its parent implicitly.** A `?join=` entry whose parent relation is not also joined now returns the same 400 as the default `'join'` strategy, instead of silently loading only the parent.
+
+### Fixed
+
+- **A nested `?join=` entry whose parent is not joined now returns 400 instead of crashing with a 500.** Requesting `profile.licenses` without also joining `profile` previously registered a join with an undefined path and threw a low-level `TypeError` once the query executed. It now returns `400 Invalid join: 'profile.licenses'` before any SQL is built. A parent counts as joined when it is requested or marked `eager`, in any order and at any depth.
+- **A nested join listed before its parent in `?join=` now works.** Previously, a request whose parent relation was requested first only "worked" because clients happened to order fields that way; a first request listing the child before the parent (or an orphan request) could leave a broken relation cached, breaking every later nested-join request against the same route until restart. Both orderings now resolve correctly and no longer poison later requests.
 
 ### Security
 
 - **`typeorm` floor raised to 0.3.30 on the 0.3 line.** The peer range moves from `^0.3.0` to `^0.3.30 || ^1.0.0`, so consumers who pin low no longer get older, vulnerable 0.3 releases.
+- **Under `relationLoadStrategy: 'query'`, a nested join now requires its full dotted path in `@Crud({ query: { join } })`.** Previously, any nested relation under an allowlisted top-level relation could be loaded by adding it to `?join=`, even when the route never allowlisted that nested path. Routes that relied on the old fallback must now list the nested path explicitly.
 
 ## [2.2.6] — 2026-07-31
 

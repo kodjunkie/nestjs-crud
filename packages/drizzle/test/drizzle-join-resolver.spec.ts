@@ -34,6 +34,12 @@ const projects = sqliteTable('projects', {
   ownerId: integer('owner_id'),
 });
 
+const licenses = sqliteTable('licenses', {
+  id: integer('id').primaryKey(),
+  code: text('code'),
+  profileId: integer('profile_id'),
+});
+
 describe('DrizzleJoinResolver.getAllowedColumnsFor (D-05b allowlist)', () => {
   let resolver: DrizzleJoinResolver;
 
@@ -106,5 +112,113 @@ describe('DrizzleJoinResolver.getAllowedColumnsFor (D-05b allowlist)', () => {
       const allowed = resolver.getAllowedColumnsFor('profile');
       expect(allowed.has("bio'; UPDATE users SET")).toBe(false);
     });
+  });
+});
+
+describe('applyJoins — nested join ancestry', () => {
+  function createRecordingQuery() {
+    const calls: unknown[] = [];
+    const query: any = {};
+    query.leftJoin = jest.fn((table: unknown) => {
+      calls.push(table);
+      return query;
+    });
+    query.innerJoin = jest.fn((table: unknown) => {
+      calls.push(table);
+      return query;
+    });
+    return { query, calls };
+  }
+
+  function createNestedResolver() {
+    return new DrizzleJoinResolver({
+      relationsConfig: {
+        profile: {
+          table: profile,
+          foreignKey: profile.userId,
+          referenceKey: users.id,
+        },
+        'profile.licenses': {
+          table: licenses,
+          foreignKey: licenses.profileId,
+          referenceKey: profile.id,
+        },
+      },
+      onBadRequest: throwingOnBadRequest,
+    });
+  }
+
+  it("throws before any join is applied when the nested join's parent is not joined", () => {
+    const resolver = createNestedResolver();
+    const { query, calls } = createRecordingQuery();
+
+    expect(() =>
+      resolver.applyJoins(query, [{ field: 'profile.licenses' }], { profile: {}, 'profile.licenses': {} }),
+    ).toThrow(new BadRequestException("Invalid join: 'profile.licenses'"));
+    expect(query.leftJoin).not.toHaveBeenCalled();
+    expect(query.innerJoin).not.toHaveBeenCalled();
+    expect(calls).toHaveLength(0);
+  });
+
+  it('applies ancestors before descendants regardless of request order', () => {
+    const resolver = createNestedResolver();
+    const { query, calls } = createRecordingQuery();
+
+    resolver.applyJoins(query, [{ field: 'profile.licenses' }, { field: 'profile' }], {
+      profile: {},
+      'profile.licenses': {},
+    });
+
+    expect(calls).toEqual([profile, licenses]);
+  });
+
+  it('applies both joins with no throw when the parent is eager', () => {
+    const resolver = createNestedResolver();
+    const { query, calls } = createRecordingQuery();
+
+    resolver.applyJoins(query, [{ field: 'profile.licenses' }], {
+      profile: { eager: true },
+      'profile.licenses': {},
+    });
+
+    expect(calls).toEqual([profile, licenses]);
+  });
+
+  it('throws when an eager nested join has an unjoined parent', () => {
+    const resolver = createNestedResolver();
+    const { query } = createRecordingQuery();
+
+    expect(() =>
+      resolver.applyJoins(query, [], {
+        profile: {},
+        'profile.licenses': { eager: true },
+      }),
+    ).toThrow(new BadRequestException("Invalid join: 'profile.licenses'"));
+  });
+
+  it('reports the deepest orphan at any depth with no join calls', () => {
+    const resolver = createNestedResolver();
+    const { query, calls } = createRecordingQuery();
+
+    expect(() =>
+      resolver.applyJoins(query, [{ field: 'profile' }, { field: 'profile.licenses.issuer' }], {
+        profile: {},
+        'profile.licenses': {},
+        'profile.licenses.issuer': {},
+      }),
+    ).toThrow(new BadRequestException("Invalid join: 'profile.licenses.issuer'"));
+    expect(calls).toHaveLength(0);
+  });
+
+  it('silently ignores a dotted join that is not in the allowlist', () => {
+    const resolver = createNestedResolver();
+    const { query, calls } = createRecordingQuery();
+
+    expect(() =>
+      resolver.applyJoins(query, [{ field: 'profile' }, { field: 'profile.licenses' }], {
+        profile: {},
+      }),
+    ).not.toThrow();
+    expect(calls).toEqual([profile]);
   });
 });

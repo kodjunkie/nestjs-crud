@@ -230,6 +230,80 @@ describe('PrismaQueryComposer', () => {
   // To-many filtered include — deferred; not in current MVP
   it.todo('Document to-many filtered include behavior');
 
+  describe('include — nested join ancestry', () => {
+    it("throws before any include is built when the nested join's parent is not joined", () => {
+      const parsed = { ...emptyParsed, join: [{ field: 'company.projects', select: [] }] };
+      const options = {
+        query: { join: { company: {}, 'company.projects': {} } },
+        routes: {},
+        params: {},
+      } as any;
+
+      expect(() => composer.applyToQuery({}, parsed, options)).toThrow(
+        new BadRequestException("Invalid join: 'company.projects'"),
+      );
+    });
+
+    it('applies the company include with no throw regardless of request order (nested include stays excluded)', () => {
+      const parsed = {
+        ...emptyParsed,
+        join: [
+          { field: 'company.projects', select: [] },
+          { field: 'company', select: [] },
+        ],
+      };
+      const options = {
+        query: { join: { company: {}, 'company.projects': {} } },
+        routes: {},
+        params: {},
+      } as any;
+
+      const result = composer.applyToQuery({}, parsed, options);
+      expect(result.include).toEqual({ company: true });
+    });
+
+    it('does not throw when the nested join has an eager parent', () => {
+      const parsed = { ...emptyParsed, join: [{ field: 'company.projects', select: [] }] };
+      const options = {
+        query: { join: { company: { eager: true }, 'company.projects': {} } },
+        routes: {},
+        params: {},
+      } as any;
+
+      expect(() => composer.applyToQuery({}, parsed, options)).not.toThrow();
+    });
+
+    it('throws when an eager nested join has an unjoined parent', () => {
+      const options = {
+        query: { join: { company: {}, 'company.projects': { eager: true } } },
+        routes: {},
+        params: {},
+      } as any;
+
+      expect(() => composer.applyToQuery({}, emptyParsed, options)).toThrow(
+        new BadRequestException("Invalid join: 'company.projects'"),
+      );
+    });
+
+    it('does not throw and includes company when the nested join is not allowlisted', () => {
+      const parsed = {
+        ...emptyParsed,
+        join: [
+          { field: 'company', select: [] },
+          { field: 'company.projects', select: [] },
+        ],
+      };
+      const options = {
+        query: { join: { company: {} } },
+        routes: {},
+        params: {},
+      } as any;
+
+      const result = composer.applyToQuery({}, parsed, options);
+      expect(result.include).toEqual({ company: true });
+    });
+  });
+
   // Pragma-sweep branch — getTake opts.limit fallback
   // Cross-adapter convergence: same shape as typeorm/drizzle/mikro-orm composer sweeps.
   describe('getTake (opts.limit fallback) — pragma-sweep branch', () => {

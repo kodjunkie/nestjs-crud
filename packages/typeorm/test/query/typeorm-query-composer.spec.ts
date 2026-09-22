@@ -13,6 +13,7 @@
  *   - `mockQuery` is a hand-rolled SelectQueryBuilder stand-in that records
  *     `.cache(...)` invocations.
  */
+import { BadRequestException } from '@nestjs/common';
 import type { JoinResolver } from '@nestjs-crud/core';
 import type { WhereBuilder } from '@nestjs-crud/core/query';
 import { CrudCacheNotConfiguredError } from '@nestjs-crud/core';
@@ -33,6 +34,7 @@ type MockQuery = {
   take: jest.Mock;
   skip: jest.Mock;
   cache: jest.Mock;
+  setFindOptions: jest.Mock;
 };
 
 const buildMockQuery = (): MockQuery => {
@@ -44,6 +46,7 @@ const buildMockQuery = (): MockQuery => {
   q.take = jest.fn(() => q);
   q.skip = jest.fn(() => q);
   q.cache = jest.fn(() => q);
+  q.setFindOptions = jest.fn(() => q);
   return q as MockQuery;
 };
 
@@ -80,6 +83,31 @@ const buildComposer = (repo: Repository<MockUser>): TypeOrmQueryComposer<MockUse
     joinResolver: noopJoinResolver,
     whereBuilder: noopWhereBuilder,
   });
+};
+
+const buildComposerWithJoinOptions = (
+  repo: Repository<MockUser>,
+): { composer: TypeOrmQueryComposer<MockUser>; noopJoinResolver: JoinResolver<SelectQueryBuilder<MockUser>> } => {
+  const noopWhereBuilder: WhereBuilder<SelectQueryBuilder<MockUser>, Brackets> = {
+    build: jest.fn(() => undefined),
+  };
+  const noopJoinResolver: JoinResolver<SelectQueryBuilder<MockUser>> = {
+    applyJoins: jest.fn((q: any) => q),
+    getAllowedColumnsFor: jest.fn(() => new Set<string>()),
+  } as unknown as JoinResolver<SelectQueryBuilder<MockUser>>;
+
+  const composer = new TypeOrmQueryComposer<MockUser>({
+    repo,
+    entityColumnsHash: { id: true },
+    entityHasDeleteColumn: false,
+    onBadRequest: (msg: string) => {
+      throw new BadRequestException(msg);
+    },
+    joinResolver: noopJoinResolver,
+    whereBuilder: noopWhereBuilder,
+  });
+
+  return { composer, noopJoinResolver };
 };
 
 const baseParsed = (): ParsedRequestParams =>
@@ -125,9 +153,7 @@ describe('TypeOrmQueryComposer', () => {
     });
 
     it('green path: passes through to query.cache(ttl) when DataSource cache provider IS configured', () => {
-      const repo = buildMockRepo({
-        /* truthy mock cache provider */
-      });
+      const repo = buildMockRepo({/* truthy mock cache provider */});
       const composer = buildComposer(repo);
       const query = buildMockQuery();
       const parsed = baseParsed();
@@ -217,6 +243,118 @@ describe('TypeOrmQueryComposer', () => {
       composer.applyToQuery(query as unknown as SelectQueryBuilder<MockUser>, parsed, options);
 
       expect(query.take).toHaveBeenCalledWith(7);
+    });
+  });
+
+  describe("relationLoadStrategy 'query' — nested join ancestry", () => {
+    it('throws BadRequestException with the invalid-join message for an orphan nested join', () => {
+      const repo = buildMockRepo(undefined);
+      const { composer } = buildComposerWithJoinOptions(repo);
+      const query = buildMockQuery();
+      const parsed = baseParsed();
+      (parsed as any).join = [{ field: 'profile.licenses' }];
+      const options = {
+        query: {
+          relationLoadStrategy: 'query',
+          join: { profile: {}, 'profile.licenses': {} },
+        },
+      };
+
+      expect(() =>
+        composer.applyToQuery(query as unknown as SelectQueryBuilder<MockUser>, parsed, options as any),
+      ).toThrow(BadRequestException);
+
+      try {
+        composer.applyToQuery(query as unknown as SelectQueryBuilder<MockUser>, parsed, options as any);
+      } catch (err: any) {
+        expect(err.message).toBe("Invalid join: 'profile.licenses'");
+      }
+
+      expect(query.setFindOptions).not.toHaveBeenCalled();
+    });
+
+    it('a nested join not allowlisted by full path is silently ignored, not loaded', () => {
+      const repo = buildMockRepo(undefined);
+      const { composer } = buildComposerWithJoinOptions(repo);
+      const query = buildMockQuery();
+      const parsed = baseParsed();
+      (parsed as any).join = [{ field: 'profile.licenses' }];
+      const options = {
+        query: {
+          relationLoadStrategy: 'query',
+          join: { profile: {} },
+        },
+      };
+
+      expect(() =>
+        composer.applyToQuery(query as unknown as SelectQueryBuilder<MockUser>, parsed, options as any),
+      ).not.toThrow();
+      expect(query.setFindOptions).not.toHaveBeenCalled();
+    });
+
+    it('only the allowlisted full path is loaded — the non-allowlisted nested join is dropped', () => {
+      const repo = buildMockRepo(undefined);
+      const { composer } = buildComposerWithJoinOptions(repo);
+      const query = buildMockQuery();
+      const parsed = baseParsed();
+      (parsed as any).join = [{ field: 'profile' }, { field: 'profile.licenses' }];
+      const options = {
+        query: {
+          relationLoadStrategy: 'query',
+          join: { profile: {} },
+        },
+      };
+
+      composer.applyToQuery(query as unknown as SelectQueryBuilder<MockUser>, parsed, options as any);
+
+      expect(query.setFindOptions).toHaveBeenCalledTimes(1);
+      expect(query.setFindOptions).toHaveBeenCalledWith({
+        relations: { profile: true },
+        relationLoadStrategy: 'query',
+      });
+    });
+
+    it('applies an out-of-order nested join ([child, parent]) as a nested relations tree', () => {
+      const repo = buildMockRepo(undefined);
+      const { composer } = buildComposerWithJoinOptions(repo);
+      const query = buildMockQuery();
+      const parsed = baseParsed();
+      (parsed as any).join = [{ field: 'profile.licenses' }, { field: 'profile' }];
+      const options = {
+        query: {
+          relationLoadStrategy: 'query',
+          join: { profile: {}, 'profile.licenses': {} },
+        },
+      };
+
+      composer.applyToQuery(query as unknown as SelectQueryBuilder<MockUser>, parsed, options as any);
+
+      expect(query.setFindOptions).toHaveBeenCalledTimes(1);
+      expect(query.setFindOptions).toHaveBeenCalledWith({
+        relations: { profile: { licenses: true } },
+        relationLoadStrategy: 'query',
+      });
+    });
+
+    it('counts an eager parent as joined for a requested nested child', () => {
+      const repo = buildMockRepo(undefined);
+      const { composer } = buildComposerWithJoinOptions(repo);
+      const query = buildMockQuery();
+      const parsed = baseParsed();
+      (parsed as any).join = [{ field: 'profile.licenses' }];
+      const options = {
+        query: {
+          relationLoadStrategy: 'query',
+          join: { profile: { eager: true }, 'profile.licenses': {} },
+        },
+      };
+
+      composer.applyToQuery(query as unknown as SelectQueryBuilder<MockUser>, parsed, options as any);
+
+      expect(query.setFindOptions).toHaveBeenCalledWith({
+        relations: { profile: { licenses: true } },
+        relationLoadStrategy: 'query',
+      });
     });
   });
 });

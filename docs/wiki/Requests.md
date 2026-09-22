@@ -194,7 +194,7 @@ _Examples:_
 
 > ?join=**relation1**&join=**relation1**.**nested**&join=**relation1**.**nested**.**deepnested**
 
-> The primary key column always persists in relational objects. For nested relations, the parent level must be joined before the child level (as in the example above).
+> The primary key column always persists in relational objects. For nested relations, every ancestor must be joined too — requested in `join` or marked eager in the controller's join options — but the order does not matter. A nested join whose parent is not joined returns `400` with `Invalid join: '<field>'`. Only TypeORM and Drizzle load nested relations; MikroORM and Prisma accept a valid nested join but load only its top-level relation.
 
 ### limit
 

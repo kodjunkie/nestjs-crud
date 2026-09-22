@@ -92,6 +92,10 @@ The internal `FetchHelper` receives `getEm: () => EntityManager` as a thunk and 
 
 Pass an optional `LoggerService` as the constructor's third argument. See [Logging](https://github.com/kodjunkie/nestjs-crud/wiki/Logging).
 
+### Nested joins
+
+The adapter enforces the same nested-join ancestor rule as the other three adapters (`400 Invalid join: '<field>'` when a nested join's parent is neither requested nor eager), but it does not load nested relations — a valid nested join is accepted, and only its top-level relation is populated.
+
 ## Using EntityRepository (recommended for @mikro-orm/nestjs users)
 
 The `MikroOrmCrudService<T>` constructor accepts either an `EntityManager` or an `EntityRepository<T>`. Consumers using `@mikro-orm/nestjs`'s `@InjectRepository(User)` injection pattern can pass the repository directly:

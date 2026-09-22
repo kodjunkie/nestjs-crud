@@ -13,6 +13,7 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 ### Changed
 
 - **Requires `@nestjs-crud/core` 2.2.6 or later.** The `@nestjs-crud/core` peer range moves from `^2.0.0` to `^2.2.6`. This package calls core helpers added after 2.0.0, so an older core satisfied the old range without providing them.
+- **A nested `?join=` entry whose parent is not joined now returns 400.** A request like `?join=company.projects` without also joining `company` (via `?join=company` or an `eager` join option) used to be silently dropped and return 200. It now returns 400 with `Invalid join: 'company.projects'`. An ancestor counts as joined at any depth, in any request order, whether client-requested or declared `eager`. This adapter still does not include nested relations: a valid nested join is accepted, and only its top-level relation is included.
 
 ## [2.2.6] — 2026-07-31
 
@@ -24,7 +25,6 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 ## [2.2.5] — 2026-06-11
 
 Version-only republish — no package-specific source changes. Bumped in lockstep with the rest of the monorepo. See the [root CHANGELOG.md](../../CHANGELOG.md#225--2026-06-11) for full release details.
-
 
 ## [2.2.4] — 2026-06-10
 
@@ -45,11 +45,9 @@ Version-only republish — no package-specific source changes. Bumped in lockste
 
 See the [root CHANGELOG.md](../../CHANGELOG.md#222--2026-05-19) for the full v2.2.2 release notes (5 dependabot advisories closed; runtime dep refresh).
 
-
 ## [2.2.1] — 2026-05-03
 
 Version-only republish — no package-specific source changes. Bumped in lockstep with the rest of the monorepo. See the [root CHANGELOG.md](../../CHANGELOG.md#221--2026-05-03) for full release details.
-
 
 ## [2.2.0] — 2026-05-03
 
@@ -96,20 +94,17 @@ Initial release. `@nestjs-crud/prisma` ships at v2.0.0 — same conceptual surfa
 
 See the [root CHANGELOG.md](../../CHANGELOG.md#200--2026-04-23), the [ServicePrisma wiki page](https://github.com/kodjunkie/nestjs-crud/wiki/ServicePrisma), and the [v2 Migration guide](https://github.com/kodjunkie/nestjs-crud/wiki/v2-Migration) for full details.
 
-
 ### Features
 
-* **adapter:** `PrismaCrudService<T>` — translates parsed CRUD requests into Prisma client operations.
-* **query:** Composes `WhereBuilder` + `QueryComposer` + `FetchHelper` under shared `QueryTranslator` facade (same shape as the other adapters).
-* **logging:** Optional `LoggerService` ctor parameter.
-
+- **adapter:** `PrismaCrudService<T>` — translates parsed CRUD requests into Prisma client operations.
+- **query:** Composes `WhereBuilder` + `QueryComposer` + `FetchHelper` under shared `QueryTranslator` facade (same shape as the other adapters).
+- **logging:** Optional `LoggerService` ctor parameter.
 
 ### Security
 
-* **mutations:** Mutation methods (`updateOne`/`replaceOne`/`deleteOne`) run inside `READ COMMITTED` transactions.
-
+- **mutations:** Mutation methods (`updateOne`/`replaceOne`/`deleteOne`) run inside `READ COMMITTED` transactions.
 
 ### Internal
 
-* **engines:** Node `>=22.0.0` enforced.
-* Real-DB integration tests cover Postgres + MySQL.
+- **engines:** Node `>=22.0.0` enforced.
+- Real-DB integration tests cover Postgres + MySQL.

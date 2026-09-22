@@ -10,6 +10,8 @@
  * Exports buildPrismaComposer() — factory used by query-composer-parity.spec.ts.
  */
 import { BadRequestException } from '@nestjs/common';
+import type { JoinOptions } from '@nestjs-crud/core';
+import type { QueryJoin } from '@nestjs-crud/request';
 
 import { PrismaWhereBuilder } from '@nestjs-crud/prisma/query/prisma-where-builder';
 import { PrismaQueryComposer } from '@nestjs-crud/prisma/query/prisma-query-composer';
@@ -89,6 +91,15 @@ export interface PrismaHarness {
   applyAndRun(parsed: any): Promise<number[]>;
 
   composer: PrismaQueryComposer;
+
+  /**
+   * Drive the real `PrismaQueryComposer.getIncludeObject` orphan-nested-join
+   * guard with `relationFields: ['profile']` — only the top-level relation
+   * is ever "known" to Prisma's include path, because this adapter never
+   * loads nested relations, which is exactly what the guard must reject or
+   * accept ahead of that limitation.
+   */
+  applyJoins(joins: QueryJoin[], joinOptions: JoinOptions): Promise<void>;
 }
 
 // ---------------------------------------------------------------------------
@@ -176,6 +187,42 @@ export function buildPrismaComposer(): PrismaHarness {
       }
 
       return results.map((u) => u.id);
+    },
+
+    async applyJoins(joins: QueryJoin[], joinOptions: JoinOptions): Promise<void> {
+      const guardComposer = new PrismaQueryComposer({
+        entityColumns: columns,
+        entityPrimaryColumns: ['id'],
+        entityHasDeleteColumn: false,
+        softDeleteColumn: null,
+        onBadRequest: throwingOnBadRequest,
+        joinResolver,
+        whereBuilder,
+        relationFields: ['profile'],
+      });
+
+      const normalized = {
+        fields: [],
+        paramsFilter: [],
+        authPersist: undefined,
+        classTransformOptions: undefined,
+        search: {},
+        filter: [],
+        or: [],
+        join: joins,
+        sort: [],
+        limit: undefined,
+        offset: undefined,
+        page: undefined,
+        cache: undefined,
+        includeDeleted: 0,
+      };
+
+      guardComposer.applyToQuery(
+        {},
+        normalized as any,
+        { query: { join: joinOptions }, routes: {}, params: {} } as any,
+      );
     },
   };
 }

@@ -183,6 +183,8 @@ All mutation methods (`updateOne`, `replaceOne`, `deleteOne`) run inside `prisma
 
 Prisma's `include` and nested `select` translate `@Crud({ query: { join } })`, but the semantics differ from SQL JOINs: Prisma issues separate queries per relation by default. For relation-heavy reads, prefer explicit `include` configuration over `@Crud` join wiring. The `PrismaJoinResolver` enforces a SQLi mitigation for dotted-path sort by validating the relation chain against the schema's allowed columns.
 
+The adapter enforces the same nested-join ancestor rule as the other three adapters (`400 Invalid join: '<field>'` when a nested join's parent is neither requested nor eager), but it does not load nested relations — a valid nested join is accepted, and only its top-level relation is included.
+
 ### Logger
 
 When `serviceConfig.logger` is omitted, the service defaults to `new Logger(PrismaCrudService.name)` from `@nestjs/common`, matching the other adapters. Pass a custom `logger` on the config to capture adapter-level errors in your own sink:

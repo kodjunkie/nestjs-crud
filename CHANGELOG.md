@@ -22,15 +22,20 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **`@nestjs-crud/request` is now the only package that depends on `qs`.** `@nestjs-crud/core` no longer lists `qs` as a dependency. Its request interceptor passes the raw query string to `RequestQueryParser.parseQuery()`, which parses it with `qs`. Parsing results are unchanged, and core still gets `qs` through `@nestjs-crud/request`.
 - **`RequestQueryParser.parseQuery()` accepts a raw query string** (the part of the URL after `?`) as well as a parsed query object.
 - **Installing `@nestjs-crud/typeorm` with npm can hit an `ERESOLVE` conflict on TypeORM 1.x.** TypeORM 1.1.1's optional `ioredis` peer (`^5`) conflicts with NestJS 12's optional `ioredis` peer, which npm resolves to 6.x. Add `ioredis@^5` to your app's dependencies, or an `"overrides": { "ioredis": "^5.0.4" }` entry to its `package.json`, to work around it.
+- **On Drizzle, MikroORM and Prisma, an orphan nested `?join=` entry used to be accepted with the nested join silently dropped.** It now returns the same `400` TypeORM returns (see Fixed, below). MikroORM and Prisma still do not load nested relations — only the top-level relation of a nested join is joined or included.
+- **Under TypeORM `relationLoadStrategy: 'query'`, an orphan nested join no longer loads its parent implicitly.** It now returns the same `400 Invalid join: '<field>'` the default strategy returns.
+- **`@Crud()` throws at startup when an eager join option has a non-eager ancestor** (for example `'profile.licenses': { eager: true }` without an eager `profile`). Previously the TypeORM adapter failed on every request to that route, and the other adapters silently skipped the nested join. Mark every ancestor eager, or remove `eager` from the nested entry.
 
 ### Fixed
 
 - **`@nestjs-crud/mikro-orm`'s published types now resolve without an undeclared dependency.** The package's emitted `.d.ts` files imported `QueryBuilder` from `@mikro-orm/knex`, a package `@nestjs-crud/mikro-orm` never declared as a dependency or peer. TypeScript projects that didn't happen to have `@mikro-orm/knex` installed couldn't resolve the adapter's types. The types now come from `@mikro-orm/sql`, the MikroORM 7 package that ships `QueryBuilder`. `@mikro-orm/sql` `^7.0.0` is a new peer dependency of `@nestjs-crud/mikro-orm`; every MikroORM 7 SQL driver (`@mikro-orm/postgresql`, `@mikro-orm/mysql`, `@mikro-orm/sqlite`) already depends on it, so installs that already have a driver need no action.
+- **A nested `?join=` entry such as `profile.licenses` needs every ancestor joined, either requested in `?join=` or marked eager in `@Crud({ query: { join } })`, in any order and at any depth.** On TypeORM such a request used to crash with a `500`, and could keep failing later nested-join requests on the same route until restart; it now returns `400 Invalid join: 'profile.licenses'`. Listing a nested join before its parent now works on TypeORM and Drizzle.
 
 ### Security
 
 - **`@nestjs-crud/typeorm` requires `typeorm` 0.3.30 or later on the 0.3 line.** The peer range moves from `^0.3.0` to `^0.3.30 || ^1.0.0`. The old floor admitted older, vulnerable 0.3 releases for consumers who pinned low, the item carried forward from 2.2.6.
 - **`@nestjs-crud/request` requires `qs` 6.16.0 or later.** The previous floor, `^6.15.2`, admitted versions affected by two advisories fixed in 6.16.0: a denial of service through attacker-controlled `isBuffer` (GHSA-4mjr-xmp4-gh2g) and an array-limit bypass through bracket-key comma parsing (GHSA-x5fp-wj9c-mxmx). The root lockfile now resolves a single `qs` 6.16.0 for the whole workspace.
+- **Under TypeORM `relationLoadStrategy: 'query'`, a nested join needs its full dotted path in the join options.** Previously, any nested relation under an allowlisted top-level relation could be loaded, even when the nested path itself was not allowlisted.
 
 ## [2.2.6] — 2026-07-31
 

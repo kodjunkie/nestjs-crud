@@ -7,8 +7,21 @@
  * Exports `buildTypeOrmComposer()` — the factory used by query-composer-parity.spec.ts.
  */
 import { BadRequestException } from '@nestjs/common';
-import { JoinResolver } from '@nestjs-crud/core';
-import { Brackets, Column, DataSource, Entity, PrimaryGeneratedColumn, Repository, SelectQueryBuilder } from 'typeorm';
+import { JoinResolver, type JoinOptions } from '@nestjs-crud/core';
+import type { QueryJoin } from '@nestjs-crud/request';
+import {
+  Brackets,
+  Column,
+  DataSource,
+  Entity,
+  JoinColumn,
+  ManyToOne,
+  OneToMany,
+  OneToOne,
+  PrimaryGeneratedColumn,
+  Repository,
+  SelectQueryBuilder,
+} from 'typeorm';
 
 import { TypeOrmJoinResolver } from '@nestjs-crud/typeorm/typeorm-join-resolver';
 import { TypeOrmQueryComposer } from '@nestjs-crud/typeorm/query/typeorm-query-composer';
@@ -47,6 +60,48 @@ class ParityUser {
 }
 
 // ---------------------------------------------------------------------------
+// Orphan-nested-join guard fixture: user -> profile -> licenses
+// ---------------------------------------------------------------------------
+
+@Entity('parity_guard_profile')
+class ParityGuardProfile {
+  @PrimaryGeneratedColumn()
+  id!: number;
+
+  @OneToMany(() => ParityGuardLicense, (license) => license.profile)
+  licenses!: ParityGuardLicense[];
+}
+
+@Entity('parity_guard_license')
+class ParityGuardLicense {
+  @PrimaryGeneratedColumn()
+  id!: number;
+
+  @Column({ type: 'varchar', length: 100 })
+  code!: string;
+
+  @ManyToOne(() => ParityGuardProfile, (profile) => profile.licenses)
+  @JoinColumn({ name: 'profileId' })
+  profile!: ParityGuardProfile;
+
+  @Column({ type: 'int', nullable: true })
+  profileId!: number | null;
+}
+
+@Entity('parity_guard_user')
+class ParityGuardUser {
+  @PrimaryGeneratedColumn()
+  id!: number;
+
+  @OneToOne(() => ParityGuardProfile)
+  @JoinColumn({ name: 'profileId' })
+  profile!: ParityGuardProfile;
+
+  @Column({ type: 'int', nullable: true })
+  profileId!: number | null;
+}
+
+// ---------------------------------------------------------------------------
 // Singleton DataSource — initialized once across the test suite
 // ---------------------------------------------------------------------------
 
@@ -57,7 +112,7 @@ async function getDataSource(): Promise<DataSource> {
   _dataSource = new DataSource({
     type: 'better-sqlite3',
     database: ':memory:',
-    entities: [ParityUser],
+    entities: [ParityUser, ParityGuardUser, ParityGuardProfile, ParityGuardLicense],
     synchronize: true,
     dropSchema: true,
   });
@@ -104,6 +159,14 @@ const throwingOnBadRequest = (msg: string): never => {
 export interface TypeOrmHarness {
   /** Apply parsed request + run query; returns array of IDs matching the predicate. */
   applyAndRun(parsed: any): Promise<number[]>;
+
+  /**
+   * Drive the real `TypeOrmJoinResolver.applyJoins` guard against the
+   * `ParityGuardUser` -> `profile` -> `licenses` fixture, then execute the
+   * resulting query so a valid nested join proves it is runnable SQL, not
+   * just an accepted call.
+   */
+  applyJoins(joins: QueryJoin[], joinOptions: JoinOptions): Promise<void>;
 }
 
 // ---------------------------------------------------------------------------
@@ -170,6 +233,15 @@ export async function buildTypeOrmComposer(): Promise<TypeOrmHarness> {
       const composed = composer.applyToQuery(qb, normalized, emptyOptions);
       const rows = await composed.getMany();
       return rows.map((r: ParityUser) => r.id);
+    },
+
+    async applyJoins(joins: QueryJoin[], joinOptions: JoinOptions): Promise<void> {
+      const guardRepo = ds.getRepository(ParityGuardUser);
+      const guardResolver = new TypeOrmJoinResolver<ParityGuardUser>(guardRepo, {
+        onBadRequest: throwingOnBadRequest,
+      });
+      const qb = guardResolver.applyJoins(guardRepo.createQueryBuilder('ParityGuardUser'), joins, joinOptions);
+      await qb.getMany();
     },
   };
 }

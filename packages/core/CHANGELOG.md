@@ -14,6 +14,7 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 - **`toRedisLike()` error message names node-redis v5 or v6.** When a cache client is neither node-redis, ioredis nor a `RedisLike`, the `TypeError` now reads "Cache backend client must be a node-redis (v5 or v6) instance, …" instead of "(v5)".
 - **`qs` removed from `dependencies`.** `CrudRequestInterceptor` now passes the raw query string to `RequestQueryParser.parseQuery()` from `@nestjs-crud/request`, which owns `qs` parsing. Parsed requests are unchanged. `qs` still installs through `@nestjs-crud/request`.
+- **`@Crud()` now throws when a join option is eager but one of its ancestors is not eager** (for example `'profile.licenses': { eager: true }` without an eager `profile`). Previously the TypeORM adapter failed on every request to that route, and the other adapters silently skipped the nested join. Fix it by marking every ancestor eager, or by removing `eager` from the nested entry.
 
 ## [2.2.6] — 2026-07-31
 

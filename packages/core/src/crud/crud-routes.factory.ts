@@ -78,6 +78,7 @@ export class CrudRoutesFactory {
   protected create() {
     const routesSchema = this.getRoutesSchema();
     this.mergeOptions();
+    this.validateJoinOptions();
     this.setResponseModels();
     this.setSwaggerTags();
     this.createRoutes(routesSchema);
@@ -160,6 +161,38 @@ export class CrudRoutesFactory {
         : this.options.serialize.delete || this.modelType;
 
     R.setCrudOptions(this.options, this.target);
+  }
+
+  /**
+   * Reject an eager join-option key whose ancestor is not also eager. A
+   * route in this state could never serve a request: TypeORM crashes with a
+   * 500 and the other adapters silently drop the nested join. Failing when
+   * `@Crud()` is applied points the developer at the controller, instead of
+   * every client discovering the bug independently at request time.
+   */
+  protected validateJoinOptions(): void {
+    const join = this.options.query?.join;
+    if (!join) {
+      return;
+    }
+
+    for (const key of Object.keys(join)) {
+      if (!join[key]?.eager) {
+        continue;
+      }
+
+      const segments = key.split('.');
+
+      for (let i = 1; i < segments.length; i++) {
+        const ancestor = segments.slice(0, i).join('.');
+
+        if (!join[ancestor]?.eager) {
+          throw new Error(
+            `@Crud: eager join '${key}' on ${this.target.name} needs '${ancestor}' to be eager too — mark '${ancestor}' eager or remove eager from '${key}'.`,
+          );
+        }
+      }
+    }
   }
 
   protected getRoutesSchema(): BaseRoute[] {

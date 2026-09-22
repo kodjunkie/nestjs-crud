@@ -97,7 +97,9 @@ GET /companies/1/users?sort=name,ASC&sort=id,DESC
 
 Load a related entity in the response. Syntax is `relation` to load every allowed column, or `relation||field1,field2,...` to load a subset. Relations must be allowed at the controller level via `@Crud({ query: { join } })`; unknown relations are silently ignored so controllers can expose a public-safe subset.
 
-Nested joins require the parent level to be joined first. The parent relation must appear in the `join` parameter list before any `parent.child` entries.
+A nested join needs every ancestor joined too, either requested in `join` or marked eager in the controller's join options. Order does not matter — `join=company.projects&join=company` is just as valid as listing `company` first. A nested join whose parent is not joined returns `400` with `Invalid join: 'company.projects'`. An eager nested join option also needs every ancestor eager, or `@Crud()` throws when the controller is decorated.
+
+Only TypeORM and Drizzle load nested relations. MikroORM and Prisma accept a valid nested join but load only its top-level relation.
 
 ```
 GET /companies/1/users?join=profile||bio,avatar

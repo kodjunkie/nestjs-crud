@@ -16,7 +16,10 @@
  */
 import { BadRequestException } from '@nestjs/common';
 import type { EntityProperty } from '@mikro-orm/core';
+import type { JoinOptions } from '@nestjs-crud/core';
+import type { QueryJoin } from '@nestjs-crud/request';
 
+import { MikroOrmJoinResolver } from '@nestjs-crud/mikro-orm/mikro-orm-join-resolver';
 import { MikroOrmQueryComposer } from '@nestjs-crud/mikro-orm/query/mikro-orm-query-composer';
 import { REFERENCE_DATASET, RefUser } from '../scondition-matrix';
 
@@ -91,6 +94,33 @@ function makeMockQb(): { qb: any; state: MockQbState } {
   };
 
   return { qb, state };
+}
+
+// ---------------------------------------------------------------------------
+// Recording stub for the orphan-nested-join guard — a plain-function double,
+// never a mock framework spy, on this security path (PATTERNS.md §5).
+// Exposes leftJoinAndSelect, joinAndSelect and populate, matching the
+// feature-detection MikroOrmJoinResolver performs before falling back
+// between them.
+// ---------------------------------------------------------------------------
+
+function makeRecordingStub(): { stub: any; calls: Array<{ method: string; args: unknown[] }> } {
+  const calls: Array<{ method: string; args: unknown[] }> = [];
+  const stub: any = {
+    leftJoinAndSelect: (...args: unknown[]) => {
+      calls.push({ method: 'leftJoinAndSelect', args });
+      return stub;
+    },
+    joinAndSelect: (...args: unknown[]) => {
+      calls.push({ method: 'joinAndSelect', args });
+      return stub;
+    },
+    populate: (...args: unknown[]) => {
+      calls.push({ method: 'populate', args });
+      return stub;
+    },
+  };
+  return { stub, calls };
 }
 
 // ---------------------------------------------------------------------------
@@ -185,6 +215,15 @@ function evaluateOperator(fieldVal: any, opObj: Record<string, any>): boolean {
 
 export interface MikroOrmHarness {
   applyAndRun(parsed: any): Promise<number[]>;
+
+  /**
+   * Drive the real `MikroOrmJoinResolver.applyJoins` guard against a
+   * hand-built `ParityGuardUser` -> `profile` metadata fixture. The orphan
+   * check runs purely against `joins`/`joinOptions`, so a single top-level
+   * `profile` relation in the fixture metadata is sufficient — no nested
+   * `profile.licenses` metadata is needed for the guard itself.
+   */
+  applyJoins(joins: QueryJoin[], joinOptions: JoinOptions): Promise<void>;
 }
 
 // ---------------------------------------------------------------------------
@@ -266,6 +305,32 @@ export function buildMikroOrmComposer(): MikroOrmHarness {
       }
 
       return results.map((u) => u.id);
+    },
+
+    async applyJoins(joins: QueryJoin[], joinOptions: JoinOptions): Promise<void> {
+      const guardMetadata = {
+        className: 'ParityGuardUser',
+        relations: [
+          {
+            name: 'profile',
+            kind: '1:1',
+            targetMeta: {
+              properties: {
+                id: { name: 'id', kind: 'scalar', primary: true },
+                bio: { name: 'bio', kind: 'scalar' },
+              },
+            },
+          },
+        ],
+      };
+
+      const guardResolver = new MikroOrmJoinResolver({
+        metadata: guardMetadata as any,
+        onBadRequest: throwingOnBadRequest,
+      });
+
+      const { stub } = makeRecordingStub();
+      guardResolver.applyJoins(stub, joins, joinOptions);
     },
   };
 }

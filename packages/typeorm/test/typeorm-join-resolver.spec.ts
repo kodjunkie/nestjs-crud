@@ -237,13 +237,25 @@ describe('TypeOrmJoinResolver', () => {
       expect(joinAliases(builder)).toContain('lic');
     });
 
-    it('throws a low-level TypeORM error when nested join requested without parent seeded (current behavior)', () => {
-      // Requesting 'profile.licenses' without seeding 'profile' leaves allowedRelation.path
-      // undefined (parent not in entityRelationsHash). This is a known brittleness of the
-      // pre-refactor setJoin that the VERBATIM port preserves.
+    it('rejects a nested join whose parent is not joined via onBadRequest', () => {
+      // The resolver rejects the orphan before touching the builder — no SQL is built.
       const builder = qb();
-      expect(() => resolver.applyJoins(builder, [{ field: 'profile.licenses' }], { 'profile.licenses': {} })).toThrow();
-      expect(onBadRequest).not.toHaveBeenCalled();
+      expect(() =>
+        resolver.applyJoins(builder, [{ field: 'profile.licenses' }], { 'profile.licenses': {} }),
+      ).not.toThrow();
+      expect(onBadRequest).toHaveBeenCalledTimes(1);
+      expect(onBadRequest).toHaveBeenCalledWith("Invalid join: 'profile.licenses'");
+      expect(builder.expressionMap.joinAttributes).toHaveLength(0);
+    });
+
+    it('rejects a nested join whose parent is allowlisted but not requested', () => {
+      const builder = qb();
+      expect(() =>
+        resolver.applyJoins(builder, [{ field: 'profile.licenses' }], { profile: {}, 'profile.licenses': {} }),
+      ).not.toThrow();
+      expect(onBadRequest).toHaveBeenCalledTimes(1);
+      expect(onBadRequest).toHaveBeenCalledWith("Invalid join: 'profile.licenses'");
+      expect(builder.expressionMap.joinAttributes).toHaveLength(0);
     });
   });
 
@@ -383,6 +395,136 @@ describe('TypeOrmJoinResolver', () => {
       // `profile` is eager AND in client joins — must appear exactly once.
       resolver.applyJoins(builder, [{ field: 'profile' }], { profile: { eager: true } });
       expect(joinAliases(builder).filter((a) => a === 'profile')).toHaveLength(1);
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // Nested join ancestry — order, depth, eager, boundaries, cache poisoning
+  // ---------------------------------------------------------------------------
+  describe('applyJoins — nested join ancestry', () => {
+    it('applies an out-of-order nested join ([child, parent]) correctly', () => {
+      const builder = qb();
+      resolver.applyJoins(builder, [{ field: 'profile.licenses' }, { field: 'profile' }], {
+        profile: {},
+        'profile.licenses': {},
+      });
+      expect(joinAliases(builder)).toEqual(['profile', 'licenses']);
+      expect(() => builder.getQuery()).not.toThrow();
+      expect(onBadRequest).not.toHaveBeenCalled();
+    });
+
+    it('applies a reverse 2-level chain ([child, parent]) in parent-first order', () => {
+      const builder = qb();
+      resolver.applyJoins(builder, [{ field: 'projects.tasks' }, { field: 'projects' }], {
+        projects: {},
+        'projects.tasks': {},
+      });
+      const aliases = joinAliases(builder);
+      expect(aliases.indexOf('projects')).toBeLessThan(aliases.indexOf('tasks'));
+      expect(() => builder.getQuery()).not.toThrow();
+    });
+
+    it('counts an eager parent as joined for a requested nested child', () => {
+      const builder = qb();
+      resolver.applyJoins(builder, [{ field: 'profile.licenses' }], {
+        profile: { eager: true },
+        'profile.licenses': {},
+      });
+      const aliases = joinAliases(builder);
+      expect(aliases).toContain('profile');
+      expect(aliases).toContain('licenses');
+      expect(onBadRequest).not.toHaveBeenCalled();
+    });
+
+    it('rejects an eager nested child whose parent is not joined', () => {
+      const builder = qb();
+      resolver.applyJoins(builder, [], { profile: {}, 'profile.licenses': { eager: true } });
+      expect(onBadRequest).toHaveBeenCalledWith("Invalid join: 'profile.licenses'");
+      expect(builder.expressionMap.joinAttributes).toHaveLength(0);
+    });
+
+    it('checks every ancestor at any depth (3-segment chain)', () => {
+      const builder = qb();
+      resolver.applyJoins(builder, [{ field: 'projects' }, { field: 'projects.tasks.owner' }], {
+        projects: {},
+        'projects.tasks': {},
+        'projects.tasks.owner': {},
+      });
+      expect(onBadRequest).toHaveBeenCalledWith("Invalid join: 'projects.tasks.owner'");
+      expect(builder.expressionMap.joinAttributes).toHaveLength(0);
+    });
+
+    it('does not accept a string-prefix match as an ancestor (segment boundary)', () => {
+      const builder = qb();
+      resolver.applyJoins(builder, [{ field: 'proj' }, { field: 'projects.tasks' }], {
+        proj: {},
+        'projects.tasks': {},
+      });
+      expect(onBadRequest).toHaveBeenCalledWith("Invalid join: 'projects.tasks'");
+    });
+
+    it('silently ignores a non-allowlisted nested join instead of rejecting it', () => {
+      const builder = qb();
+      resolver.applyJoins(builder, [{ field: 'profile' }, { field: 'profile.licenses' }], { profile: {} });
+      expect(joinAliases(builder)).toEqual(['profile']);
+      expect(onBadRequest).not.toHaveBeenCalled();
+    });
+
+    it('reports the first orphan in candidate order when multiple orphans exist', () => {
+      const builder = qb();
+      resolver.applyJoins(builder, [{ field: 'projects.tasks' }, { field: 'profile.licenses' }], {
+        'profile.licenses': {},
+        'projects.tasks': {},
+      });
+      expect(onBadRequest).toHaveBeenCalledTimes(1);
+      expect(onBadRequest).toHaveBeenCalledWith("Invalid join: 'projects.tasks'");
+    });
+
+    it('collapses a repeated field to a single join attribute', () => {
+      const builder = qb();
+      resolver.applyJoins(builder, [{ field: 'profile' }, { field: 'profile' }], { profile: {} });
+      expect(joinAliases(builder).filter((a) => a === 'profile')).toHaveLength(1);
+    });
+
+    it('cache poisoning A: a rejected orphan request does not break a later valid request', async () => {
+      const localOnBadRequest = jest.fn();
+      const localResolver = new TypeOrmJoinResolver<JrUser>(userRepo, { onBadRequest: localOnBadRequest });
+
+      const rejectedBuilder = qb();
+      localResolver.applyJoins(rejectedBuilder, [{ field: 'profile.licenses' }], { 'profile.licenses': {} });
+      expect(localOnBadRequest).toHaveBeenCalledTimes(1);
+
+      const validBuilder = qb();
+      localResolver.applyJoins(validBuilder, [{ field: 'profile' }, { field: 'profile.licenses' }], {
+        profile: {},
+        'profile.licenses': {},
+      });
+      const aliases = joinAliases(validBuilder);
+      expect(aliases).toContain('profile');
+      expect(aliases).toContain('licenses');
+      expect(() => validBuilder.getQuery()).not.toThrow();
+      await expect(validBuilder.getMany()).resolves.toBeDefined();
+    });
+
+    it('cache poisoning B: an out-of-order valid request does not break a later valid request', async () => {
+      const localOnBadRequest = jest.fn();
+      const localResolver = new TypeOrmJoinResolver<JrUser>(userRepo, { onBadRequest: localOnBadRequest });
+
+      const firstBuilder = qb();
+      localResolver.applyJoins(firstBuilder, [{ field: 'profile.licenses' }, { field: 'profile' }], {
+        profile: {},
+        'profile.licenses': {},
+      });
+      expect(localOnBadRequest).not.toHaveBeenCalled();
+      await expect(firstBuilder.getMany()).resolves.toBeDefined();
+
+      const secondBuilder = qb();
+      localResolver.applyJoins(secondBuilder, [{ field: 'profile' }, { field: 'profile.licenses' }], {
+        profile: {},
+        'profile.licenses': {},
+      });
+      expect(localOnBadRequest).not.toHaveBeenCalled();
+      await expect(secondBuilder.getMany()).resolves.toBeDefined();
     });
   });
 

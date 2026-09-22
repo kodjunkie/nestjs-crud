@@ -7,6 +7,8 @@
  * Exports `buildDrizzleComposer()` — the factory used by query-composer-parity.spec.ts.
  */
 import { BadRequestException } from '@nestjs/common';
+import type { JoinOptions } from '@nestjs-crud/core';
+import type { QueryJoin } from '@nestjs-crud/request';
 
 const Database = require('better-sqlite3');
 import { getTableColumns } from 'drizzle-orm';
@@ -31,6 +33,25 @@ const parityUsers = sqliteTable('parity_user', {
   companyId: integer('company_id').notNull(),
   profileId: integer('profile_id'),
   age: integer('age').notNull(),
+});
+
+// ---------------------------------------------------------------------------
+// Orphan-nested-join guard fixture: user -> profile -> licenses
+// ---------------------------------------------------------------------------
+
+const guardUsers = sqliteTable('parity_guard_user', {
+  id: integer('id').primaryKey(),
+  profileId: integer('profile_id'),
+});
+
+const guardProfiles = sqliteTable('parity_guard_profile', {
+  id: integer('id').primaryKey(),
+});
+
+const guardLicenses = sqliteTable('parity_guard_license', {
+  id: integer('id').primaryKey(),
+  code: text('code'),
+  profileId: integer('profile_id'),
 });
 
 // ---------------------------------------------------------------------------
@@ -62,6 +83,25 @@ function seedIfNeeded(db: ReturnType<typeof drizzle>): void {
       company_id INTEGER NOT NULL,
       profile_id INTEGER,
       age INTEGER NOT NULL
+    )
+  `);
+
+  (_sqlite as any).exec(`
+    CREATE TABLE IF NOT EXISTS parity_guard_user (
+      id INTEGER PRIMARY KEY,
+      profile_id INTEGER
+    )
+  `);
+  (_sqlite as any).exec(`
+    CREATE TABLE IF NOT EXISTS parity_guard_profile (
+      id INTEGER PRIMARY KEY
+    )
+  `);
+  (_sqlite as any).exec(`
+    CREATE TABLE IF NOT EXISTS parity_guard_license (
+      id INTEGER PRIMARY KEY,
+      code TEXT,
+      profile_id INTEGER
     )
   `);
 
@@ -107,6 +147,13 @@ const throwingOnBadRequest = (msg: string): never => {
 
 export interface DrizzleHarness {
   applyAndRun(parsed: any): Promise<number[]>;
+
+  /**
+   * Drive the real `DrizzleJoinResolver.applyJoins` guard against the
+   * `parity_guard_user` -> `profile` -> `licenses` fixture, then execute
+   * the resulting query so a valid nested join proves it is runnable SQL.
+   */
+  applyJoins(joins: QueryJoin[], joinOptions: JoinOptions): Promise<void>;
 }
 
 // ---------------------------------------------------------------------------
@@ -169,6 +216,22 @@ export function buildDrizzleComposer(): DrizzleHarness {
       const composed = composer.applyToQuery(query, normalized, emptyOptions);
       const rows = await composed;
       return (rows as any[]).map((r: any) => r.id);
+    },
+
+    async applyJoins(joins: QueryJoin[], joinOptions: JoinOptions): Promise<void> {
+      const guardResolver = new DrizzleJoinResolver({
+        relationsConfig: {
+          profile: { table: guardProfiles, foreignKey: guardProfiles.id, referenceKey: guardUsers.profileId },
+          'profile.licenses': {
+            table: guardLicenses,
+            foreignKey: guardLicenses.profileId,
+            referenceKey: guardProfiles.id,
+          },
+        },
+        onBadRequest: throwingOnBadRequest,
+      });
+      const query = guardResolver.applyJoins(db.select().from(guardUsers), joins, joinOptions);
+      await (query as any).all();
     },
   };
 }

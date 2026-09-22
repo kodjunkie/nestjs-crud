@@ -111,6 +111,7 @@ describe('#crud-typeorm', () => {
           invalid: {
             eager: true,
           },
+          foo: { eager: true },
           'foo.bar': {
             eager: true,
           },
@@ -355,6 +356,12 @@ describe('#crud-typeorm', () => {
         const query = qb.setJoin({ field: 'company' }).setJoin({ field: 'company.projectsinvalid' }).query();
         const res = await request(server).get('/users/1').query(query);
         expect(res.status).toBe(200);
+      });
+      it('should return status 400 when a nested join is requested without its parent', async () => {
+        const query = qb.setJoin({ field: 'company.projects' }).query();
+        const res = await request(server).get('/users/1').query(query);
+        expect(res.status).toBe(400);
+        expect(res.body.message).toBe("Invalid join: 'company.projects'");
       });
       it('should return joined entity, 1', async () => {
         const query = qb

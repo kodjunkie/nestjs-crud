@@ -8,6 +8,8 @@ import { Brackets, ObjectLiteral, Repository, SelectQueryBuilder } from 'typeorm
 
 import type { CrudRequestOptions } from '@nestjs-crud/core';
 
+import { findOrphanJoin, invalidJoinMessage } from '../join-ancestry';
+
 export interface TypeOrmQueryComposerConfig<T extends ObjectLiteral> {
   repo: Repository<T>;
   entityColumnsHash: ObjectLiteral;
@@ -257,11 +259,16 @@ export class TypeOrmQueryComposer<T extends ObjectLiteral> implements QueryCompo
    * Server allowlist (`joinOptions` from `@Crud()`) is the upper bound — only
    * relations declared there are eligible. Within that allowlist we union:
    *   - eager-flagged relations (always loaded), and
-   *   - request-side `parsed.join` fields whose top-level segment is in the
-   *     allowlist.
+   *   - request-side `parsed.join` fields whose full dotted path is in the
+   *     allowlist — the same rule the join resolver applies; there is no
+   *     top-level-segment fallback.
    *
    * Dotted paths like `'company.projects'` produce nested objects:
    *   `{ company: { projects: true } }`.
+   *
+   * A nested join whose ancestor is not also in `effective` (requested or
+   * eager, at any depth) is rejected via `onBadRequest` before the tree is
+   * built — this mirrors the join resolver's orphan guard.
    *
    * @internal — never exported from the package barrel; consumed only by
    * `applyToQuery`'s strategy-aware join branch.
@@ -275,15 +282,13 @@ export class TypeOrmQueryComposer<T extends ObjectLiteral> implements QueryCompo
 
     const eagerKeys = objKeys(joinOptions || {}).filter((k) => (joinOptions as any)?.[k]?.eager === true);
 
-    const effective = new Set<string>([
-      ...eagerKeys,
-      ...requestedFields.filter((f) => {
-        // Allow if the full dotted path OR its top-level segment is in allowlist.
-        if (allowedKeys.has(f)) return true;
-        const top = f.split('.')[0];
-        return allowedKeys.has(top);
-      }),
-    ]);
+    const effective = new Set<string>([...eagerKeys, ...requestedFields.filter((f) => allowedKeys.has(f))]);
+
+    const orphan = findOrphanJoin([...effective]);
+    if (orphan) {
+      this.onBadRequest(invalidJoinMessage(orphan));
+      return {};
+    }
 
     const tree: Record<string, any> = {};
     for (const path of effective) {
