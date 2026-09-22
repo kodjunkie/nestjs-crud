@@ -276,3 +276,72 @@ jobs:
 
       - name: run smoke
         run: yarn smoke:pack
+
+  install-checks:
+    name: install-checks (${{ matrix.pm }})
+    runs-on: ubuntu-latest
+    needs: parity
+    strategy:
+      fail-fast: false
+      matrix:
+        pm: [npm, yarn, pnpm]
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Enable Corepack (pre-setup-node)
+        run: corepack enable
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+
+      - name: Enable Corepack (post-setup-node)
+        run: corepack enable
+
+      - name: Pin Yarn version
+        run: yarn set version 4.12.0
+
+      - name: install
+        run: yarn install --immutable
+
+      - name: build
+        run: yarn build
+
+      - name: run ${{ matrix.pm }} install check (strict peers)
+        # Invokes the script directly with its flags, not through a yarn
+        # script, so no package-manager environment leaks into the child.
+        run: node scripts/smoke-pack.js --pm=${{ matrix.pm }} --strict-peers
+
+  ioredis-canary:
+    name: ioredis-canary
+    runs-on: ubuntu-latest
+    needs: parity
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Enable Corepack (pre-setup-node)
+        run: corepack enable
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+
+      - name: Enable Corepack (post-setup-node)
+        run: corepack enable
+
+      - name: Pin Yarn version
+        run: yarn set version 4.12.0
+
+      - name: install
+        run: yarn install --immutable
+
+      - name: build
+        run: yarn build
+
+      - name: run ioredis canary
+        # Passes while the known npm dependency conflict between typeorm and
+        # NestJS's optional ioredis peer still reproduces; fails once it
+        # stops reproducing, so a maintainer knows to remove the workaround.
+        run: node scripts/smoke-pack.js --expect-ioredis-eresolve
