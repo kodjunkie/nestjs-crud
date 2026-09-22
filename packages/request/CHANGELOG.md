@@ -7,6 +7,7 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 ### Changed
 
+- **Node 22.12.0 or later is now required (`engines.node`), raised from `>=22.0.0`.** NestJS 12 ships as ESM only, and this package is CommonJS; it loads that ESM package through Node's `require()`-of-ESM support, which lands at 22.12.0.
 - **`RequestQueryParser.parseQuery()` accepts a raw query string.** Pass the part of the URL after `?` and the parser decodes it with `qs` before reading params, so repeated and nested params behave the same whatever query parser the HTTP adapter uses. Passing an already-parsed object works as before.
 
 ### Security

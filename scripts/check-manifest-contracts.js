@@ -15,6 +15,12 @@ const OWNER_RANGE = '^6.16.0';
 const FLOOR_VERSION = '6.16.0';
 const DEPENDENCY_FIELDS = ['dependencies', 'devDependencies', 'peerDependencies', 'optionalDependencies'];
 
+// Contract under test: every published manifest declares the same Node floor,
+// and that floor is exactly EXPECTED_NODE_FLOOR. A published package with no
+// floor, or with a floor that drifts from its siblings, is a defect — see
+// CLAUDE.md "Encode contracts in config, not prose".
+const EXPECTED_NODE_FLOOR = '>=22.12.0';
+
 // Mirrors scripts/smoke-pack.js WORKSPACE_PACKAGES — the fixed set of
 // workspace packages this monorepo ships.
 const WORKSPACE_PACKAGES = ['util', 'request', 'core', 'typeorm', 'drizzle', 'mikro-orm', 'prisma'];
@@ -159,13 +165,42 @@ function assertSingleResolvedVersion(root) {
 }
 
 // ---------------------------------------------------------------------------
+// Assertion 4 — every published manifest declares the same engines.node
+// floor, and that floor is the expected value
+// ---------------------------------------------------------------------------
+
+function assertEnginesFloor(root) {
+  for (const name of WORKSPACE_PACKAGES) {
+    const manifestPath = path.join('packages', name, 'package.json');
+    const manifest = readJson(path.join(root, manifestPath));
+    const nodeFloor = manifest.engines && manifest.engines.node;
+    if (!nodeFloor) {
+      return {
+        ok: false,
+        reason: `${manifestPath} declares no engines.node — expected "${EXPECTED_NODE_FLOOR}"`,
+      };
+    }
+    if (nodeFloor !== EXPECTED_NODE_FLOOR) {
+      return {
+        ok: false,
+        reason: `${manifestPath} declares engines.node "${nodeFloor}" — expected "${EXPECTED_NODE_FLOOR}" (must be identical across all ${WORKSPACE_PACKAGES.length} published packages)`,
+      };
+    }
+  }
+  return {
+    ok: true,
+    message: `OK: all ${WORKSPACE_PACKAGES.length} published packages declare engines.node ${EXPECTED_NODE_FLOOR}`,
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Entry point
 // ---------------------------------------------------------------------------
 
 function main() {
   const { root } = parseArgs(process.argv.slice(2));
 
-  const assertions = [assertOwnerRange, assertSingleOwner, assertSingleResolvedVersion];
+  const assertions = [assertOwnerRange, assertSingleOwner, assertSingleResolvedVersion, assertEnginesFloor];
 
   for (const assertion of assertions) {
     const result = assertion(root);

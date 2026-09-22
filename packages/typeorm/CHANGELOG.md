@@ -13,6 +13,7 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 ### Changed
 
+- **Node 22.12.0 or later is now required (`engines.node`), raised from `>=22.0.0`.** NestJS 12 ships as ESM only, and this package is CommonJS; it loads that ESM package through Node's `require()`-of-ESM support, which lands at 22.12.0.
 - **Requires `@nestjs-crud/core` 2.2.6 or later.** The `@nestjs-crud/core` peer range moves from `^2.0.0` to `^2.2.6`. This package calls core helpers added after 2.0.0, so an older core satisfied the old range without providing them.
 - **Under `relationLoadStrategy: 'query'`, an orphan nested join no longer loads its parent implicitly.** A `?join=` entry whose parent relation is not also joined now returns the same 400 as the default `'join'` strategy, instead of silently loading only the parent.
 

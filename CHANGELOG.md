@@ -18,6 +18,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- **Node 22.12.0 or later is now required (`engines.node`) on every published package, raised from `>=22.0.0`.** NestJS 12 ships as ESM only, and these packages are CommonJS; they load it through Node's `require()`-of-ESM support, which lands at 22.12.0.
 - **Adapter packages require `@nestjs-crud/core` 2.2.6 or later.** Their `@nestjs-crud/core` peer range moves from `^2.0.0` to `^2.2.6`; `@nestjs-crud/mikro-orm` does the same for `@nestjs-crud/request` and `@nestjs-crud/util`. The adapters call core helpers added after 2.0.0, including the cursor sort resolver added in 2.2.6, so an older core satisfied the old range without providing them.
 - **`@nestjs-crud/request` is now the only package that depends on `qs`.** `@nestjs-crud/core` no longer lists `qs` as a dependency. Its request interceptor passes the raw query string to `RequestQueryParser.parseQuery()`, which parses it with `qs`. Parsing results are unchanged, and core still gets `qs` through `@nestjs-crud/request`.
 - **`RequestQueryParser.parseQuery()` accepts a raw query string** (the part of the URL after `?`) as well as a parsed query object.
