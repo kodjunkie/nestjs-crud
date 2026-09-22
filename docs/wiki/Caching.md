@@ -23,10 +23,10 @@ interface CacheStrategy {
 
 Wire one strategy globally via `CrudConfigService.load`. All controllers using `@Crud({ query: { cache } })` will use it.
 
-Strategies accept both `redis` (node-redis v5) and `ioredis` clients. Auto-connect on first op — no explicit `await redis.connect()` needed.
+Strategies accept both `redis` (node-redis v5 or v6) and `ioredis` clients. Auto-connect on first op — no explicit `await redis.connect()` needed.
 
 ```ts
-// Option A — node-redis (v5)
+// Option A — node-redis (v5 or v6)
 import { createClient } from 'redis';
 import { CrudConfigService } from '@nestjs-crud/core';
 import { TypeOrmCacheStrategy } from '@nestjs-crud/typeorm';
@@ -62,7 +62,7 @@ Resolution order at the FetchHelper level: per-service constructor argument over
 Pass either a `redis@5+` (node-redis) or `ioredis` client. No explicit `connect()` needed — the strategy auto-connects on the first cache operation.
 
 ```ts
-// Option A — node-redis (v5)
+// Option A — node-redis (v5 or v6)
 import { createClient } from 'redis';
 import { TypeOrmCacheStrategy } from '@nestjs-crud/typeorm';
 
@@ -88,7 +88,7 @@ When a `CacheStrategy` is wired, the adapter skips TypeORM's native `query.cache
 The strategy bypasses MikroORM's Result Cache because `em.clearCache(key)` is exact-key only — entity-prefix invalidation is not possible through it.
 
 ```ts
-// Option A — node-redis (v5)
+// Option A — node-redis (v5 or v6)
 import { createClient } from 'redis';
 import { MikroOrmCacheStrategy } from '@nestjs-crud/mikro-orm';
 
@@ -114,7 +114,7 @@ The MikroORM `EntityManager` thunk is preserved — the cache wrap goes around `
 The strategy is independent of Drizzle's first-party `Cache` abstract class (which is SQL-hash-keyed and incompatible with our entity-prefix invalidation). Takes a config object (`{ redisClient }`) matching the Drizzle adapter's config-object constructor convention.
 
 ```ts
-// Option A — node-redis (v5)
+// Option A — node-redis (v5 or v6)
 import { createClient } from 'redis';
 import { DrizzleCacheStrategy } from '@nestjs-crud/drizzle';
 
@@ -136,7 +136,7 @@ CrudConfigService.load({
 ### Prisma — Redis
 
 ```ts
-// Option A — node-redis (v5)
+// Option A — node-redis (v5 or v6)
 import { createClient } from 'redis';
 import { PrismaRedisCacheStrategy } from '@nestjs-crud/prisma';
 

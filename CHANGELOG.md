@@ -9,13 +9,22 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+
+- **NestJS 12 support.** Every package's `@nestjs/common` peer range, `@nestjs-crud/core`'s optional `@nestjs/swagger` range, and `@nestjs-crud/typeorm`'s `@nestjs/typeorm` range now accept `^12.0.0` alongside `^10.0.0 || ^11.0.0`. The test suite runs on NestJS 12. NestJS 12 ships as ESM only, and the `@nestjs-crud` packages are CommonJS, so apps on NestJS 12 need a Node release that can `require()` ES modules without a flag.
+- **TypeORM 1.x support.** `@nestjs-crud/typeorm` accepts `typeorm` `^1.0.0`. The test suite runs on TypeORM 1.1.1.
+- **node-redis 6 support.** The `redis` peer range on the four adapter packages is now `^5.0.0 || ^6.0.0`. The Redis cache strategies work unchanged with a node-redis 6 client.
+- **class-validator 0.15 support.** `@nestjs-crud/core`'s `class-validator` peer range is now `^0.14.0 || ^0.15.0`. The previous range, `^0.14.0`, excluded 0.15.x, which is the version the test suite runs on.
+
 ### Changed
 
+- **Adapter packages require `@nestjs-crud/core` 2.2.6 or later.** Their `@nestjs-crud/core` peer range moves from `^2.0.0` to `^2.2.6`; `@nestjs-crud/mikro-orm` does the same for `@nestjs-crud/request` and `@nestjs-crud/util`. The adapters call core helpers added after 2.0.0, including the cursor sort resolver added in 2.2.6, so an older core satisfied the old range without providing them.
 - **`@nestjs-crud/request` is now the only package that depends on `qs`.** `@nestjs-crud/core` no longer lists `qs` as a dependency. Its request interceptor passes the raw query string to `RequestQueryParser.parseQuery()`, which parses it with `qs`. Parsing results are unchanged, and core still gets `qs` through `@nestjs-crud/request`.
 - **`RequestQueryParser.parseQuery()` accepts a raw query string** (the part of the URL after `?`) as well as a parsed query object.
 
 ### Security
 
+- **`@nestjs-crud/typeorm` requires `typeorm` 0.3.30 or later on the 0.3 line.** The peer range moves from `^0.3.0` to `^0.3.30 || ^1.0.0`. The old floor admitted older, vulnerable 0.3 releases for consumers who pinned low, the item carried forward from 2.2.6.
 - **`@nestjs-crud/request` requires `qs` 6.16.0 or later.** The previous floor, `^6.15.2`, admitted versions affected by two advisories fixed in 6.16.0: a denial of service through attacker-controlled `isBuffer` (GHSA-4mjr-xmp4-gh2g) and an array-limit bypass through bracket-key comma parsing (GHSA-x5fp-wj9c-mxmx). The root lockfile now resolves a single `qs` 6.16.0 for the whole workspace.
 
 ## [2.2.6] — 2026-07-31

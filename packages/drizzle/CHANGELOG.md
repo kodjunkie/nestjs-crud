@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [Unreleased]
+
+### Added
+
+- **NestJS 12 support.** The `@nestjs/common` peer range now accepts `^12.0.0` alongside `^10.0.0 || ^11.0.0`.
+- **node-redis 6 support.** The `redis` peer range moves from `^5.0.0` to `^5.0.0 || ^6.0.0`. The Redis cache strategy works unchanged with a node-redis 6 client.
+
+### Changed
+
+- **Requires `@nestjs-crud/core` 2.2.6 or later.** The `@nestjs-crud/core` peer range moves from `^2.0.0` to `^2.2.6`. This package calls core helpers added after 2.0.0, so an older core satisfied the old range without providing them.
+
 ## [2.2.6] — 2026-07-31
 
 ### Fixed

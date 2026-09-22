@@ -5,8 +5,14 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 ## [Unreleased]
 
+### Added
+
+- **NestJS 12 support.** Peer ranges for `@nestjs/common` and the optional `@nestjs/swagger` now accept `^12.0.0` alongside `^10.0.0 || ^11.0.0`.
+- **class-validator 0.15 support.** Peer range moves from `^0.14.0` to `^0.14.0 || ^0.15.0`.
+
 ### Changed
 
+- **`toRedisLike()` error message names node-redis v5 or v6.** When a cache client is neither node-redis, ioredis nor a `RedisLike`, the `TypeError` now reads "Cache backend client must be a node-redis (v5 or v6) instance, …" instead of "(v5)".
 - **`qs` removed from `dependencies`.** `CrudRequestInterceptor` now passes the raw query string to `RequestQueryParser.parseQuery()` from `@nestjs-crud/request`, which owns `qs` parsing. Parsed requests are unchanged. `qs` still installs through `@nestjs-crud/request`.
 
 ## [2.2.6] — 2026-07-31

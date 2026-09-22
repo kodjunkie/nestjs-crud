@@ -45,14 +45,14 @@
   },
   "peerDependencies": {
     "@mikro-orm/core": "^7.0.0",
-    "@nestjs-crud/core": "^2.0.0",
-    "@nestjs-crud/request": "^2.0.0",
-    "@nestjs-crud/util": "^2.0.0",
-    "@nestjs/common": "^10.0.0 || ^11.0.0",
+    "@nestjs-crud/core": "^2.2.6",
+    "@nestjs-crud/request": "^2.2.6",
+    "@nestjs-crud/util": "^2.2.6",
+    "@nestjs/common": "^10.0.0 || ^11.0.0 || ^12.0.0",
     "ioredis": "^5.0.0",
     "mysql2": "^3.0.0",
     "pg": "^8.0.0",
-    "redis": "^5.0.0"
+    "redis": "^5.0.0 || ^6.0.0"
   },
   "peerDependenciesMeta": {
     "ioredis": {
