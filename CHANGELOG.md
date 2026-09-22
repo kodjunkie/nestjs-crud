@@ -7,6 +7,17 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [Unreleased]
+
+### Changed
+
+- **`@nestjs-crud/request` is now the only package that depends on `qs`.** `@nestjs-crud/core` no longer lists `qs` as a dependency. Its request interceptor passes the raw query string to `RequestQueryParser.parseQuery()`, which parses it with `qs`. Parsing results are unchanged, and core still gets `qs` through `@nestjs-crud/request`.
+- **`RequestQueryParser.parseQuery()` accepts a raw query string** (the part of the URL after `?`) as well as a parsed query object.
+
+### Security
+
+- **`@nestjs-crud/request` requires `qs` 6.16.0 or later.** The previous floor, `^6.15.2`, admitted versions affected by two advisories fixed in 6.16.0: a denial of service through attacker-controlled `isBuffer` (GHSA-4mjr-xmp4-gh2g) and an array-limit bypass through bracket-key comma parsing (GHSA-x5fp-wj9c-mxmx). The root lockfile now resolves a single `qs` 6.16.0 for the whole workspace.
+
 ## [2.2.6] — 2026-07-31
 
 ### Fixed

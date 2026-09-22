@@ -12,6 +12,7 @@ import {
   ObjectLiteral,
 } from '@nestjs-crud/util';
 import { ClassTransformOptions } from 'class-transformer';
+import { parse } from 'qs';
 
 import { RequestQueryException } from './exceptions';
 import { ParamsOptions, ParsedRequestOptions, ParsedRequestParams, RequestQueryBuilderOptions } from './interfaces';
@@ -106,7 +107,17 @@ export class RequestQueryParser implements ParsedRequestParams {
     };
   }
 
+  /**
+   * Accepts either an already-parsed query object or a raw query string
+   * (the part after `?`). Raw strings are parsed with `qs`, so nested and
+   * repeated params behave the same regardless of the HTTP adapter's own
+   * query parser (Express 5 defaults to a flat one).
+   */
   parseQuery(query: any): this {
+    if (isString(query)) {
+      query = parse(query);
+    }
+
     if (isObject(query)) {
       const paramNames = objKeys(query);
 

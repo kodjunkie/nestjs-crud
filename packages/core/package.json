@@ -98,8 +98,7 @@
     "@nestjs-crud/request": "^2.2.6",
     "@nestjs-crud/util": "^2.2.6",
     "deepmerge": "^4.3.1",
-    "pluralize": "^8.0.0",
-    "qs": "^6.15.2"
+    "pluralize": "^8.0.0"
   },
   "peerDependencies": {
     "@nestjs/common": "^10.0.0 || ^11.0.0",

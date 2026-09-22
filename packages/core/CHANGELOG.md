@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [Unreleased]
+
+### Changed
+
+- **`qs` removed from `dependencies`.** `CrudRequestInterceptor` now passes the raw query string to `RequestQueryParser.parseQuery()` from `@nestjs-crud/request`, which owns `qs` parsing. Parsed requests are unchanged. `qs` still installs through `@nestjs-crud/request`.
+
 ## [2.2.6] — 2026-07-31
 
 ### Fixed

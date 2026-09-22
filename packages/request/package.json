@@ -59,6 +59,6 @@
   },
   "dependencies": {
     "@nestjs-crud/util": "^2.2.6",
-    "qs": "^6.15.2"
+    "qs": "^6.16.0"
   }
 }
