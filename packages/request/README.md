@@ -7,7 +7,7 @@
 
 ## Install
 
-Requires Node.js 22.12.0 or later — NestJS 12 ships as ESM only, and this package is CommonJS; it loads NestJS 12 through Node's `require(esm)` support, which arrives at 22.12.0.
+Requires Node.js 22.12.0 or later. This package depends only on `@nestjs-crud/util` and `qs` and would run on older releases; the floor is uniform across every `@nestjs-crud` package so a consumer installing any of them gets one Node requirement rather than several. The packages that integrate with NestJS set the floor: NestJS 12 ships as ESM only, and they are CommonJS, so they load it through Node's `require()`-of-ESM support, which lands at 22.12.0.
 
 ```shell
 npm i @nestjs-crud/request

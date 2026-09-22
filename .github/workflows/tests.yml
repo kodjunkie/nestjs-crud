@@ -130,6 +130,16 @@ jobs:
             docker compose exec -T ${{ matrix.db }} sh -c 'exit 0' && break || sleep 2
           done
 
+      # The adapter suites include cache-strategy specs that open a real Redis
+      # connection, so Redis has to be accepting commands before they start —
+      # waiting only for the database leaves that a race.
+      - name: wait for Redis
+        run: |
+          for i in {1..30}; do
+            docker compose exec -T redis redis-cli PING | grep -q PONG && break || sleep 2
+          done
+          docker compose exec -T redis redis-cli PING | grep -q PONG
+
       - name: run ${{ matrix.adapter }} x ${{ matrix.db }} tests
         run: yarn test:${{ matrix.adapter }}:${{ matrix.db }}
 
