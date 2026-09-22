@@ -1,8 +1,10 @@
 import { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
+import { DataSource } from 'typeorm';
 import request from 'supertest';
 
 import { AppModule } from './__fixture__/app/app.module';
+import { resetFixture } from './__fixture__/app/reset-fixture';
 
 const dialect = process.env.TYPEORM_CONNECTION as 'mysql' | 'postgres' | undefined;
 const runSuite = !dialect || dialect === 'mysql' || dialect === 'postgres';
@@ -15,6 +17,7 @@ const runSuite = !dialect || dialect === 'mysql' || dialect === 'postgres';
     const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
     app = moduleRef.createNestApplication();
     await app.init();
+    await resetFixture(app.get(DataSource));
     server = app.getHttpServer();
   });
 

@@ -6,9 +6,11 @@
 import { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { CrudConfigService, MockCacheStrategy } from '@nestjs-crud/core';
+import { DataSource } from 'typeorm';
 import request from 'supertest';
 
 import { AppModule } from './__fixture__/app/app.module';
+import { resetFixture } from './__fixture__/app/reset-fixture';
 
 const dialect = process.env.TYPEORM_CONNECTION as 'mysql' | undefined;
 // Default to postgres when TYPEORM_CONNECTION is unset; run on both dialects.
@@ -27,6 +29,7 @@ const runSuite = !dialect || dialect === 'mysql' || dialect === 'postgres';
     }).compile();
     app = moduleRef.createNestApplication();
     await app.init();
+    await resetFixture(app.get(DataSource));
     server = app.getHttpServer();
   });
 

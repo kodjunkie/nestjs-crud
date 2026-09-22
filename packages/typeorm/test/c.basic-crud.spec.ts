@@ -2,6 +2,7 @@ import { Controller, INestApplication } from '@nestjs/common';
 import { APP_FILTER } from '@nestjs/core';
 import { Test } from '@nestjs/testing';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { DataSource } from 'typeorm';
 
 import { Crud } from '@nestjs-crud/core';
 import { RequestQueryBuilder } from '@nestjs-crud/request';
@@ -12,6 +13,7 @@ import { withCache } from './__fixture__/app/orm.config';
 import { Project } from './__fixture__/app/projects';
 import { User } from './__fixture__/app/users';
 import { UserProfile } from './__fixture__/app/users-profiles';
+import { resetFixture } from './__fixture__/app/reset-fixture';
 import { HttpExceptionFilter } from './__fixture__/shared/https-exception.filter';
 import { CompaniesService } from './__fixture__/companies.service';
 import { UsersService } from './__fixture__/users.service';
@@ -50,6 +52,7 @@ describe('#crud-typeorm', () => {
       _service = app.get<CompaniesService>(CompaniesService);
 
       await app.init();
+      await resetFixture(app.get(DataSource));
       server = app.getHttpServer();
     });
 
@@ -97,6 +100,7 @@ describe('#crud-typeorm', () => {
       _service = app.get<CompaniesService>(CompaniesService);
 
       await app.init();
+      await resetFixture(app.get(DataSource));
       server = app.getHttpServer();
     });
 
@@ -279,6 +283,7 @@ describe('#crud-typeorm', () => {
       service = app.get<CompaniesService>(CompaniesService);
 
       await app.init();
+      await resetFixture(app.get(DataSource));
       server = app.getHttpServer();
     });
 

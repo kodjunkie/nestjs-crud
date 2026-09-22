@@ -3,6 +3,7 @@ import { APP_FILTER } from '@nestjs/core';
 import { Test } from '@nestjs/testing';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { RequestQueryBuilder } from '@nestjs-crud/request';
+import { DataSource } from 'typeorm';
 import 'jest-extended';
 import request from 'supertest';
 
@@ -12,6 +13,7 @@ import { Project } from './__fixture__/app/projects';
 import { User } from './__fixture__/app/users';
 import { UserProfile } from './__fixture__/app/users-profiles';
 import { Note } from './__fixture__/app/notes';
+import { resetFixture } from './__fixture__/app/reset-fixture';
 import { HttpExceptionFilter } from './__fixture__/shared/https-exception.filter';
 import { Crud } from '../../core/src/decorators';
 import { CompaniesService } from './__fixture__/companies.service';
@@ -194,6 +196,7 @@ describe('#crud-typeorm', () => {
       app = fixture.createNestApplication();
 
       await app.init();
+      await resetFixture(app.get(DataSource));
       server = app.getHttpServer();
     });
 

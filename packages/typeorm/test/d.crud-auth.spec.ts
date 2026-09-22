@@ -2,6 +2,7 @@ import { Controller, INestApplication, Injectable, CanActivate, ExecutionContext
 import { APP_FILTER, APP_GUARD } from '@nestjs/core';
 import { Test } from '@nestjs/testing';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { DataSource } from 'typeorm';
 
 import { Crud, CrudAuth } from '@nestjs-crud/core';
 import request from 'supertest';
@@ -9,6 +10,7 @@ import { withCache } from './__fixture__/app/orm.config';
 import { User } from './__fixture__/app/users';
 import { UserProfile } from './__fixture__/app/users-profiles';
 import { Project } from './__fixture__/app/projects';
+import { resetFixture } from './__fixture__/app/reset-fixture';
 import { HttpExceptionFilter } from './__fixture__/shared/https-exception.filter';
 import { UsersService } from './__fixture__/users.service';
 import { ProjectsService } from './__fixture__/projects.service';
@@ -105,6 +107,7 @@ describe('#crud-typeorm', () => {
       app = fixture.createNestApplication();
 
       await app.init();
+      await resetFixture(app.get(DataSource));
       server = request(app.getHttpServer());
     });
 

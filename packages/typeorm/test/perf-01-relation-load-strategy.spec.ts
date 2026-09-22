@@ -25,6 +25,7 @@ import { Controller, INestApplication } from '@nestjs/common';
 import { APP_FILTER } from '@nestjs/core';
 import { Test } from '@nestjs/testing';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { DataSource } from 'typeorm';
 
 import { Crud, CrudController, CrudRequest, Override, ParsedRequest } from '@nestjs-crud/core';
 import request from 'supertest';
@@ -35,6 +36,7 @@ import { withCache } from './__fixture__/app/orm.config';
 import { User } from './__fixture__/app/users';
 import { UserProfile } from './__fixture__/app/users-profiles';
 import { UsersService } from './__fixture__/app/users/users.service';
+import { resetFixture } from './__fixture__/app/reset-fixture';
 import { HttpExceptionFilter } from './__fixture__/shared/https-exception.filter';
 
 // Twin controllers — same join allowlist, different strategies — so Test 1 can
@@ -102,6 +104,7 @@ describe('TypeORM relationLoadStrategy opt-in', () => {
 
     app = fixture.createNestApplication();
     await app.init();
+    await resetFixture(app.get(DataSource));
     server = app.getHttpServer();
   });
 
