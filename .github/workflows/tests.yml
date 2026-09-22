@@ -14,7 +14,18 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
-      - name: Enable Corepack
+      - name: check manifest contracts
+        run: node scripts/check-manifest-contracts.js
+
+      - name: Enable Corepack (pre-setup-node)
+        run: corepack enable
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+
+      - name: Enable Corepack (post-setup-node)
         run: corepack enable
 
       - name: Pin Yarn version
@@ -38,14 +49,24 @@ jobs:
         # the test matrix runs per-adapter configs only. This is what executes
         # swagger-constants-fallback.spec.ts — the guard that fails when the
         # inlined DECORATORS fallback drifts from the installed @nestjs/swagger.
-        run: npx jest --silent
+        # NODE_OPTIONS is required: NestJS 12 is ESM-only, and a bare `npx jest`
+        # aborts with a require-of-ESM error before a single test runs.
+        run: NODE_OPTIONS=--experimental-vm-modules npx jest --silent
 
   parity:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
 
-      - name: Enable Corepack
+      - name: Enable Corepack (pre-setup-node)
+        run: corepack enable
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+
+      - name: Enable Corepack (post-setup-node)
         run: corepack enable
 
       - name: Pin Yarn version
@@ -80,7 +101,15 @@ jobs:
       - name: build docker db
         run: docker compose up -d
 
-      - name: Enable Corepack
+      - name: Enable Corepack (pre-setup-node)
+        run: corepack enable
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+
+      - name: Enable Corepack (post-setup-node)
         run: corepack enable
 
       - name: Pin Yarn version
@@ -111,7 +140,15 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
-      - name: Enable Corepack
+      - name: Enable Corepack (pre-setup-node)
+        run: corepack enable
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+
+      - name: Enable Corepack (post-setup-node)
         run: corepack enable
 
       - name: Pin Yarn version
@@ -127,7 +164,9 @@ jobs:
         run: yarn build
 
       - name: run no-swagger sentinel
-        run: npx jest --config jest.config.no-swagger.js --coverage
+        # NODE_OPTIONS is required: NestJS 12 is ESM-only, and a bare `npx jest`
+        # aborts with a require-of-ESM error before a single test runs.
+        run: NODE_OPTIONS=--experimental-vm-modules npx jest --config jest.config.no-swagger.js --coverage
 
       - name: upload coverage artifact
         if: always()
@@ -145,7 +184,15 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
-      - name: Enable Corepack
+      - name: Enable Corepack (pre-setup-node)
+        run: corepack enable
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+
+      - name: Enable Corepack (post-setup-node)
         run: corepack enable
 
       - name: Pin Yarn version
@@ -180,3 +227,52 @@ jobs:
           path: |
             knip-report.md
             knip-report.json
+
+  node-floor:
+    name: node-floor (22.12.0)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Enable Corepack (pre-setup-node)
+        run: corepack enable
+
+      - name: Setup Node.js
+        # This job pins the exact published floor, not a range. A slightly
+        # newer patch such as 22.14.0 already satisfies some of our
+        # dependencies' own higher engine floors, which would hide the
+        # advisory engine warning this job exists to characterize.
+        uses: actions/setup-node@v5
+        with:
+          node-version: '22.12.0'
+
+      - name: Enable Corepack (post-setup-node)
+        run: corepack enable
+
+      - name: Pin Yarn version
+        run: yarn set version 4.12.0
+
+      - name: install
+        # Engine-compatibility warnings from dependencies that declare a
+        # higher floor than ours in their own engines field are expected on
+        # this exact version and must not be treated as failures here.
+        run: yarn install --immutable
+
+      - name: clean and build
+        run: yarn clean && yarn build
+
+      - name: run request/util unit suite
+        # Scoped to packages/request and packages/util, not the full
+        # core/request/util suite the other jobs run. packages/core specs
+        # import @nestjs/common (ESM-only) transitively, and Jest's own
+        # require(esm) support is gated behind a runtime feature-detection
+        # (vm.SourceTextModule.prototype.hasAsyncGraph) present only from
+        # Node v24.9 onward. That gate lives inside Jest itself, separate
+        # from Node's own require(esm) support, which is unflagged already
+        # at this job's 22.12.0 floor. The line below that actually proves
+        # our published CJS packages load NestJS 12 through Node's native
+        # require(esm) at this floor is "run smoke", not this step.
+        run: NODE_OPTIONS=--experimental-vm-modules npx jest --silent packages/util packages/request
+
+      - name: run smoke
+        run: yarn smoke:pack
