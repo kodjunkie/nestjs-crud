@@ -125,31 +125,9 @@
     "email": "paplow01@gmail.com"
   },
   "resolutions": {
-    "flatted": "^3.4.2",
-    "path-to-regexp@npm:^8": "^8.4.2",
-    "@nestjs/swagger/path-to-regexp": "^8.4.2",
-    "@nestjs/swagger/lodash": "^4.17.24",
-    "commitizen/lodash": "^4.17.24",
-    "lodash@npm:^4": "^4.17.24",
-    "minimatch@npm:^3": "^3.1.5",
-    "minimatch@npm:~3.0.4": "^3.1.5",
-    "minimatch@npm:^5.0.1": "^5.1.9",
-    "minimatch@npm:^9": "^9.0.9",
-    "minimatch@npm:^10": "^10.2.5",
-    "minimatch@npm:10.1.1": "^10.2.5",
-    "lerna/minimatch": "^3.1.5",
-    "@lerna/create/minimatch": "^3.1.5",
-    "lerna/tar": "^7.5.18",
-    "@lerna/create/tar": "^7.5.18",
-    "lerna/js-yaml": "^4.3.0",
-    "picomatch@npm:^2.0.4": "^2.3.2",
-    "picomatch@npm:^2.2.1": "^2.3.2",
-    "picomatch@npm:^2.3.1": "^2.3.2",
-    "picomatch@npm:^4": "^4.0.4",
-    "follow-redirects": "^1.16.0",
-    "tmp@npm:^0.0.33": "^0.2.4",
-    "@conventional-changelog/git-client@npm:^1.0.0": "^2.0.0",
-    "fast-uri": "^3.1.4",
-    "ip-address": "^10.1.1"
+    "lerna/js-yaml": "^4.3.2"
+  },
+  "resolutionReasons": {
+    "lerna/js-yaml": "GHSA-2883-xcg3-v3hh, GHSA-5p4m-2wfm-xmqj (uncontrolled CPU consumption / ReDoS class): patched in 4.3.2; lerna@10.0.1 pins js-yaml 4.3.0 exactly"
   }
 }

@@ -21,6 +21,12 @@ const DEPENDENCY_FIELDS = ['dependencies', 'devDependencies', 'peerDependencies'
 // CLAUDE.md "Encode contracts in config, not prose".
 const EXPECTED_NODE_FLOOR = '>=22.12.0';
 
+// Contract under test: every key in root package.json's `resolutions` block
+// has a same-named, non-empty, written reason in the sibling
+// `resolutionReasons` object (and vice versa) — a resolutions entry with no
+// recorded reason is a defect, not a style nit. See CLAUDE.md "Encode
+// contracts in config, not prose".
+
 // Mirrors scripts/smoke-pack.js WORKSPACE_PACKAGES — the fixed set of
 // workspace packages this monorepo ships.
 const WORKSPACE_PACKAGES = ['util', 'request', 'core', 'typeorm', 'drizzle', 'mikro-orm', 'prisma'];
@@ -194,13 +200,67 @@ function assertEnginesFloor(root) {
 }
 
 // ---------------------------------------------------------------------------
+// Assertion 5 — every root `resolutions` entry carries a written reason
+// ---------------------------------------------------------------------------
+
+function assertResolutionReasons(root) {
+  const manifestPath = path.join(root, 'package.json');
+  const manifest = readJson(manifestPath);
+
+  const resolutionsField = manifest.resolutions;
+  if (
+    resolutionsField !== undefined &&
+    (typeof resolutionsField !== 'object' || resolutionsField === null || Array.isArray(resolutionsField))
+  ) {
+    return { ok: false, reason: 'root package.json "resolutions" must be a plain object when present' };
+  }
+  const reasonsField = manifest.resolutionReasons;
+  if (
+    reasonsField !== undefined &&
+    (typeof reasonsField !== 'object' || reasonsField === null || Array.isArray(reasonsField))
+  ) {
+    return { ok: false, reason: 'root package.json "resolutionReasons" must be a plain object when present' };
+  }
+
+  const resolutions = resolutionsField || {};
+  const reasons = reasonsField || {};
+
+  for (const key of Object.keys(resolutions)) {
+    if (!Object.prototype.hasOwnProperty.call(reasons, key)) {
+      return { ok: false, reason: `resolutions key "${key}" has no matching entry in resolutionReasons` };
+    }
+  }
+  for (const key of Object.keys(reasons)) {
+    if (!Object.prototype.hasOwnProperty.call(resolutions, key)) {
+      return { ok: false, reason: `resolutionReasons key "${key}" has no matching entry in resolutions` };
+    }
+    const value = reasons[key];
+    if (typeof value !== 'string' || value.trim() === '') {
+      return { ok: false, reason: `resolutionReasons["${key}"] must be a non-empty string` };
+    }
+  }
+
+  const count = Object.keys(resolutions).length;
+  return {
+    ok: true,
+    message: `OK: every root resolutions entry (${count}) has a written reason`,
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Entry point
 // ---------------------------------------------------------------------------
 
 function main() {
   const { root } = parseArgs(process.argv.slice(2));
 
-  const assertions = [assertOwnerRange, assertSingleOwner, assertSingleResolvedVersion, assertEnginesFloor];
+  const assertions = [
+    assertOwnerRange,
+    assertSingleOwner,
+    assertSingleResolvedVersion,
+    assertEnginesFloor,
+    assertResolutionReasons,
+  ];
 
   for (const assertion of assertions) {
     const result = assertion(root);
