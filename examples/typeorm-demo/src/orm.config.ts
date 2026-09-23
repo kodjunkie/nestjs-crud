@@ -9,7 +9,9 @@ export const ormConfig: TypeOrmModuleOptions = {
   port: type === 'postgres' ? 5455 : 3316,
   username: type === 'mysql' ? 'nestjs_crud' : 'root',
   password: type === 'mysql' ? 'nestjs_crud' : 'root',
-  database: 'nestjs_crud',
+  // Override lets a local demo run use its own database, separate from the
+  // integration-test fixture, which uses the same default database.
+  database: process.env.TYPEORM_DATABASE || 'nestjs_crud',
   // synchronize: true so the demo creates its two tables on first boot.
   synchronize: true,
   logging: false,

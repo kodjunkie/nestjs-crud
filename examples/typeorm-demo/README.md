@@ -11,7 +11,8 @@ load-bearing on a user-facing app.
 ## Prerequisites
 
 - Node 24+
-- Yarn (any modern version — this folder does not share the repo's Yarn 4.12 pin)
+- Yarn 4 through Corepack (`corepack enable`) — this folder has no `packageManager`
+  field of its own, so Corepack falls back to the repository root's `yarn@4.12.0` pin
 - Postgres reachable on `localhost:5455` — easiest via the repo-root `compose.yml`:
   ```bash
   # from the repository root
@@ -27,17 +28,51 @@ load-bearing on a user-facing app.
 
 ## Run the demo
 
+Use Yarn, not npm: npm symlinks the `file:` packages, so they would resolve NestJS
+from the repository root's `node_modules` and load a second copy.
+
 ```bash
 cd examples/typeorm-demo
+touch yarn.lock   # see below
 yarn install
 yarn build        # tsc compile into ./dist
-yarn start:dev    # ts-node, fastest feedback loop
+yarn start:dev    # compiler watch mode + Node watch mode, fastest feedback loop
 # or: yarn start  — run the compiled dist output
 ```
+
+The `touch yarn.lock` step matters: without an empty lockfile present, Yarn walks
+up to the repository root and refuses to install, because this folder is not one
+of the root's declared workspaces. The empty file marks it as its own Yarn
+project instead. The marker is gitignored, so each fresh install resolves the
+newest releases inside this demo's own dependency ranges.
+
+This demo's `resolutions` block keeps every `@nestjs-crud/*` package pinned to
+its local `file:` build, so the packages' own dependencies on each other resolve
+to the same local copy instead of pulling a published version from npm.
+
+`yarn start:dev` runs the TypeScript compiler in watch mode alongside
+`node --watch`, restarting the app on every recompile. `yarn start` just runs
+the already-compiled output in `dist/`.
 
 The app binds to `http://localhost:3000` (set `PORT` to override).
 `synchronize: true` is enabled in `orm.config.ts` so the two demo tables
 (`users`, `companies`) are created on first boot — no migrations required.
+
+By default the demo connects to the `nestjs_crud` database, the same one the
+repository's integration tests use, and its `synchronize: true` step rewrites
+that database's `users` and `companies` tables. To keep the demo from touching
+the integration tests' data, create a separate database and point the demo at
+it:
+
+```bash
+# from the repository root
+docker compose exec -T postgres createdb -U root typeorm_demo
+```
+
+```bash
+cd examples/typeorm-demo
+TYPEORM_DATABASE=typeorm_demo yarn start:dev
+```
 
 ## Poke the API
 

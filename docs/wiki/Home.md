@@ -51,8 +51,14 @@ yarn test
 ## Run the example project
 
 ```shell
-yarn db:prepare:typeorm:postgres
-yarn start:typeorm
+yarn build
+cd examples/typeorm-demo
+touch yarn.lock
+yarn install
+yarn start:dev
 ```
 
-Open `http://localhost:3000/docs` for Swagger. The source lives at [`examples/typeorm-demo/`](https://github.com/kodjunkie/nestjs-crud/tree/master/examples/typeorm-demo) — a standalone NestJS app you can copy from.
+The app serves `/users` and `/companies` on `http://localhost:3000`. See the
+[demo README](https://github.com/kodjunkie/nestjs-crud/tree/master/examples/typeorm-demo)
+for the database override and curl examples. The source lives at
+[`examples/typeorm-demo/`](https://github.com/kodjunkie/nestjs-crud/tree/master/examples/typeorm-demo) — a standalone NestJS app you can copy from.
