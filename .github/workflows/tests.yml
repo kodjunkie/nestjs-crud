@@ -434,3 +434,65 @@ jobs:
       - name: restore package.json and yarn.lock
         if: always()
         run: node scripts/oldest-peers.js --restore
+
+  demo:
+    name: demo (typeorm-demo on Postgres)
+    runs-on: ubuntu-latest
+    needs: parity
+    permissions:
+      contents: read
+    env:
+      COMPOSE_FILE: ./compose.yml
+    steps:
+      # The demo install floats and runs third-party install scripts, so this
+      # job keeps no Git credentials on disk.
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+
+      - name: build docker db
+        run: docker compose up -d postgres
+
+      - name: Enable Corepack (pre-setup-node)
+        run: corepack enable
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+
+      - name: Enable Corepack (post-setup-node)
+        run: corepack enable
+
+      - name: Pin Yarn version
+        run: yarn set version 4.12.0
+
+      - name: install
+        run: yarn install --immutable
+
+      - name: build
+        # Produces packages/*/lib, which the demo's file: dependencies link to.
+        run: yarn build
+
+      - name: wait for Postgres
+        run: |
+          for i in {1..30}; do
+            docker compose exec -T postgres pg_isready -U root -d nestjs_crud && break || sleep 2
+          done
+          docker compose exec -T postgres pg_isready -U root -d nestjs_crud
+
+      - name: install the demo
+        # The demo has no committed lockfile, so its install floats to the
+        # newest releases in its ranges, and a red job here means a fresh
+        # consumer install is broken right now. CI makes Yarn installs
+        # immutable by default, and an install that starts from the empty
+        # marker always writes the lockfile, so this step opts out.
+        run: touch examples/typeorm-demo/yarn.lock && yarn --cwd examples/typeorm-demo install --no-immutable
+
+      - name: build the demo
+        run: yarn --cwd examples/typeorm-demo build
+
+      - name: smoke-test the demo
+        # Checks list, create company, create user and the join route against
+        # this job's fresh Postgres database.
+        run: node scripts/demo-smoke.js
