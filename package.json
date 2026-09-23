@@ -23,7 +23,7 @@
     "test:postgres": "yarn test",
     "test:mysql": "yarn test:typeorm:mysql && yarn test:drizzle:mysql && yarn test:mikro-orm:mysql && yarn test:prisma:mysql && NODE_OPTIONS=--experimental-vm-modules jest --config jest.config.js",
     "test:mikro-orm": "NODE_OPTIONS=--experimental-vm-modules npx jest --config packages/mikro-orm/jest.config.js",
-    "start:typeorm": "cd examples/typeorm-demo && yarn start:dev",
+    "start:typeorm": "cd examples/typeorm-demo && touch yarn.lock && yarn install && yarn start:dev",
     "db:cli:typeorm": "cd ./packages/typeorm/test/__fixture__/app && node ../../../../../node_modules/ts-node/dist/bin.js --project tsconfig.cli.json -r tsconfig-paths/register ../../../../../node_modules/typeorm/cli.js",
     "db:sync:typeorm": "yarn db:cli:typeorm schema:sync",
     "db:drop:typeorm": "yarn db:cli:typeorm schema:drop",
