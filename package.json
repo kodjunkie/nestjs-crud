@@ -125,9 +125,15 @@
     "email": "paplow01@gmail.com"
   },
   "resolutions": {
-    "lerna/js-yaml": "^4.3.2"
+    "lerna/js-yaml": "^4.3.2",
+    "nx/smol-toml": "^1.9.0",
+    "prisma/mysql2": "^3.24.4",
+    "@prisma/adapter-mariadb/mariadb": "^3.4.7"
   },
   "resolutionReasons": {
-    "lerna/js-yaml": "GHSA-2883-xcg3-v3hh, GHSA-5p4m-2wfm-xmqj (uncontrolled CPU consumption / ReDoS class): patched in 4.3.2; lerna@10.0.1 pins js-yaml 4.3.0 exactly"
+    "lerna/js-yaml": "GHSA-2883-xcg3-v3hh, GHSA-5p4m-2wfm-xmqj (uncontrolled CPU consumption / ReDoS class): patched in 4.3.2; lerna@10.0.1 pins js-yaml 4.3.0 exactly",
+    "nx/smol-toml": "GHSA-7w5x-hrqm-74c2 (denial of service via malformed TOML documents class): patched in 1.7.1; nx@23.2.1 pins smol-toml 1.6.1 exactly",
+    "prisma/mysql2": "GHSA-3f6p-5ww8-9rcr, GHSA-rgwj-5xj2-c3m3 (auth-plugin downgrade credential leak / decompression-bomb DoS class): patched in 3.23.1; prisma@7.10.0 pins mysql2 3.15.3 exactly",
+    "@prisma/adapter-mariadb/mariadb": "GHSA-g5xc-5w98-jfvm, GHSA-42r5-vhpq-m858, GHSA-cqhc-2h57-wpxf (SQL injection via buffer escaping / cleartext credential exposure class): patched in 3.4.6; @prisma/adapter-mariadb@7.10.0 pins mariadb 3.4.5 exactly"
   }
 }

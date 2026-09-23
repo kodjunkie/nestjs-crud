@@ -42,6 +42,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **`@nestjs-crud/typeorm` requires `typeorm` 0.3.30 or later on the 0.3 line.** The peer range moves from `^0.3.0` to `^0.3.30 || ^1.0.0`. The old floor admitted older, vulnerable 0.3 releases for consumers who pinned low, the item carried forward from 2.2.6.
 - **`@nestjs-crud/request` requires `qs` 6.16.0 or later.** The previous floor, `^6.15.2`, admitted versions affected by two advisories fixed in 6.16.0: a denial of service through attacker-controlled `isBuffer` (GHSA-4mjr-xmp4-gh2g) and an array-limit bypass through bracket-key comma parsing (GHSA-x5fp-wj9c-mxmx). The root lockfile now resolves a single `qs` 6.16.0 for the whole workspace.
 - **Under TypeORM `relationLoadStrategy: 'query'`, a nested join needs its full dotted path in the join options.** Previously, any nested relation under an allowlisted top-level relation could be loaded, even when the nested path itself was not allowlisted.
+- **The build and test toolchain now resolves patched `smol-toml`, `mysql2` and `mariadb` releases.** Nx (the engine behind Lerna's task runner), the Prisma CLI, and the Prisma MariaDB driver adapter each pinned an older, vulnerable copy of one of these packages exactly; the root workspace now overrides those pins. None of the three packages ship inside a published `@nestjs-crud/*` tarball, and no published package's dependencies or peer ranges changed.
 
 ## [2.2.6] — 2026-07-31
 
