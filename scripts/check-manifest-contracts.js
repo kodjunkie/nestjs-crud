@@ -46,6 +46,15 @@ function readJson(filePath) {
   return JSON.parse(fs.readFileSync(filePath, 'utf8'));
 }
 
+function readYarnLockLines(root) {
+  const lockPath = path.join(root, 'yarn.lock');
+  return fs.readFileSync(lockPath, 'utf8').split('\n');
+}
+
+function escapeRegExp(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 function compareVersions(a, b) {
   const partsA = a.split('.').map(Number);
   const partsB = b.split('.').map(Number);
@@ -116,8 +125,7 @@ function assertSingleOwner(root) {
 // ---------------------------------------------------------------------------
 
 function assertSingleResolvedVersion(root) {
-  const lockPath = path.join(root, 'yarn.lock');
-  const lines = fs.readFileSync(lockPath, 'utf8').split('\n');
+  const lines = readYarnLockLines(root);
 
   const resolvedVersions = new Set();
   let inQsBlock = false;
@@ -248,6 +256,130 @@ function assertResolutionReasons(root) {
 }
 
 // ---------------------------------------------------------------------------
+// Assertion 6 — every root `resolutions` override actually takes effect:
+// yarn.lock resolves the override descriptor to a version at or above the
+// patched floor its resolutionReasons entry cites, and the named parent
+// still declares a dependency on the overridden package. Catches the
+// regression assertResolutionReasons can't: a resolutions key that stops
+// matching any real dependency edge (Yarn silently no-ops an unmatched
+// resolution rather than erroring), which would otherwise silently
+// reintroduce the exact vulnerable version the override exists to exclude.
+// See CLAUDE.md "Encode contracts in config, not prose".
+// ---------------------------------------------------------------------------
+
+// Confirms `parentName`'s own lockfile entry still declares a dependency on
+// `pkgName` — the structural edge the resolutions override targets.
+function parentDeclaresDependency(lines, parentName, pkgName) {
+  const parentHeaderPattern = new RegExp(`^"?${escapeRegExp(parentName)}@npm:`);
+  let inParentBlock = false;
+  let inDependenciesSection = false;
+
+  for (const line of lines) {
+    if (/^[^\s#].*:\s*$/.test(line) && line.trim() !== '__metadata:') {
+      inDependenciesSection = false;
+      inParentBlock = parentHeaderPattern.test(line.trim());
+      continue;
+    }
+    if (!inParentBlock) continue;
+    if (/^\s{2}dependencies:\s*$/.test(line)) {
+      inDependenciesSection = true;
+      continue;
+    }
+    if (inDependenciesSection) {
+      if (/^\s{2}\S/.test(line)) {
+        // Dedented back to a block-level key (checksum, languageName, ...) —
+        // the dependencies section ended without a match.
+        inDependenciesSection = false;
+        continue;
+      }
+      const keyMatch = /^\s{4}("?)([^":]+)\1:/.exec(line);
+      if (keyMatch && keyMatch[2] === pkgName) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+// Finds the resolved `version:` for a lockfile entry whose header lists the
+// exact descriptor `<pkgName>@npm:<range>` — same header-parsing approach as
+// assertSingleResolvedVersion above, generalized to an arbitrary descriptor.
+function findResolvedVersionForDescriptor(lines, descriptor) {
+  let inBlock = false;
+  for (const line of lines) {
+    if (/^[^\s#].*:\s*$/.test(line) && line.trim() !== '__metadata:') {
+      const header = line.trim().replace(/:$/, '');
+      const unquoted = header.replace(/^"|"$/g, '');
+      const descriptors = unquoted.split(', ');
+      inBlock = descriptors.includes(descriptor);
+      continue;
+    }
+    if (inBlock) {
+      const versionMatch = /^\s+version:\s*(\S+)\s*$/.exec(line);
+      if (versionMatch) {
+        return versionMatch[1];
+      }
+    }
+  }
+  return null;
+}
+
+function assertResolutionsApplied(root) {
+  const manifest = readJson(path.join(root, 'package.json'));
+  const resolutions = manifest.resolutions || {};
+  const reasons = manifest.resolutionReasons || {};
+  const lines = readYarnLockLines(root);
+
+  for (const key of Object.keys(resolutions)) {
+    // key is "<parent>/<pkg>"; pkg is always the last segment, parent is
+    // everything before it (parent may itself be scoped, e.g.
+    // "@prisma/adapter-mariadb/mariadb").
+    const segments = key.split('/');
+    const pkgName = segments.pop();
+    const parentName = segments.join('/');
+    const range = resolutions[key];
+
+    if (!parentDeclaresDependency(lines, parentName, pkgName)) {
+      return {
+        ok: false,
+        reason: `resolutions["${key}"] targets a dependency edge that no longer exists — yarn.lock's "${parentName}" entry no longer declares a "${pkgName}" dependency, so this override is a silent no-op`,
+      };
+    }
+
+    const descriptor = `${pkgName}@npm:${range}`;
+    const resolvedVersion = findResolvedVersionForDescriptor(lines, descriptor);
+    if (!resolvedVersion) {
+      return {
+        ok: false,
+        reason: `resolutions["${key}"] = "${range}" but yarn.lock has no resolved entry for "${descriptor}" — the override may not be taking effect`,
+      };
+    }
+
+    const reasonText = reasons[key] || '';
+    const floorMatch = /patched in ([0-9]+\.[0-9]+\.[0-9]+)/.exec(reasonText);
+    if (!floorMatch) {
+      return {
+        ok: false,
+        reason: `resolutionReasons["${key}"] does not state a "patched in X.Y.Z" floor to verify yarn.lock against`,
+      };
+    }
+    const floorVersion = floorMatch[1];
+    if (compareVersions(resolvedVersion, floorVersion) < 0) {
+      return {
+        ok: false,
+        reason: `yarn.lock resolves "${descriptor}" to ${resolvedVersion}, below the floor ${floorVersion} that resolutionReasons["${key}"] cites as patched`,
+      };
+    }
+  }
+
+  const count = Object.keys(resolutions).length;
+  return {
+    ok: true,
+    message: `OK: all ${count} resolutions overrides resolve in yarn.lock at or above their cited patched floor`,
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Entry point
 // ---------------------------------------------------------------------------
 
@@ -260,6 +392,7 @@ function main() {
     assertSingleResolvedVersion,
     assertEnginesFloor,
     assertResolutionReasons,
+    assertResolutionsApplied,
   ];
 
   for (const assertion of assertions) {
