@@ -66,6 +66,12 @@ async function main() {
 
   let failed = false;
 
+  child.on('error', (err) => {
+    console.error('FAIL boot: failed to spawn demo process:', err);
+    failed = true;
+    childExited = true; // avoid stopApp() waiting on a process that never started
+  });
+
   async function stopApp() {
     if (!childExited) {
       child.kill('SIGTERM');
@@ -170,6 +176,9 @@ async function main() {
         failed = true;
       }
     }
+  } catch (err) {
+    failed = true;
+    console.error('FAIL unexpected during steps:', err && err.stack ? err.stack : err);
   } finally {
     await stopApp();
     if (failed) {
