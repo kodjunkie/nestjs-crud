@@ -44,4 +44,15 @@ export interface CrudGlobalConfig {
     delete?: false;
     recover?: false;
   };
+  swagger?: {
+    /**
+     * Global default for the query-syntax link appended to the `getManyBase`
+     * and `getOneBase` operation descriptions. A route's own
+     * `@Crud({ swagger: { queryDocsUrl } })` overrides it. `false` omits the
+     * line. An invalid value throws in `CrudConfigService.load()`.
+     *
+     * @since 2.3.0
+     */
+    queryDocsUrl?: string | false;
+  };
 }

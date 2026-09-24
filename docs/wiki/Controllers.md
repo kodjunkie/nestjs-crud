@@ -776,6 +776,7 @@ To reduce repetition across controllers, configure some options globally:
     replace?: false;
     delete?: false;
   };
+  swagger?: { queryDocsUrl?: string | false; };
 }
 ```
 
@@ -784,6 +785,7 @@ To reduce repetition across controllers, configure some options globally:
 - `params`: same as the per-controller [`params`](#params).
 - `query`: a subset of [`query`](#query). Only `limit`, `maxLimit`, `cache`, and `alwaysPaginate` apply globally.
 - `serialize`: globally disable [serialization](#serialize) per route.
+- `swagger`: only `queryDocsUrl` applies globally — see the [Swagger](Swagger#customizing-the-query-syntax-link) page.
 
 Load global options in `main.ts` (or `index.ts`) **before** importing `AppModule`. TypeScript decorators run at class declaration time, not at instantiation, so the config has to be in place before any decorated class is loaded:
 

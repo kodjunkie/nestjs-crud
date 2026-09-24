@@ -16,6 +16,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **node-redis 6 support.** The `redis` peer range on the four adapter packages is now `^5.0.0 || ^6.0.0`. The Redis cache strategies work unchanged with a node-redis 6 client.
 - **class-validator 0.15 support.** `@nestjs-crud/core`'s `class-validator` peer range is now `^0.14.0 || ^0.15.0`. The previous range, `^0.14.0`, excluded 0.15.x, which is the version the test suite runs on.
 - **ioredis 6 support (optional peer).** The four adapter packages' optional `ioredis` peer range is now `^5.0.0 || ^6.0.0`, widened on the evidence of the Redis cache-strategy specs running against a live ioredis 6 client. The 5.x line stays claimed and is exercised separately by the oldest-peer CI profiles.
+- **`swagger.queryDocsUrl` option.** Set it on a route (`@Crud({ swagger: { queryDocsUrl } })`) or globally (`CrudConfigService.load({ swagger: { queryDocsUrl } })`) to point the query-syntax link at the end of the `getManyBase` and `getOneBase` OpenAPI descriptions at your own documentation, or set it to `false` to remove the line. The route value wins over the global value, which wins over the library's Query Syntax wiki page, the default when nothing is set. An invalid value throws at startup.
 
 ### Changed
 

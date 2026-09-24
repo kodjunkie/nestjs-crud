@@ -18,6 +18,7 @@ import pluralize from 'pluralize';
 import { R } from './reflection.helper';
 import { SerializeHelper } from './serialize.helper';
 import { Swagger, swaggerConst } from './swagger.helper';
+import { describeQueryDocsUrlValue, isValidQueryDocsUrl } from './swagger/query-docs-url';
 import { Validation } from './validation.helper';
 import { CrudRequestInterceptor, CrudResponseInterceptor } from '../interceptors';
 import { BaseRoute, CrudOptions, CrudRequest, MergedCrudOptions } from '../interfaces';
@@ -79,6 +80,7 @@ export class CrudRoutesFactory {
     const routesSchema = this.getRoutesSchema();
     this.mergeOptions();
     this.validateJoinOptions();
+    this.validateSwaggerOptions();
     this.setResponseModels();
     this.setSwaggerTags();
     this.createRoutes(routesSchema);
@@ -160,6 +162,14 @@ export class CrudRoutesFactory {
         ? false
         : this.options.serialize.delete || this.modelType;
 
+    // merge swagger config: only `queryDocsUrl` is ever global. The route's own
+    // value wins when set; otherwise the global value applies; the key is left off when
+    // neither is set (operationsMap's own default parameter then applies).
+    const swagger = isObjectFull(this.options.swagger) ? this.options.swagger : {};
+    const globalQueryDocsUrl = CrudConfigService.config.swagger?.queryDocsUrl;
+    const queryDocsUrl = swagger.queryDocsUrl !== undefined ? swagger.queryDocsUrl : globalQueryDocsUrl;
+    this.options.swagger = queryDocsUrl !== undefined ? { ...swagger, queryDocsUrl } : swagger;
+
     R.setCrudOptions(this.options, this.target);
   }
 
@@ -192,6 +202,22 @@ export class CrudRoutesFactory {
           );
         }
       }
+    }
+  }
+
+  /**
+   * Reject an invalid merged `swagger.queryDocsUrl`. A bad value would
+   * otherwise ship silently inside the emitted OpenAPI Markdown description.
+   * Not gated on `swaggerConst` — this is configuration validation, not
+   * Swagger metadata, so it must throw with or without `@nestjs/swagger`
+   * installed.
+   */
+  protected validateSwaggerOptions(): void {
+    const queryDocsUrl = this.options.swagger?.queryDocsUrl;
+    if (queryDocsUrl !== undefined && !isValidQueryDocsUrl(queryDocsUrl)) {
+      throw new Error(
+        `@Crud: swagger.queryDocsUrl on ${this.target.name} must be an absolute http:// or https:// URL, or false — received ${describeQueryDocsUrlValue(queryDocsUrl)}`,
+      );
     }
   }
 
@@ -586,9 +612,11 @@ export class CrudRoutesFactory {
   }
 
   protected setSwaggerOperation(name: BaseRouteName) {
-    const { summary, description } = Swagger.operationsMap(this.modelName, this.options.query.softDelete === true)[
-      name
-    ];
+    const { summary, description } = Swagger.operationsMap(
+      this.modelName,
+      this.options.query.softDelete === true,
+      this.options.swagger?.queryDocsUrl,
+    )[name];
     const override = this.options.swagger?.operations?.[name] ?? {};
     const operationId = name + this.targetProto.constructor.name + this.modelName;
     // Spread order is load-bearing: consumer override merges over base, then the

@@ -9,6 +9,7 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 - **NestJS 12 support.** The `@nestjs/common` peer range now accepts `^12.0.0` alongside `^10.0.0 || ^11.0.0`. The optional `@nestjs/swagger` peer also accepts `^12.0.0` — see Fixed, below, for its full corrected range.
 - **class-validator 0.15 support.** Peer range moves from `^0.14.0` to `^0.14.0 || ^0.15.0`.
+- **`swagger.queryDocsUrl` option.** Set it on a route (`@Crud({ swagger: { queryDocsUrl } })`) or globally (`CrudConfigService.load({ swagger: { queryDocsUrl } })`) to point the query-syntax link at the end of the `getManyBase` and `getOneBase` OpenAPI descriptions at your own documentation, or set it to `false` to remove the line. The route value wins over the global value, which wins over the library's Query Syntax wiki page, the default when nothing is set. An invalid value throws at startup.
 
 ### Changed
 

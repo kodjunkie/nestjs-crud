@@ -3,6 +3,7 @@ import { isObjectFull } from '@nestjs-crud/util';
 import deepmerge from 'deepmerge';
 
 import { CrudGlobalConfig } from '../interfaces';
+import { describeQueryDocsUrlValue, isValidQueryDocsUrl } from '../crud/swagger/query-docs-url';
 
 const DEFAULT_CONFIG: CrudGlobalConfig = {
   auth: {},
@@ -37,6 +38,19 @@ export class CrudConfigService {
   static config: CrudGlobalConfig = deepmerge({}, DEFAULT_CONFIG);
 
   static load(config: CrudGlobalConfig = {}) {
+    // Validate BEFORE any state change (including the queryParser call below), so a
+    // throwing load() leaves CrudConfigService.config — and RequestQueryBuilder's
+    // options — exactly as they were.
+    if (
+      isObjectFull(config.swagger) &&
+      config.swagger.queryDocsUrl !== undefined &&
+      !isValidQueryDocsUrl(config.swagger.queryDocsUrl)
+    ) {
+      throw new Error(
+        `CrudConfigService.load: swagger.queryDocsUrl must be an absolute http:// or https:// URL, or false — received ${describeQueryDocsUrlValue(config.swagger.queryDocsUrl)}`,
+      );
+    }
+
     if (isObjectFull(config.queryParser)) {
       RequestQueryBuilder.setOptions(config.queryParser);
     }
@@ -46,6 +60,12 @@ export class CrudConfigService {
     const routes = isObjectFull(config.routes) ? config.routes : {};
     const params = isObjectFull(config.params) ? config.params : {};
     const serialize = isObjectFull(config.serialize) ? config.serialize : {};
+    // Only `queryDocsUrl` is ever taken from a global `swagger` object — an extra key
+    // (e.g. `tag`) is silently dropped, never merged or stored.
+    const swagger =
+      isObjectFull(config.swagger) && config.swagger.queryDocsUrl !== undefined
+        ? { swagger: { queryDocsUrl: config.swagger.queryDocsUrl } }
+        : {};
 
     CrudConfigService.config = deepmerge(
       CrudConfigService.config,
@@ -55,6 +75,7 @@ export class CrudConfigService {
         routes,
         params,
         serialize,
+        ...swagger,
       },
       {
         arrayMerge: (a, b, _c) => b,
