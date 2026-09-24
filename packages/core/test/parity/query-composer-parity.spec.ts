@@ -11,7 +11,8 @@
  *   - 5 ORPHAN_JOIN_CASES + 3 VALID_NESTED_JOIN_CASES = 8 × 4 adapters = 32 join-guard assertions
  *   - 2  DEFAULT_SORT_CASES × 4 adapters = 8 route-default-sort order assertions
  *   - 3  SQLI_CASES (as a route default) × 4 adapters = 12 route-default-sort guard assertions
- *   Total = 124 assertions — exceeds the ≥45 must-have
+ *   - 4  LOADED_JOIN_CASES × 4 adapters = 16 relation-loading assertions
+ *   Total = 140 assertions — exceeds the ≥45 must-have
  *
  * Runs under root jest.config.js (CJS). Docker NOT required — in-memory only.
  * MikroORM + Prisma harnesses use pure mocks — no ORM init, no ESM runtime trap.
@@ -278,6 +279,66 @@ describe.each(ADAPTERS)('route default sort SQLi guard parity — $name', (adapt
   describe.each(SQLI_CASES)('SQLi case: $name', (sqliCase) => {
     it('rejects fabricated/dotted-path sort field supplied as a route default (must throw)', async () => {
       await expect(harness.applyAndRun({}, { sort: sqliCase.parsed.sort })).rejects.toThrow();
+    });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Relation loading parity: 4 LOADED_JOIN_CASES × 4 adapters = 16 assertions
+//
+// A join-option relation loads only when it is eager or requested, and only
+// when the join options list it — the same rule on all four adapters. This
+// locks the Prisma over-fetch fix and the unlisted-relation allowlist bypass
+// fix (both closed against `profile`, the same guard fixture the orphan-join
+// block above uses), and proves TypeORM/Drizzle/MikroORM already held the
+// rule before Prisma's fix landed.
+// ---------------------------------------------------------------------------
+
+interface LoadedJoinCase {
+  name: string;
+  joins: QueryJoin[];
+  joinOptions: JoinOptions;
+  expected: string[];
+}
+
+const LOADED_JOIN_CASES: LoadedJoinCase[] = [
+  {
+    name: 'listed, not eager, not requested',
+    joins: [],
+    joinOptions: { profile: {} },
+    expected: [],
+  },
+  {
+    name: 'listed, not eager, requested',
+    joins: [{ field: 'profile' }],
+    joinOptions: { profile: {} },
+    expected: ['profile'],
+  },
+  {
+    name: 'eager, not requested',
+    joins: [],
+    joinOptions: { profile: { eager: true } },
+    expected: ['profile'],
+  },
+  {
+    name: 'requested, not listed',
+    joins: [{ field: 'profile' }],
+    joinOptions: {},
+    expected: [],
+  },
+];
+
+describe.each(ADAPTERS)('relation loading parity — $name', (adapterEntry) => {
+  let harness: Harness;
+
+  beforeAll(async () => {
+    harness = await resolveHarness(adapterEntry);
+  });
+
+  describe.each(LOADED_JOIN_CASES)('case: $name', (kase) => {
+    it('loads exactly the expected relation names', async () => {
+      const loaded = await harness.loadedJoins(kase.joins, kase.joinOptions);
+      expect(loaded).toEqual(kase.expected);
     });
   });
 });

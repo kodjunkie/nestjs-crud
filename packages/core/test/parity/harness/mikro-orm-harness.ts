@@ -230,6 +230,14 @@ export interface MikroOrmHarness {
    * `profile.licenses` metadata is needed for the guard itself.
    */
   applyJoins(joins: QueryJoin[], joinOptions: JoinOptions): Promise<void>;
+
+  /**
+   * Drive the same guard resolver against `makeRecordingStub()` and return
+   * the sorted relation names actually joined, read from the alias argument
+   * of each recorded `leftJoinAndSelect`/`joinAndSelect` call (or the
+   * populated path for the `populate` fallback).
+   */
+  loadedJoins(joins: QueryJoin[], joinOptions: JoinOptions): Promise<string[]>;
 }
 
 // ---------------------------------------------------------------------------
@@ -314,30 +322,56 @@ export function buildMikroOrmComposer(): MikroOrmHarness {
     },
 
     async applyJoins(joins: QueryJoin[], joinOptions: JoinOptions): Promise<void> {
-      const guardMetadata = {
-        className: 'ParityGuardUser',
-        relations: [
-          {
-            name: 'profile',
-            kind: '1:1',
-            targetMeta: {
-              properties: {
-                id: { name: 'id', kind: 'scalar', primary: true },
-                bio: { name: 'bio', kind: 'scalar' },
-              },
-            },
-          },
-        ],
-      };
-
       const guardResolver = new MikroOrmJoinResolver({
-        metadata: guardMetadata as any,
+        metadata: buildGuardMetadata() as any,
         onBadRequest: throwingOnBadRequest,
       });
 
       const { stub } = makeRecordingStub();
       guardResolver.applyJoins(stub, joins, joinOptions);
     },
+
+    async loadedJoins(joins: QueryJoin[], joinOptions: JoinOptions): Promise<string[]> {
+      const guardResolver = new MikroOrmJoinResolver({
+        metadata: buildGuardMetadata() as any,
+        onBadRequest: throwingOnBadRequest,
+      });
+
+      const { stub, calls } = makeRecordingStub();
+      guardResolver.applyJoins(stub, joins, joinOptions);
+
+      const aliasNames = calls
+        .filter((c) => c.method === 'leftJoinAndSelect' || c.method === 'joinAndSelect')
+        .map((c) => c.args[1] as string);
+      const populatedNames = calls.filter((c) => c.method === 'populate').flatMap((c) => c.args[0] as string[]);
+
+      return Array.from(new Set([...aliasNames, ...populatedNames])).sort();
+    },
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Shared guard metadata fixture: `ParityGuardUser` -> `profile`
+// ---------------------------------------------------------------------------
+
+function buildGuardMetadata(): {
+  className: string;
+  relations: Array<{ name: string; kind: string; targetMeta: { properties: Record<string, unknown> } }>;
+} {
+  return {
+    className: 'ParityGuardUser',
+    relations: [
+      {
+        name: 'profile',
+        kind: '1:1',
+        targetMeta: {
+          properties: {
+            id: { name: 'id', kind: 'scalar', primary: true },
+            bio: { name: 'bio', kind: 'scalar' },
+          },
+        },
+      },
+    ],
   };
 }
 

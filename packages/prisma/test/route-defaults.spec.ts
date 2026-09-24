@@ -113,4 +113,41 @@ async function reseedDb(prisma: any, db: 'postgres' | 'mysql'): Promise<void> {
       findManySpy.mockRestore();
     }
   });
+
+  it('the non-eager company join option is not included when the request does not ask for it', async () => {
+    const prismaClient = app.get(PRISMA_CLIENT) as any;
+    const findManySpy = jest.spyOn(prismaClient.user, 'findMany');
+    try {
+      const { body } = await request(server).get('/users-route-defaults').expect(200);
+      expect(Array.isArray(body)).toBe(true);
+      expect(body.length).toBeGreaterThan(0);
+      for (const row of body) {
+        expect(row).not.toHaveProperty('company');
+      }
+
+      const lastCall = findManySpy.mock.calls[findManySpy.mock.calls.length - 1] as any[];
+      expect(lastCall[0].include).toBeUndefined();
+    } finally {
+      findManySpy.mockRestore();
+    }
+  });
+
+  it('?join=company includes the company relation, matching companyId', async () => {
+    const prismaClient = app.get(PRISMA_CLIENT) as any;
+    const findManySpy = jest.spyOn(prismaClient.user, 'findMany');
+    try {
+      const { body } = await request(server).get('/users-route-defaults?join=company').expect(200);
+      expect(Array.isArray(body)).toBe(true);
+      expect(body.length).toBeGreaterThan(0);
+      for (const row of body) {
+        expect(row.company).toBeDefined();
+        expect(row.company.id).toBe(row.companyId);
+      }
+
+      const lastCall = findManySpy.mock.calls[findManySpy.mock.calls.length - 1] as any[];
+      expect(lastCall[0].include).toEqual({ company: true });
+    } finally {
+      findManySpy.mockRestore();
+    }
+  });
 });

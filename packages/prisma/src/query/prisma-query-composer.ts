@@ -288,6 +288,11 @@ export class PrismaQueryComposer implements QueryComposer<any> {
   /**
    * Build a Prisma `include` object for eager/requested joins.
    *
+   * A join-option key is included only when the route's join options list it
+   * and it is either marked `eager` or requested with `?join=`, matching
+   * TypeORM, Drizzle and MikroORM. A requested relation that the join options
+   * do not list is never included.
+   *
    * `include` does NOT auto-inject a deletedAt filter (consumer opt-in only).
    * A to-one filtered include is NEVER emitted — consumer routes filters
    *     to parent where via SCondition dotted-path (handled by WhereBuilder).
@@ -330,25 +335,16 @@ export class PrismaQueryComposer implements QueryComposer<any> {
 
     const include: Record<string, any> = {};
 
-    // Eager joins from options.query.join
-    for (const [field, opts] of Object.entries(joinOptions)) {
+    // Include a candidate only when it is a known relation field. joinCandidates
+    // already admits only fields the join options list (eager keys, plus
+    // requested keys that are also join-option keys) — the same set the
+    // orphan-join guard above just validated.
+    for (const field of joinCandidates) {
       if (this.relationFields.includes(field)) {
         // Emit true only — no auto-deletedAt injection
         // To-one filtered include NEVER emitted; to-many filter is future work
         // TODO: to-many filtered include support
         include[field] = true;
-      } else if (opts) {
-        // Field declared in joinOptions but not in known relationFields — skip
-      }
-    }
-
-    // Client-requested joins from parsed.join
-    if (parsed.join?.length) {
-      for (const join of parsed.join) {
-        if (this.relationFields.includes(join.field) && !(join.field in include)) {
-          // Emit true only — no auto-deletedAt injection
-          include[join.field] = true;
-        }
       }
     }
 

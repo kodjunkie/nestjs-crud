@@ -32,6 +32,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **The four adapters' optional `redis` peer range is unchanged, and its major-5 line remains claimed but unexercised.** `redis` stays `^5.0.0 || ^6.0.0`. Major 6 is exercised by the live Redis cache-strategy specs and the root `redis` dependency; no CI cell installs a 5.x `redis` client, so that line is claimed but not proven.
 - **`@nestjs-crud/prisma`'s optional `@prisma/extension-accelerate` peer range is unchanged and remains permanently unexercisable in CI.** It requires a live, paid Prisma Accelerate account and network egress to a managed gateway that no local or CI environment can stand in for.
 - **On Prisma, an offset-mode `getMany` request with no `?sort=` now falls back to the route's default sort declared via `@Crud({ query: { sort } })`, matching TypeORM, Drizzle and MikroORM.** Previously it returned rows in database order. A request's `?sort=` still replaces the default entirely — the two are never merged — and the default sort field passes through the same sort-field allowlist as a request sort. To keep database order on an existing route, remove its `sort` default.
+- **On Prisma, a route's join options now decide which relations come back, the same rule TypeORM, Drizzle and MikroORM already applied.** A relation from `@Crud({ query: { join } })` comes back only when it is marked `eager` or requested with `?join=`. Previously every listed relation came back on every read, whether requested or not. Routes that relied on the old behavior should mark the join `eager: true`.
 
 ### Fixed
 
@@ -45,6 +46,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **`@nestjs-crud/request` requires `qs` 6.16.0 or later.** The previous floor, `^6.15.2`, admitted versions affected by two advisories fixed in 6.16.0: a denial of service through attacker-controlled `isBuffer` (GHSA-4mjr-xmp4-gh2g) and an array-limit bypass through bracket-key comma parsing (GHSA-x5fp-wj9c-mxmx). The root lockfile now resolves a single `qs` 6.16.0 for the whole workspace.
 - **Under TypeORM `relationLoadStrategy: 'query'`, a nested join needs its full dotted path in the join options.** Previously, any nested relation under an allowlisted top-level relation could be loaded, even when the nested path itself was not allowlisted.
 - **The build and test toolchain now resolves patched `smol-toml`, `mysql2` and `mariadb` releases.** Nx (the engine behind Lerna's task runner), the Prisma CLI, and the Prisma MariaDB driver adapter each pinned an older, vulnerable copy of one of these packages exactly; the root workspace now overrides those pins. None of the three packages ship inside a published `@nestjs-crud/*` tarball, and no published package's dependencies or peer ranges changed.
+- **A `?join=` for a Prisma relation the route's join options do not list is no longer included.** Previously, any relation the Prisma service's `relationFields` named could be requested with `?join=` and loaded with all its columns, regardless of whether the route's `@Crud({ query: { join } })` allowlisted it — bypassing the join allowlist the other three adapters already enforced.
 
 ## [2.2.6] — 2026-07-31
 
@@ -313,6 +315,7 @@ Full breaking-change inventory and step-by-step upgrade guidance: [v2 Migration 
 ### Forward-looking (v2.x / v3 work)
 
 The following work is tracked separately and NOT promised by v2.0.0:
+
 - Unified caching API across all 4 adapters (currently TypeORM-only).
 - Unified `relationLoadStrategy` across all 4 adapters (currently TypeORM-only).
 - `@zmotivat0r/mrepo` evaluation against alternatives (Nx, Turborepo).

@@ -558,7 +558,7 @@ Per-relation options (all optional):
 - `allow`: array of fields allowed in the response. Empty or `undefined` allows all.
 - `exclude`: array of fields excluded from the response (and not queried).
 - `persist`: array of fields always included in the response.
-- `eager` (`boolean`): whether the relation is included in every `GET` response.
+- `eager` (`boolean`): whether the relation is included in every `GET` response. A relation without `eager` is included only when the request asks for it with `?join=`, on every adapter (TypeORM, Drizzle, MikroORM, Prisma).
 - `require` (`boolean`): if `true`, generates an `INNER JOIN` instead of `LEFT JOIN` for RDBMS adapters. Default `false`.
 - `alias`: relation alias.
 - `select` (`boolean`): if `false`, the relation is joined but not selected (excluded from the response).
@@ -963,17 +963,12 @@ export class UsersController {
   constructor(private readonly service: UsersService) {}
 
   @Post()
-  async create(
-    @Body(new ValidationPipe({ groups: [CREATE] })) dto: User,
-  ) {
+  async create(@Body(new ValidationPipe({ groups: [CREATE] })) dto: User) {
     return this.service.create(dto);
   }
 
   @Patch(':id')
-  async update(
-    @Param('id') id: number,
-    @Body(new ValidationPipe({ groups: [UPDATE] })) dto: User,
-  ) {
+  async update(@Param('id') id: number, @Body(new ValidationPipe({ groups: [UPDATE] })) dto: User) {
     return this.service.update(id, dto);
   }
 }

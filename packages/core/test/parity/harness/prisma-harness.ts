@@ -106,6 +106,12 @@ export interface PrismaHarness {
    * accept ahead of that limitation.
    */
   applyJoins(joins: QueryJoin[], joinOptions: JoinOptions): Promise<void>;
+
+  /**
+   * Build the same `relationFields: ['profile']` composer as `applyJoins`
+   * and return the sorted keys of the composed `include` object.
+   */
+  loadedJoins(joins: QueryJoin[], joinOptions: JoinOptions): Promise<string[]>;
 }
 
 // ---------------------------------------------------------------------------
@@ -229,6 +235,44 @@ export function buildPrismaComposer(): PrismaHarness {
         normalized as any,
         { query: { join: joinOptions }, routes: {}, params: {} } as any,
       );
+    },
+
+    async loadedJoins(joins: QueryJoin[], joinOptions: JoinOptions): Promise<string[]> {
+      const guardComposer = new PrismaQueryComposer({
+        entityColumns: columns,
+        entityPrimaryColumns: ['id'],
+        entityHasDeleteColumn: false,
+        softDeleteColumn: null,
+        onBadRequest: throwingOnBadRequest,
+        joinResolver,
+        whereBuilder,
+        relationFields: ['profile'],
+      });
+
+      const normalized = {
+        fields: [],
+        paramsFilter: [],
+        authPersist: undefined,
+        classTransformOptions: undefined,
+        search: {},
+        filter: [],
+        or: [],
+        join: joins,
+        sort: [],
+        limit: undefined,
+        offset: undefined,
+        page: undefined,
+        cache: undefined,
+        includeDeleted: 0,
+      };
+
+      const q = guardComposer.applyToQuery(
+        {},
+        normalized as any,
+        { query: { join: joinOptions }, routes: {}, params: {} } as any,
+      );
+
+      return Object.keys(q.include ?? {}).sort();
     },
   };
 }

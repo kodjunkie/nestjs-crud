@@ -17,6 +17,11 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 - **Requires `@nestjs-crud/core` 2.2.6 or later.** The `@nestjs-crud/core` peer range moves from `^2.0.0` to `^2.2.6`. This package calls core helpers added after 2.0.0, so an older core satisfied the old range without providing them.
 - **A nested `?join=` entry whose parent is not joined now returns 400.** A request like `?join=company.projects` without also joining `company` (via `?join=company` or an `eager` join option) used to be silently dropped and return 200. It now returns 400 with `Invalid join: 'company.projects'`. An ancestor counts as joined at any depth, in any request order, whether client-requested or declared `eager`. This adapter still does not include nested relations: a valid nested join is accepted, and only its top-level relation is included.
 - **An offset-mode `getMany` request with no `?sort=` now falls back to the route's default sort declared via `@Crud({ query: { sort } })`, matching the other three adapters.** Previously it returned rows in database order. A request's `?sort=` still replaces the default entirely — the two are never merged — and the default sort field passes through the same sort-field allowlist as a request sort. To keep database order on an existing route, remove its `sort` default.
+- **A join option now comes back only when it is marked `eager` or requested with `?join=`, matching the other three adapters.** Previously every relation listed in `@Crud({ query: { join } })` came back on every read, whether requested or not. Routes that relied on the old behavior should mark the join `eager: true`.
+
+### Security
+
+- **A `?join=` for a relation the route's join options do not list is no longer included.** Previously, any relation named in the service's `relationFields` could be requested with `?join=` and loaded with all its columns, regardless of whether the route's `@Crud({ query: { join } })` allowlisted it — bypassing the join allowlist the other three adapters already enforced.
 
 ## [2.2.6] — 2026-07-31
 

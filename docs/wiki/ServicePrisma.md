@@ -185,6 +185,8 @@ Prisma's `include` and nested `select` translate `@Crud({ query: { join } })`, b
 
 The adapter enforces the same nested-join ancestor rule as the other three adapters (`400 Invalid join: '<field>'` when a nested join's parent is neither requested nor eager), but it does not load nested relations — a valid nested join is accepted, and only its top-level relation is included.
 
+A join option listed in `@Crud({ query: { join } })` is included in the response only when it is marked `eager` or requested with `?join=`, matching TypeORM, Drizzle and MikroORM. A `?join=` for a relation the route's join options do not list is never included, even when the service's `relationFields` names it. Earlier releases of this adapter included every listed join option on every read, whether requested or not, and also loaded an unlisted requested relation if it happened to be a known `relationFields` entry — both are now closed. Mark a join `eager: true` to keep the old always-included shape.
+
 ### Default sort
 
 Offset-mode `getMany` applies the route's `@Crud({ query: { sort } })` default when the request has no `?sort=`, matching the other three adapters. Earlier releases of this adapter ignored the route default in offset mode and returned rows in database order instead.

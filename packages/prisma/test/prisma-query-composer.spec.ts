@@ -282,6 +282,50 @@ describe('PrismaQueryComposer', () => {
       // Must NOT be an object (which would mean filtered include was injected)
       expect(typeof result.include?.company).toBe('boolean');
     });
+
+    it('leaves include undefined for a non-eager, unrequested join option (no over-fetch)', () => {
+      const parsed = { ...emptyParsed };
+      const options = {
+        query: { join: { company: { eager: false } } },
+        routes: {},
+        params: {},
+      } as any;
+      const result = composer.applyToQuery({}, parsed, options);
+      expect(result.include).toBeUndefined();
+    });
+
+    it('leaves include undefined for a requested join that the join options do not list (allowlist bypass closed)', () => {
+      const parsed = { ...emptyParsed, join: [{ field: 'company', select: [] }] };
+      const options = {
+        query: { join: {} },
+        routes: {},
+        params: {},
+      } as any;
+      const result = composer.applyToQuery({}, parsed, options);
+      expect(result.include).toBeUndefined();
+    });
+
+    it('sets include.company = true for a join option that is both eager and requested', () => {
+      const parsed = { ...emptyParsed, join: [{ field: 'company', select: [] }] };
+      const options = {
+        query: { join: { company: { eager: true } } },
+        routes: {},
+        params: {},
+      } as any;
+      const result = composer.applyToQuery({}, parsed, options);
+      expect(result.include).toEqual({ company: true });
+    });
+
+    it('leaves include undefined for an eager join option that is not a known relation field', () => {
+      const parsed = { ...emptyParsed };
+      const options = {
+        query: { join: { notARelation: { eager: true } } },
+        routes: {},
+        params: {},
+      } as any;
+      const result = composer.applyToQuery({}, parsed, options);
+      expect(result.include).toBeUndefined();
+    });
   });
 
   // To-many filtered include — deferred; not in current MVP

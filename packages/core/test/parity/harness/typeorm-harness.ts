@@ -174,6 +174,13 @@ export interface TypeOrmHarness {
    * just an accepted call.
    */
   applyJoins(joins: QueryJoin[], joinOptions: JoinOptions): Promise<void>;
+
+  /**
+   * Drive the same guard resolver against a fresh query builder and return
+   * the sorted relation names actually joined, read from the built query's
+   * `expressionMap.joinAttributes` aliases.
+   */
+  loadedJoins(joins: QueryJoin[], joinOptions: JoinOptions): Promise<string[]>;
 }
 
 // ---------------------------------------------------------------------------
@@ -252,6 +259,16 @@ export async function buildTypeOrmComposer(): Promise<TypeOrmHarness> {
       });
       const qb = guardResolver.applyJoins(guardRepo.createQueryBuilder('ParityGuardUser'), joins, joinOptions);
       await qb.getMany();
+    },
+
+    async loadedJoins(joins: QueryJoin[], joinOptions: JoinOptions): Promise<string[]> {
+      const guardRepo = ds.getRepository(ParityGuardUser);
+      const guardResolver = new TypeOrmJoinResolver<ParityGuardUser>(guardRepo, {
+        onBadRequest: throwingOnBadRequest,
+      });
+      const qb = guardResolver.applyJoins(guardRepo.createQueryBuilder('ParityGuardUser'), joins, joinOptions);
+      const aliases = qb.expressionMap.joinAttributes.map((j) => j.alias.name);
+      return Array.from(new Set(aliases)).sort();
     },
   };
 }

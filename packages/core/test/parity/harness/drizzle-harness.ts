@@ -160,6 +160,13 @@ export interface DrizzleHarness {
    * the resulting query so a valid nested join proves it is runnable SQL.
    */
   applyJoins(joins: QueryJoin[], joinOptions: JoinOptions): Promise<void>;
+
+  /**
+   * Drive the same guard resolver against a small recording object exposing
+   * `leftJoin`/`innerJoin` (records the joined table, returns itself), then
+   * maps the recorded tables back to their relation names.
+   */
+  loadedJoins(joins: QueryJoin[], joinOptions: JoinOptions): Promise<string[]>;
 }
 
 // ---------------------------------------------------------------------------
@@ -241,6 +248,42 @@ export function buildDrizzleComposer(): DrizzleHarness {
       });
       const query = guardResolver.applyJoins(db.select().from(guardUsers), joins, joinOptions);
       await (query as any).all();
+    },
+
+    async loadedJoins(joins: QueryJoin[], joinOptions: JoinOptions): Promise<string[]> {
+      const guardResolver = new DrizzleJoinResolver({
+        relationsConfig: {
+          profile: { table: guardProfiles, foreignKey: guardProfiles.id, referenceKey: guardUsers.profileId },
+          'profile.licenses': {
+            table: guardLicenses,
+            foreignKey: guardLicenses.profileId,
+            referenceKey: guardProfiles.id,
+          },
+        },
+        onBadRequest: throwingOnBadRequest,
+      });
+
+      const recordedTables: any[] = [];
+      const recording: any = {
+        leftJoin: (table: any) => {
+          recordedTables.push(table);
+          return recording;
+        },
+        innerJoin: (table: any) => {
+          recordedTables.push(table);
+          return recording;
+        },
+      };
+
+      guardResolver.applyJoins(recording, joins, joinOptions);
+
+      const tableToName = new Map<any, string>([
+        [guardProfiles, 'profile'],
+        [guardLicenses, 'licenses'],
+      ]);
+
+      const names = recordedTables.map((table) => tableToName.get(table)).filter((name): name is string => !!name);
+      return Array.from(new Set(names)).sort();
     },
   };
 }
