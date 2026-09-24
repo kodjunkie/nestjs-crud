@@ -4,6 +4,7 @@ import { Controller } from '@nestjs/common';
 import { Crud, CrudAuth } from '../src/decorators';
 import { ApiProperty, Swagger, swaggerConst } from '../src/crud/swagger.helper';
 import { R } from '../src/crud/reflection.helper';
+import { CrudConfigService } from '../src/module/crud-config.service';
 import { BaseRouteName } from '../src/types';
 import { TestModel } from './__fixture__/models';
 
@@ -262,6 +263,173 @@ describe('Swagger description surface', () => {
       expect(map.getOneBase.description).toContain('includeDeleted');
       expect(map.deleteOneBase.description).not.toContain('includeDeleted');
       expect(map.deleteOneBase.description).toMatch(/soft-delete/i);
+    });
+  });
+
+  describe('queryDocsUrl — route level', () => {
+    const CUSTOM_URL = 'https://docs.example.com/query-syntax';
+    const DEFAULT_URL = 'https://github.com/kodjunkie/nestjs-crud/wiki/Query-Syntax';
+
+    @Crud({
+      model: { type: TestModel },
+      swagger: { queryDocsUrl: CUSTOM_URL },
+    })
+    @Controller('query-docs-custom-ctrl')
+    class QueryDocsCustomCtrl {}
+
+    @Crud({
+      model: { type: TestModel },
+      swagger: { queryDocsUrl: false },
+    })
+    @Controller('query-docs-off-ctrl')
+    class QueryDocsOffCtrl {}
+
+    it('operationsMap(User, false, customUrl) links the custom URL exactly once on getMany/getOne, default URL nowhere', () => {
+      const map = Swagger.operationsMap('User', false, CUSTOM_URL);
+      const customLinkRe = /\[Query Syntax\]\(https:\/\/docs\.example\.com\/query-syntax\)/g;
+
+      for (const route of ALL_ROUTES) {
+        const matches = map[route].description.match(customLinkRe) ?? [];
+        if (route === 'getManyBase' || route === 'getOneBase') {
+          expect(matches).toHaveLength(1);
+        } else {
+          expect(matches).toHaveLength(0);
+        }
+        expect(map[route].description).not.toContain(DEFAULT_URL);
+      }
+    });
+
+    it('operationsMap(User, false, false) omits the line on every route and does not end with a newline', () => {
+      const map = Swagger.operationsMap('User', false, false);
+
+      for (const route of ALL_ROUTES) {
+        expect(map[route].description).not.toMatch(/Full query syntax reference/);
+        expect(map[route].description.endsWith('\n')).toBe(false);
+      }
+    });
+
+    it('operationsMap(User) (no third argument) still ends getMany/getOne with the default line', () => {
+      const map = Swagger.operationsMap('User');
+
+      expect(map.getManyBase.description.endsWith(`Full query syntax reference: [Query Syntax](${DEFAULT_URL}).`)).toBe(
+        true,
+      );
+      expect(map.getOneBase.description.endsWith(`Full query syntax reference: [Query Syntax](${DEFAULT_URL}).`)).toBe(
+        true,
+      );
+    });
+
+    it('a controller with swagger.queryDocsUrl set emits that link on getMany/getOne only', () => {
+      for (const route of ALL_ROUTES) {
+        if (route === 'recoverOneBase') continue; // recover is soft-delete-gated, no method on this controller
+        const op = Swagger.getOperation((QueryDocsCustomCtrl.prototype as any)[route]);
+        if (route === 'getManyBase' || route === 'getOneBase') {
+          expect(op.description).toContain(`[Query Syntax](${CUSTOM_URL})`);
+        } else {
+          expect(op.description).not.toContain('[Query Syntax]');
+        }
+      }
+    });
+
+    it('a controller with swagger.queryDocsUrl: false emits no link on any route', () => {
+      for (const route of ALL_ROUTES) {
+        if (route === 'recoverOneBase') continue; // recover is soft-delete-gated, no method on this controller
+        const op = Swagger.getOperation((QueryDocsOffCtrl.prototype as any)[route]);
+        expect(op.description).not.toMatch(/Full query syntax reference/);
+      }
+    });
+  });
+
+  describe('queryDocsUrl — global default', () => {
+    const GLOBAL_URL = 'https://global.example.com/query-syntax';
+    const ROUTE_URL = 'https://route.example.com/query-syntax';
+    const DEFAULT_URL = 'https://github.com/kodjunkie/nestjs-crud/wiki/Query-Syntax';
+
+    afterEach(() => CrudConfigService.reset());
+
+    function linkOnGetManyAndGetOne(ctrl: any, url: string): void {
+      for (const route of ['getManyBase', 'getOneBase'] as const) {
+        const op = Swagger.getOperation(ctrl.prototype[route]);
+        expect(op.description).toContain(`[Query Syntax](${url})`);
+      }
+    }
+
+    function noLinkOnGetManyAndGetOne(ctrl: any): void {
+      for (const route of ['getManyBase', 'getOneBase'] as const) {
+        const op = Swagger.getOperation(ctrl.prototype[route]);
+        expect(op.description).not.toMatch(/Full query syntax reference/);
+      }
+    }
+
+    it('global URL, no route value — the global link', () => {
+      CrudConfigService.load({ swagger: { queryDocsUrl: GLOBAL_URL } });
+
+      @Crud({ model: { type: TestModel } })
+      @Controller('qdu-global-only-ctrl')
+      class Ctrl {}
+
+      linkOnGetManyAndGetOne(Ctrl, GLOBAL_URL);
+    });
+
+    it('global URL, route URL — the route link wins', () => {
+      CrudConfigService.load({ swagger: { queryDocsUrl: GLOBAL_URL } });
+
+      @Crud({ model: { type: TestModel }, swagger: { queryDocsUrl: ROUTE_URL } })
+      @Controller('qdu-global-and-route-ctrl')
+      class Ctrl {}
+
+      linkOnGetManyAndGetOne(Ctrl, ROUTE_URL);
+    });
+
+    it('global URL, route false — no line', () => {
+      CrudConfigService.load({ swagger: { queryDocsUrl: GLOBAL_URL } });
+
+      @Crud({ model: { type: TestModel }, swagger: { queryDocsUrl: false } })
+      @Controller('qdu-global-route-off-ctrl')
+      class Ctrl {}
+
+      noLinkOnGetManyAndGetOne(Ctrl);
+    });
+
+    it('global false, no route value — no line', () => {
+      CrudConfigService.load({ swagger: { queryDocsUrl: false } });
+
+      @Crud({ model: { type: TestModel } })
+      @Controller('qdu-global-off-ctrl')
+      class Ctrl {}
+
+      noLinkOnGetManyAndGetOne(Ctrl);
+    });
+
+    it('global false, route URL — the route link', () => {
+      CrudConfigService.load({ swagger: { queryDocsUrl: false } });
+
+      @Crud({ model: { type: TestModel }, swagger: { queryDocsUrl: ROUTE_URL } })
+      @Controller('qdu-global-off-route-on-ctrl')
+      class Ctrl {}
+
+      linkOnGetManyAndGetOne(Ctrl, ROUTE_URL);
+    });
+
+    it('nothing anywhere — the library default link', () => {
+      @Crud({ model: { type: TestModel } })
+      @Controller('qdu-nothing-ctrl')
+      class Ctrl {}
+
+      linkOnGetManyAndGetOne(Ctrl, DEFAULT_URL);
+    });
+
+    it('a global swagger object with an extra key stores only queryDocsUrl, auto tag stays pluralized default', () => {
+      CrudConfigService.load({ swagger: { queryDocsUrl: GLOBAL_URL, tag: 'GlobalTag' } as any });
+
+      expect(CrudConfigService.config.swagger).toEqual({ queryDocsUrl: GLOBAL_URL });
+
+      @Crud({ model: { type: TestModel } })
+      @Controller('qdu-extra-key-ctrl')
+      class Ctrl {}
+
+      const tags = R.get(API_TAGS_KEY, Ctrl);
+      expect(tags).toEqual(['TestModels']);
     });
   });
 

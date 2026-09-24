@@ -2,7 +2,7 @@
 
 Describe the API surface for `@Crud()`-generated routes. `@nestjs-crud/core` auto-generates operation summaries, per-route markdown descriptions, error responses, request-body examples, and query-parameter documentation. Consumers can override or opt out via `@Crud({ swagger: {...} })`.
 
-> `@nestjs/swagger` is an optional peer dependency. When it is not installed, `@nestjs-crud/core` silently skips all Swagger decoration via `safeRequire`. See [Swagger-less mode](#swagger-less-mode) below.
+> `@nestjs/swagger` is an optional peer dependency, accepting `^7.0.0 || ^8.0.0 || ^11.0.0 || ^12.0.0` — swagger 7 and 8 pair with NestJS 10, swagger 11 pairs with NestJS 11, and swagger 12 pairs with NestJS 12. When `@nestjs/swagger` is not installed, `@nestjs-crud/core` silently skips all Swagger decoration via `safeRequire`. See [Swagger-less mode](#swagger-less-mode) below.
 
 ## Quickstart
 
@@ -69,10 +69,10 @@ That produces eight routes with imperative summaries (`List users`, `Get user by
 
 - **Auto `@ApiTags`.** Controllers without an explicit `@ApiTags` get one assigned from the pluralized entity name (`User` → `Users`). If the class is already decorated with `@ApiTags(...)`, the existing tag wins and no auto-assignment happens.
 - **Imperative operation summaries.** `List users`, `Get user by id`, `Create user`, `Create users in bulk`, `Partially update user`, `Replace user`, `Delete user`, `Restore soft-deleted user`.
-- **Per-route markdown descriptions** referencing supported query parameters, validation groups (`CrudValidationGroups.CREATE` and `UPDATE`), and soft-delete semantics where relevant.
+- **Per-route markdown descriptions** referencing supported query parameters and soft-delete semantics where relevant.
 - **Error responses.** `400 Bad Request` on every generated route. `404 Not Found` on single-resource routes (`get`, `update`, `replace`, `delete`, `recover`). `401 Unauthorized` when the controller is decorated with `@CrudAuth()`.
 - **Request-body examples.** Create, update, and replace routes ship an example payload synthesized from the entity's `@ApiProperty` metadata.
-- **Query-parameter documentation** with `Docs` backlinks to the [Query Syntax](Query-Syntax) wiki page, covering `?s=`, `?filter=`, `?or=`, `?sort=`, `?fields=`, `?join=`, `?limit=`, `?offset=`, `?page=`, `?cache=`.
+- **Query-parameter documentation.** Each query parameter (`?s=`, `?filter=`, `?or=`, `?sort=`, `?fields=`, `?join=`, `?limit=`, `?offset=`, `?page=`, `?cache=`) carries a description that explains its own syntax inline. The `getManyBase` and `getOneBase` operation descriptions additionally end with one `Full query syntax reference: [Query Syntax](<url>).` line — see [Customizing the query syntax link](#customizing-the-query-syntax-link).
 - **Outcome-focused response text** (`Paginated list of matching resources`, `Resource created`, `Resource removed`).
 
 ## Customization with `@Crud({ swagger: {...} })`
@@ -88,6 +88,7 @@ All fields below are optional. Override only what you need.
 | `synthExample` | `(entity: any, route: BaseRouteName) => unknown` | built-in `@ApiProperty` synthesizer | Supply your own example synthesizer. Takes precedence over the built-in path. The return value ships verbatim into the emitted OpenAPI JSON, so do not return secrets. |
 | `operations` | `Partial<Record<BaseRouteName, Omit<Partial<ApiOperationOptions>, 'operationId'>>>` | `{}` | Per-route overrides for generated operation metadata (summary, description, tags, responses). `operationId` is intentionally omitted (see callout below). |
 | `errorResponses.unauthorized` | `boolean` | auto-emitted only when `@CrudAuth()` is present | Force-emit `401 Unauthorized` on every generated route even without `@CrudAuth()`. Useful when authentication is enforced via a globally-registered guard (`APP_GUARD`). |
+| `queryDocsUrl` | `string \| false` | the [Query Syntax](Query-Syntax) wiki page | Target of the query-syntax link appended to the `getManyBase` and `getOneBase` descriptions. `false` omits the line. Overrides the global value set via `CrudConfigService.load`. An invalid value throws when `@Crud()` is applied. See [Customizing the query syntax link](#customizing-the-query-syntax-link). |
 
 ### Override the tag and add a description
 
@@ -193,7 +194,45 @@ Emitted tag: `v2/Users` (disambiguated from the v1 `Users` tag). Has no effect w
 
 ## Query-parameter documentation
 
-Every built-in query parameter (`?s=`, `?filter=`, `?or=`, `?sort=`, `?fields=`, `?join=`, `?limit=`, `?offset=`, `?page=`, `?cache=`) ships with a description carrying a `Docs` backlink to the [Query Syntax](Query-Syntax) wiki page. Consumers do not configure this; it is always on.
+Every built-in query parameter (`?s=`, `?filter=`, `?or=`, `?sort=`, `?fields=`, `?join=`, `?limit=`, `?offset=`, `?page=`, `?cache=`) ships with a description that explains its own syntax inline — for example, `filter`'s description spells out the `field||$operator||value` grammar directly, rather than linking elsewhere. Consumers do not configure this; it is always on.
+
+### Customizing the query syntax link
+
+The `getManyBase` and `getOneBase` operation descriptions end with one additional line:
+
+```
+Full query syntax reference: [Query Syntax](<url>).
+```
+
+The `<url>` resolves in this order:
+
+1. The route's own `@Crud({ swagger: { queryDocsUrl } })`.
+2. The global default set via `CrudConfigService.load({ swagger: { queryDocsUrl } })`.
+3. The library's own [Query Syntax](Query-Syntax) wiki page — the default when nothing is configured at either level.
+
+Set `queryDocsUrl` to `false` at either level to omit the line entirely, for example when publishing a document that should carry no link back to this project's repository.
+
+```typescript
+import { CrudConfigService, Crud, CrudController } from '@nestjs-crud/core';
+
+// Global default — every controller's list/get-one description links here
+// unless the controller sets its own value.
+CrudConfigService.load({
+  swagger: { queryDocsUrl: 'https://api.example.com/docs/query-syntax' },
+});
+
+@Crud({
+  model: { type: User },
+  // This controller's document should carry no link back to the library.
+  swagger: { queryDocsUrl: false },
+})
+@Controller('users')
+export class UsersController implements CrudController<User> {
+  constructor(public service: UsersService) {}
+}
+```
+
+An invalid value — anything other than an absolute `http://`/`https://` URL or `false` — throws at `@Crud()` decoration (route level) or inside `CrudConfigService.load()` (global level).
 
 ## Swagger-less mode
 
@@ -217,11 +256,11 @@ const { summary, description } = Swagger.operationsMap(this.modelName)[name];
 Swagger.setOperation({ summary, description, ... }, this.targetProto[name]);
 ```
 
-The new per-route markdown description (referencing supported query parameters and validation groups) ships alongside the summary; destructure and forward it into `setOperation` to preserve the full generated metadata.
+The new per-route markdown description (referencing supported query parameters and soft-delete semantics where relevant) ships alongside the summary; destructure and forward it into `setOperation` to preserve the full generated metadata.
 
 ## See also
 
 - [Controllers](Controllers) — `@Crud()` decorator, request lifecycle, route generation
-- [Query Syntax](Query-Syntax) — target of the auto-emitted `Docs` backlinks
+- [Query Syntax](Query-Syntax) — the default target of the `queryDocsUrl` link on `getManyBase`/`getOneBase` descriptions
 - [ServiceTypeorm](ServiceTypeorm), [ServicePrisma](ServicePrisma), [ServiceDrizzle](ServiceDrizzle), [ServiceMikroOrm](ServiceMikroOrm) — per-adapter setup
 - [NestJS OpenAPI docs](https://docs.nestjs.com/openapi/introduction) — upstream `SwaggerModule` setup, custom UI, auth integration

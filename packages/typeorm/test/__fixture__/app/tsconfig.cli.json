@@ -6,7 +6,8 @@
     "experimentalDecorators": true,
     "target": "es2018",
     "skipLibCheck": true,
-    "baseUrl": ".",
+    "strict": false,
+    "types": ["node"],
     "paths": {
       "@nestjs-crud/core": ["../../../../../packages/core/src"],
       "@nestjs-crud/typeorm": ["../../../../../packages/typeorm/src"],

@@ -6,16 +6,18 @@ description: >-
   driver-adapter switch (`schema.prisma` `datasource.url` removal, `prisma.config.ts`
   forwarding, dropped `--skip-generate`, `adapter-pg` `search_path` landmine,
   `adapter-mariadb` session-state landmine); the v2.1.1 swagger v3-gate cleanup; the v2.2.0
-  unified caching API; or v2.2.0 opt-in cursor pagination. Use when diagnosing v2 upgrade
-  errors like `RequestQueryException`, `CrudCacheNotConfiguredError`, `setSearchCondition
-  is not a function`, `count is not a function`, MikroORM stale-em, Prisma `Unknown
-  argument 'where'` inside include, or cursor 400s (`single sort field` / `requires a
+  unified caching API; v2.2.0 opt-in cursor pagination; or v2.3 (NestJS 12, TypeORM 1.x,
+  node-redis 6, `@nestjs-crud/core` 2.2.6 floor, `@mikro-orm/sql` peer, nested-join 400s).
+  Also for v2 upgrade errors: `RequestQueryException`,
+  `CrudCacheNotConfiguredError`, `setSearchCondition is not a function`, `count is not a
+  function`, MikroORM stale-em, Prisma `Unknown argument 'where'` inside include, `Invalid
+  join`, npm `ERESOLVE` on `ioredis`, or cursor 400s (`single sort field` / `requires a
   limit` / `Invalid cursor`).
 ---
 
 # @nestjs-crud Migration
 
-Consumer playbook for v1 → v2 and within-v2 upgrades. Stay on v1.0.x: pin `^1.0.2` (see Stay-On Pin §). v2.0 = single coordinated breaking release; v2.1 narrows Prisma peer to v7; v2.1.1 = security/dead-code patch; v2.2.0 = unified caching API + opt-in cursor pagination (both additive).
+Consumer playbook for v1 → v2 and within-v2 upgrades. Stay on v1.0.x: pin `^1.0.2` (see Stay-On Pin §). v2.0 = single coordinated breaking release; v2.1 narrows Prisma peer to v7; v2.1.1 = security/dead-code patch; v2.2.0 = unified caching API + opt-in cursor pagination (both additive); v2.3 = peer-range widening + floor raises + nested-join 400s (§v2.2.x → v2.3.0).
 
 Runtime detail (operator reference, `@CrudAuth` shape, Caching setup, MikroORM em-thunk) lives in `nestjs-crud` SKILL. This playbook covers the **upgrade delta** only.
 
@@ -59,7 +61,7 @@ grep -rE "@CrudAuth|CrudAuth\s*\(\s*\{" src/
 grep -rE "cache:\s*[0-9]+|cache:\s*true" src/
 
 # 13. Node version
-node --version  # must be >=22; install refuses otherwise
+node --version  # must be >=22.12; install refuses otherwise
 
 # 14. Swagger snapshot tests or direct operationsMap import (v2 rewrites text + changes internal shape)
 grep -rE "toMatchSnapshot.*swagger|toMatchSnapshot.*apioperation|Swagger\.operationsMap" src/ test/
@@ -92,11 +94,11 @@ grep -rE "toMatchSnapshot.*swagger|toMatchSnapshot.*apioperation|Swagger\.operat
 | **Write-path transactions** READ COMMITTED on update/replace/deleteOne | Low normal; medium with consumer outer-tx | §D |
 | **Cache fail-fast** — `@Crud cache` without backend → throws | Medium (was silent in v1) | §D |
 | **Swagger default text rewrite** + `Swagger.operationsMap` shape change | Snapshot-test consumers only | §D |
-| **`engines.node: ">=22"`** | Install refuses on Node <22 | §E |
+| **`engines.node: ">=22.12"`** | Install refuses on Node <22.12 | §E |
 
 ## §A. Strict Column-Name Allowlist
 
-**Most consumers feel v2 here first.** Field names in `?sort/?filter/?search/?fields/?join` MUST be in the entity's per-adapter column allowlist (TypeORM `entityColumnsHash`, Drizzle `columnsMap`, MikroORM `propertiesMap`, Prisma `entityColumns`) OR a relation registered in `@Crud({ query: { join: {...} } })`. Otherwise 400.
+**Most consumers feel v2 here first.** Field names in `?sort/?filter/?search/?fields` MUST be in the entity's per-adapter column allowlist (TypeORM `entityColumnsHash`, Drizzle `columnsMap`, MikroORM `propertiesMap`, Prisma `entityColumns`) OR a relation registered in `@Crud({ query: { join: {...} } })`. Otherwise 400.
 
 | | v1.x | v2.0 |
 |---|------|------|
@@ -159,7 +161,7 @@ Common errors: `TypeError: this.translator.count is not a function`, `TypeError:
 
 **Logger.** v1 silent-no-op default → v2 `new Logger(<ServiceName>)` by default on all 4 adapters. If you relied on v1 silence: pass explicit no-op logger via constructor (Prisma: `serviceConfig.logger`). **Never interpolate `err.message` in logs** — DB drivers leak SQL parameter values; emit `err.name` + `err.stack` as 2nd arg.
 
-**`@CrudAuth` persist runtime validation.** v1 silently ignored typos in `persist` (auth-filter bypass on writes). v2 validates each persist key against entity columns; throws `RequestQueryException: Invalid persist key 'X'` → 400.
+**`@CrudAuth` persist runtime validation.** v1 silently ignored typos in `persist` (auth-filter bypass on writes). v2 validates each persist key against entity columns; typos → 400 `@CrudAuth persist: invalid key(s) "X" — not columns on the target entity`.
 
 **Write-path transactions.** `updateOne` / `replaceOne` / `deleteOne` wrap read-modify-write at READ COMMITTED on all 4 adapters. `recoverOne` excluded. **Transaction nesting:** if you `@Override()` and open an outer tx, adapter's inner tx becomes a savepoint inside yours; outer SERIALIZABLE NOT downgraded; rollbacks cascade. Decide: remove outer wrap, or accept savepoint nesting.
 
@@ -178,9 +180,9 @@ Common errors: `TypeError: this.translator.count is not a function`, `TypeError:
 
 ## §E. Packaging
 
-- All packages declare `"engines": { "node": ">=22.0.0" }`. `npm install` refuses on Node <22.
+- All packages declare `"engines": { "node": ">=22.12.0" }` (NestJS 12 is ESM-only and loads via Node's `require(esm)`, which arrives at 22.12). `npm install` refuses on Node <22.12.
 - `peerDependencies` declared on every adapter package. Install warns if peers missing.
-- `@nestjs/common` peer range: `^10.0.0 || ^11.0.0` (v2.0+).
+- `@nestjs/common` peer range: `^10.0.0 || ^11.0.0` (v2.0+); `|| ^12.0.0` added in v2.3.
 - v2.1.1+: `@nestjs/swagger` declared as optional `peerDependency` on `@nestjs-crud/core` (`peerDependenciesMeta.optional: true`); consumers without swagger get no install warning.
 
 ## §F. `@nestjs-crud/prisma` (additive in v2.0)
@@ -286,9 +288,30 @@ New errors consumers may hit AFTER opting in:
 | `Cursor pagination supports a single sort field` → 400 | Multi-sort + cursor mode | Use one sort field |
 | `Cursor pagination requires a limit` → 400 | Cursor mode without `query.limit` or `maxLimit` | Set a limit |
 | `Cursor sort field mismatch` → 400 | Client sent cursor encoded against different sort field than current request | Match `?sort=` to the field that issued the cursor |
-| `Invalid cursor` → 400 | Tampered, malformed, or oversized cursor (codec rejects payloads >1024 chars) | Re-fetch first page |
+| `Invalid cursor` → 400 | Tampered or malformed cursor | Re-fetch first page |
+| `Cursor token exceeds maximum length` → 400 | Cursor longer than 1024 characters | Re-fetch first page |
 
 Cursor is opaque base64url JSON, **NOT signed** — keep authorization in `@CrudAuth`. Cursor mode bypasses the cache wrap (per-cursor cardinality unbounded); pair with `@nestjs/throttler` on hot endpoints. Setup + tradeoffs: [Cursor Pagination wiki](https://github.com/kodjunkie/nestjs-crud/wiki/CursorPagination).
+
+## v2.2.x → v2.3.0 — Peer ranges + nested-join rules
+
+Upgrade every `@nestjs-crud/*` package together. Code changes only if you use nested joins.
+
+| Peer | v2.2.x | v2.3.0 | Consumer impact |
+|------|--------|--------|-----------------|
+| `@nestjs/common` (+ `@nestjs/typeorm` on typeorm) | `^10 \|\| ^11` | `+ ^12.0.0` | NestJS 12 is ESM-only; packages stay CJS → Node 22.12+ (`require(esm)`); Jest needs `NODE_OPTIONS=--experimental-vm-modules` |
+| `@nestjs/swagger` (optional, core) | `^10 \|\| ^11 \|\| ^12` | `^7 \|\| ^8 \|\| ^11 \|\| ^12` | `^10` never existed on npm; the corrected range's `^7`/`^8` pair with NestJS 10 |
+| `typeorm` | `^0.3.0` | `^0.3.30 \|\| ^1.0.0` | Below 0.3.30 → peer warning; bump TypeORM |
+| `redis` (adapters) | `^5.0.0` | `^5.0.0 \|\| ^6.0.0` | node-redis 6 clients work unchanged |
+| `ioredis` (optional, adapters) | `^5.0.0` | `^5.0.0 \|\| ^6.0.0` | ioredis 6 clients now accepted |
+| `class-validator` (core) | `^0.14.0` | `^0.14.0 \|\| ^0.15.0` | 0.15.x no longer warns |
+| `@nestjs-crud/core` on adapters (+ `request`/`util` on mikro-orm) | `^2.0.0` | `^2.2.6` | Older core → peer warning |
+| `@mikro-orm/sql` (mikro-orm) | — | `^7.0.0` (new) | Every MikroORM 7 SQL driver already depends on it; fixes adapter `.d.ts` importing undeclared `@mikro-orm/knex` |
+| `drizzle-orm` (drizzle) | `>=0.45.2` | `^0.45.2` | Unbounded range now capped; drizzle-orm 1.x is prerelease-only, not yet supported |
+
+`RequestQueryParser.parseQuery()` also accepts a raw query string (additive); `@nestjs-crud/core` no longer depends on `qs` directly.
+
+**Nested joins.** An orphan nested `?join=` entry is one whose parent is neither requested nor eager. It now returns 400 `Invalid join: '<field>'` on all 4 adapters. Before, TypeORM returned 500 and the other adapters silently dropped the join. Fix clients by adding the parent to `?join=`, or mark the parent eager. Under TypeORM `relationLoadStrategy: 'query'`, a nested join needs its full dotted path as a `query.join` key; the parent no longer loads implicitly. An eager nested key with a non-eager ancestor makes `@Crud()` throw at startup.
 
 ## Common v2 Upgrade Errors
 
@@ -296,8 +319,8 @@ Migration-only — runtime issues live in `nestjs-crud` SKILL §Common Issues.
 
 | Error / symptom | Cause | Fix |
 |-----------------|-------|-----|
-| `BadRequestException: Field "X" is not allowed` | Field not in entity column allowlist | Add `@Column()`, register virtual field, or remove from query param |
-| `BadRequestException: Relation "Y" is not allowed` | Dotted path with unknown relation | Add `?join=Y` AND register in `@Crud({ query: { join: { Y: {} } } })` |
+| 400 `Field "X" is not allowed` (adapter variants: `Invalid field: 'X'`, `Invalid sort field: 'X'`, `Unknown column: X`) | Field not in entity column allowlist | Add `@Column()`, register virtual field, or remove from query param |
+| 400 `Invalid relation in sort: 'Y'` (TypeORM) / `Unknown relation: Y` (Prisma) | Dotted path with unknown relation | Add `?join=Y` AND register in `@Crud({ query: { join: { Y: {} } } })` |
 | `TypeError: this.checkSqlInjection is not a function` | Subclass called deleted private | `this.sanitizer.assert(field)` |
 | `TypeError: this.setSearchCondition is not a function` | Subclass called deleted protected | Override `TypeOrmQueryTranslator.buildWhere` |
 | `TypeError: this.translator.count is not a function` | Custom translator missing `count()` | `count(qb)`: `return qb.getCount()` for TypeORM |
@@ -307,14 +330,18 @@ Migration-only — runtime issues live in `nestjs-crud` SKILL §Common Issues.
 | TS: `Type 'any' is not assignable to type 'DrizzleClient'` | Drizzle subclass field re-declaration | Remove `protected db: any`; inherit |
 | TS: `Argument of type 'any' is not assignable to parameter of type 'X'` | MikroORM type tightening | Annotate with `FilterQuery<T>`/`RequiredEntityData<T>` |
 | `Module '"@nestjs-crud/core"' has no exported member 'getSwaggerVersion'` / `swaggerPkgJson` | Removed in v2.1.1 | Delete imports — no replacement |
-| `RequestQueryException: Invalid persist key 'X'` → 400 | Typo in `@CrudAuth({ persist })` against entity column | Fix key |
+| 400 `@CrudAuth persist: invalid key(s) "X"` | Typo in `@CrudAuth({ persist })` against entity column | Fix key |
 | `CrudCacheNotConfiguredError` on first cached read | `@Crud cache` set but no strategy/backend | Wire `CacheStrategy`, configure TypeORM `DataSource.cache`, or remove `cache` |
 | `Property 'summary' does not exist on type 'string'` on `Swagger.operationsMap(...)` | Internal API shape changed `string` → `{ summary, description }` | Destructure, or switch to `@Crud({ swagger: { operations: {...} } })` |
 | Swagger snapshot tests fail | v2 rewrites default summaries + descriptions | Re-record OR pin v1 wording via `swagger.operations` |
 | Unexpected SERIALIZABLE inside outer tx, or rollback cascade | Adapter inner tx is savepoint inside your outer | Remove outer wrap or accept savepoint nesting |
 | Prisma service emits logs when it didn't before | v2 unified default — `serviceConfig.logger` omitted = `new Logger(...)` | Pass explicit no-op logger via `serviceConfig.logger` |
+| 400 `Invalid join: 'a.b'` (v2.3) | Nested join without parent `a` joined | Add `a` to `?join=` or mark it eager |
+| Startup: `@Crud: eager join 'a.b' on X needs 'a' to be eager too` (v2.3) | Eager nested key, non-eager ancestor | Mark `a` eager or drop `eager` from `a.b` |
+| TS: `Cannot find module '@mikro-orm/knex'` from `@nestjs-crud/mikro-orm` types | v2.2.x `.d.ts` imported an undeclared package | Upgrade to v2.3 (types from `@mikro-orm/sql`) |
+| npm `ERESOLVE` on `ioredis` (TypeORM 1.x + NestJS 12) | TypeORM peers `ioredis@^5`; npm resolves 6 for NestJS 12 | `npm install ioredis@^5` or `"overrides": { "ioredis": "^5.0.4" }` |
 | npm install peer warnings | peerDeps declared in v2 | Install peers explicitly |
-| `EBADENGINE: Unsupported engine` | Node <22 | Upgrade Node 22+, or stay on v1.0.x |
+| `EBADENGINE: Unsupported engine` | Node <22.12 | Upgrade Node 22.12+, or stay on v1.0.x |
 
 ## Stay-On Pin
 

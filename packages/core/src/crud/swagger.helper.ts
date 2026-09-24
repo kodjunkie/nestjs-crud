@@ -10,7 +10,6 @@ import * as ex from './swagger/examples.helper';
 export const swagger = res.swagger;
 export const swaggerConst = res.swaggerConst;
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const Swagger: any = {
   ...ops,
   ...res,
@@ -23,7 +22,6 @@ export const Swagger: any = {
   synthesizeBodyExample: ex.synthesizeBodyExample,
 };
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function ApiProperty(options?: any): PropertyDecorator {
   return (target: unknown, propertyKey: string | symbol) => {
     if (swagger) swagger.ApiProperty(options)(target, propertyKey);

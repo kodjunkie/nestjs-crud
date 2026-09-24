@@ -1,7 +1,7 @@
 import { INestApplication } from '@nestjs/common';
 import { APP_FILTER } from '@nestjs/core';
 import { Test } from '@nestjs/testing';
-import * as request from 'supertest';
+import request from 'supertest';
 
 import {
   CANONICAL_SEED_COMPANIES,
@@ -62,7 +62,7 @@ async function reseedDb(prisma: any, db: 'postgres' | 'mysql'): Promise<void> {
     server = app.getHttpServer();
 
     // Standalone Prisma client for reseeding — owned by the spec, not NestJS DI.
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
+
     const { makePrismaClient } = require('./__fixture__/make-prisma-client');
     seedPrisma = makePrismaClient(dialect);
   });
@@ -82,7 +82,7 @@ async function reseedDb(prisma: any, db: 'postgres' | 'mysql'): Promise<void> {
     await reseedDb(seedPrisma, dialect);
   });
 
-  // Cell 1: Forward navigation across 3 pages — no skip/repeat rows
+  // Forward navigation across 3 pages — no skip/repeat rows
   it('forward navigation across 3 pages returns no skip/repeat rows', async () => {
     const seenIds = new Set<number>();
     let cursor: string | null = null;
@@ -102,7 +102,7 @@ async function reseedDb(prisma: any, db: 'postgres' | 'mysql'): Promise<void> {
     expect(seenIds.size).toBeGreaterThanOrEqual(5);
   });
 
-  // Cell 2: End-of-stream — cursor.next === null
+  // End-of-stream — cursor.next === null
   it('end-of-stream returns cursor.next === null', async () => {
     let cursor: string | null = null;
     let lastBody: any = null;
@@ -116,7 +116,7 @@ async function reseedDb(prisma: any, db: 'postgres' | 'mysql'): Promise<void> {
     expect(lastBody.cursor.next).toBeNull();
   });
 
-  // Cell 3: Back-direction cursor — prior page in correct order
+  // Back-direction cursor — prior page in correct order
   it('back-direction cursor.prev returns prior page in correct order', async () => {
     const page1 = (await request(server).get(`/users-cursor?sort=id,ASC`).expect(200)).body;
     expect(page1.cursor.next).toBeTruthy();
@@ -126,7 +126,7 @@ async function reseedDb(prisma: any, db: 'postgres' | 'mysql'): Promise<void> {
     expect(back.data.map((r: any) => r.id)).toEqual(page1.data.map((r: any) => r.id));
   });
 
-  // Cell 4: Round-trip forward+back — identical rows as forward page 1
+  // Round-trip forward+back — identical rows as forward page 1
   it('round-trip forward+back returns identical rows', async () => {
     const page1 = (await request(server).get(`/users-cursor?sort=id,ASC`).expect(200)).body;
     const page2 = (await request(server).get(`/users-cursor?sort=id,ASC&cursor=${page1.cursor.next}`).expect(200)).body;
@@ -134,7 +134,7 @@ async function reseedDb(prisma: any, db: 'postgres' | 'mysql'): Promise<void> {
     expect(back.data.map((r: any) => r.id)).toEqual(page1.data.map((r: any) => r.id));
   });
 
-  // Cell 5: Stability under writes — insert mid-pagination, cursor still resolves correctly
+  // Stability under writes — insert mid-pagination, cursor still resolves correctly
   it('cursor stable when row inserted mid-pagination', async () => {
     const page1 = (await request(server).get(`/users-cursor?sort=id,ASC`).expect(200)).body;
     expect(page1.cursor.next).toBeTruthy();
@@ -157,21 +157,21 @@ async function reseedDb(prisma: any, db: 'postgres' | 'mysql'): Promise<void> {
     }
   });
 
-  // Cell 6: Multi-sort + cursor → 400 BadRequest
+  // Multi-sort + cursor → 400 BadRequest
   it('multi-sort + cursor returns 400 BadRequest', async () => {
     const { body } = await request(server).get(`/users-cursor?sort=id,ASC&sort=email,DESC`).expect(400);
     expect(body.message).toMatch(/single sort field/i);
   });
 
-  // Cell 7: Invalid cursor → 400 BadRequest
+  // Invalid cursor → 400 BadRequest
   it('invalid cursor returns 400 BadRequest', async () => {
     const { body } = await request(server).get(`/users-cursor?sort=id,ASC&cursor=!!!nonsense!!!`).expect(400);
     expect(body.message).toMatch(/Invalid cursor/);
   });
 
-  // Cell 8: Row-id shape — UsersCursorController has no @CrudAuth, so the cell
+  // Row-id shape — UsersCursorController has no @CrudAuth, so the cell
   // verifies cursor response ids are valid (positive integers) rather than a
-  // subset claim that would over-promise without an auth fixture (CL-05 carry-over).
+  // subset claim that would over-promise without an auth fixture.
   it('cursor response returns valid row id shape', async () => {
     const cursorBody = (await request(server).get(`/users-cursor?sort=id,ASC`).expect(200)).body;
     expect(cursorBody.data.length).toBeGreaterThan(0);
@@ -181,9 +181,9 @@ async function reseedDb(prisma: any, db: 'postgres' | 'mysql'): Promise<void> {
     }
   });
 
-  // Cell 9: Hard-delete still applies in cursor mode — UsersCursorController has
+  // Hard-delete still applies in cursor mode — UsersCursorController has
   // no softDelete config, so DELETE is a hard delete via Prisma's delete().
-  // Either way the deleted id must not appear in any cursor page (CL-04 carry-over).
+  // Either way the deleted id must not appear in any cursor page.
   it('hard-delete still applies in cursor mode', async () => {
     const initial = (await request(server).get(`/users-cursor?sort=id,ASC`).expect(200)).body;
     expect(initial.data.length).toBeGreaterThan(0);
@@ -204,7 +204,7 @@ async function reseedDb(prisma: any, db: 'postgres' | 'mysql'): Promise<void> {
     expect(allIds.has(targetId)).toBe(false);
   });
 
-  // Cell 10: Response shape — no total/page/pageCount keys
+  // Response shape — no total/page/pageCount keys
   it('response shape has no total/page/pageCount keys', async () => {
     const { body } = await request(server).get(`/users-cursor?sort=id,ASC`).expect(200);
     expect(body.total).toBeUndefined();
@@ -215,12 +215,12 @@ async function reseedDb(prisma: any, db: 'postgres' | 'mysql'): Promise<void> {
     expect(body.cursor.prev).toBeNull();
   });
 
-  // Cell 11: SQLi guard — ?sort=id;DROP rejected via existing entityColumns allowlist
+  // SQLi guard — ?sort=id;DROP rejected via existing entityColumns allowlist
   it('SQLi guard rejects sort field with semicolon via existing allowlist', async () => {
     await request(server).get(`/users-cursor?sort=id;DROP,ASC`).expect(400);
   });
 
-  // Cell 12: Descending sort works symmetrically
+  // Descending sort works symmetrically
   it('descending sort works symmetrically', async () => {
     const page1 = (await request(server).get(`/users-cursor?sort=id,DESC`).expect(200)).body;
     expect(page1.data.length).toBeGreaterThan(0);
@@ -237,14 +237,14 @@ async function reseedDb(prisma: any, db: 'postgres' | 'mysql'): Promise<void> {
     expect(minP1).toBeGreaterThan(maxP2);
   });
 
-  // Cell 13: PK tie-breaker — deterministic order when sort field has equal values
+  // Primary-key tie-breaker — deterministic order when sort field has equal values
   it('PK tie-breaker on sort-field ties returns deterministic order', async () => {
     // Sort by companyId (integer) — all 10 seeded users share companyId=1, so
     // every row ties on the sort column. The PK tie-breaker (ORDER BY companyId
     // ASC, id ASC) must produce a stable ordering: lower id row always appears
     // before higher id row. Inserting two extra users with companyId=1 lets us
     // assert the tie-breaker is honoured. Integer column avoids the JS Date
-    // ms-vs-DB-microsecond precision issue that bit Plan 02 cell 13.
+    // ms-vs-DB-microsecond precision issue that a createdAt-sorted version of this test hit previously.
     const ts = Date.now();
     const userA = (
       await request(server)
@@ -301,7 +301,7 @@ async function reseedDb(prisma: any, db: 'postgres' | 'mysql'): Promise<void> {
     }
   });
 
-  // Cell 14: Cursor mode bypasses Phase 21 cache wrap — response shape proves direct path
+  // Cursor mode bypasses the cache wrap — response shape proves direct path
   it('cursor mode bypasses cache wrap (response shape proves direct path, not cached offset)', async () => {
     // Two identical cursor requests — both must return cursor shape (not offset/cached shape).
     const r1 = (await request(server).get(`/users-cursor?sort=id,ASC`).expect(200)).body;
@@ -315,7 +315,7 @@ async function reseedDb(prisma: any, db: 'postgres' | 'mysql'): Promise<void> {
     expect(r1.data.map((r: any) => r.id)).toEqual(r2.data.map((r: any) => r.id));
   });
 
-  // Cell 15: Missing limit + cursor → 400 (uses /users-cursor-no-limit auxiliary fixture)
+  // Missing limit + cursor → 400 (uses /users-cursor-no-limit auxiliary fixture)
   it('missing limit and cursor mode returns 400 BadRequest', async () => {
     // /users-cursor-no-limit has @Crud({ query: { pagination: 'cursor' } }) with NO limit/maxLimit.
     // doGetManyCursor sees getTake() return null and throws BadRequestException.
@@ -323,7 +323,7 @@ async function reseedDb(prisma: any, db: 'postgres' | 'mysql'): Promise<void> {
     expect(body.message).toMatch(/cursor pagination requires a limit/i);
   });
 
-  // Cell 16 (Prisma-specific): Verify cursor shape proves Prisma built-in cursor: arg is bypassed.
+  // Prisma-specific: Verify cursor shape proves Prisma built-in cursor: arg is bypassed.
   // Prisma's built-in `cursor: { id }` arg is single-column unique-key only and would NOT support
   // the (sortField, id) tuple semantics this library needs. PrismaQueryComposer.applyCursor emits
   // an OR-decomposed `where` instead. This cell asserts the response shape proves the OR-decomposed
@@ -334,7 +334,7 @@ async function reseedDb(prisma: any, db: 'postgres' | 'mysql'): Promise<void> {
     expect(page1.cursor.next).toBeTruthy();
     // Walk forward — if Prisma's built-in cursor: arg (single-column unique-key) were in use
     // for sort=id, the keyset path would still work for `id` but break on sort=companyId. The
-    // companyId walk above (cell 13) already exercises that path; this cell additionally
+    // companyId walk above already exercises that path; this cell additionally
     // verifies that on the id-sort path the response is the keyset shape, not Prisma's
     // built-in cursor: { id: { gt: N } } shape (which would still work but is bypassed).
     const page2 = (await request(server).get(`/users-cursor?sort=id,ASC&cursor=${page1.cursor.next}`).expect(200)).body;
@@ -348,7 +348,7 @@ async function reseedDb(prisma: any, db: 'postgres' | 'mysql'): Promise<void> {
     expect(page2.cursor.prev).toBeTruthy();
   });
 
-  // Cell 17: Default-sort fallback — no ?sort= against a route declaring a single-field
+  // Default-sort fallback — no ?sort= against a route declaring a single-field
   // default returns 200 with a keyset page whose next cursor decodes to that field.
   it('cursor mode with no ?sort= falls back to the route default sort and returns 200', async () => {
     const { body } = await request(server).get('/users-cursor-default-sort').expect(200);
@@ -359,7 +359,7 @@ async function reseedDb(prisma: any, db: 'postgres' | 'mysql'): Promise<void> {
     expect(decoded.sortField).toBe('id');
   });
 
-  // Cell 18: First-page ordering — the reason PrismaQueryComposer.applyCursor's early
+  // First-page ordering — the reason PrismaQueryComposer.applyCursor's early
   // return had to go. Without that fix, applyCursor never assigned orderBy when no
   // cursor was decoded, so a defaulted first page would emit no ORDER BY at all and
   // return rows in arbitrary database order instead of ascending primary-key order.
@@ -384,7 +384,7 @@ async function reseedDb(prisma: any, db: 'postgres' | 'mysql'): Promise<void> {
     }
   });
 
-  // Cell 19: Multi-field route default with no ?sort= → 400 naming the route-default
+  // Multi-field route default with no ?sort= → 400 naming the route-default
   // origin and the declared field count. Never silently falls back to default[0].
   it('cursor mode with a multi-field route default and no ?sort= returns 400 naming the route default', async () => {
     const { body } = await request(server).get('/users-cursor-multi-sort').expect(400);
@@ -392,7 +392,7 @@ async function reseedDb(prisma: any, db: 'postgres' | 'mysql'): Promise<void> {
     expect(body.message).toMatch(/route's @Crud\(\{ query: \{ sort \} \}\) default declares 2 fields/);
   });
 
-  // Cell 20: No sort anywhere (neither client nor route default) → 400 naming both
+  // No sort anywhere (neither client nor route default) → 400 naming both
   // remedies, with no legacy count-suffix wording.
   it('cursor mode with no ?sort= and no route default returns 400 naming both remedies', async () => {
     const { body } = await request(server).get('/users-cursor').expect(400);

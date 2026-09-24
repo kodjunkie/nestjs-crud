@@ -16,7 +16,6 @@ npm-debug.log
 skills-lock.json
 lerna-debug.log
 .npmrc
-.nvmrc
 
 # tests
 /coverage

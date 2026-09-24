@@ -1,10 +1,10 @@
 /**
  * Relation-load-strategy integration spec.
  *
- * RED gate: this spec MUST fail before Task 3 lands (composer doesn't yet honor
- * `relationLoadStrategy: 'query'`, so under the 'query' branch joins are
- * skipped — `company` and `company.projects` come back undefined, and the
- * row-count parity assertion fails).
+ * This spec fails if the composer stops honoring `relationLoadStrategy: 'query'`:
+ * joins under the 'query' branch would be skipped, `company` and
+ * `company.projects` would come back undefined, and the row-count parity
+ * assertion would fail.
  *
  * Coverage:
  *  - Test 1: row-count parity between 'query' and 'join' strategies on deep
@@ -13,7 +13,7 @@
  *    `company.projects`.
  *  - Test 3 (dotted-path sort SQLi regression): `?sort=company.invalid_col,ASC` returns 400
  *    under the 'query' branch — proves SQLi sort-allowlist still fires.
- *  - Test 4 (open-question #5 smoke): `setFindOptions` + `query.cache(...)`
+ *  - Test 4 (smoke): `setFindOptions` + `query.cache(...)`
  *    coexist (skipped if cache provider not configured in fixture).
  *  - Test 5 (alias-select parity audit — divergence documentation): top-level
  *    `?fields=` honored under 'query'; relation-level `JoinOption.allow` is a
@@ -25,9 +25,10 @@ import { Controller, INestApplication } from '@nestjs/common';
 import { APP_FILTER } from '@nestjs/core';
 import { Test } from '@nestjs/testing';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { DataSource } from 'typeorm';
 
 import { Crud, CrudController, CrudRequest, Override, ParsedRequest } from '@nestjs-crud/core';
-import * as request from 'supertest';
+import request from 'supertest';
 
 import { Company } from './__fixture__/app/companies';
 import { Project } from './__fixture__/app/projects';
@@ -35,6 +36,7 @@ import { withCache } from './__fixture__/app/orm.config';
 import { User } from './__fixture__/app/users';
 import { UserProfile } from './__fixture__/app/users-profiles';
 import { UsersService } from './__fixture__/app/users/users.service';
+import { resetFixture } from './__fixture__/app/reset-fixture';
 import { HttpExceptionFilter } from './__fixture__/shared/https-exception.filter';
 
 // Twin controllers — same join allowlist, different strategies — so Test 1 can
@@ -102,6 +104,7 @@ describe('TypeORM relationLoadStrategy opt-in', () => {
 
     app = fixture.createNestApplication();
     await app.init();
+    await resetFixture(app.get(DataSource));
     server = app.getHttpServer();
   });
 
@@ -153,20 +156,20 @@ describe('TypeORM relationLoadStrategy opt-in', () => {
         .query({ join: ['company'], sort: 'company.invalid_col,ASC' });
       expect(res.status).toBe(400);
       // mapSort throws `Invalid column '<col>' for relation '<relation>'` per
-      // typeorm-query-composer.ts mapSort branch — D-05b guard.
+      // typeorm-query-composer.ts mapSort branch — the dotted-path SQLi guard.
       expect(JSON.stringify(res.body)).toMatch(/Invalid column.*invalid_col.*company/);
     });
   });
 
-  describe('Test 4 (open question #5 smoke): cache + setFindOptions coexist', () => {
+  describe('Test 4: cache + setFindOptions coexist', () => {
     // withCache config has no cache provider configured (orm.config.ts only
-    // sets connection params; cache is not enabled). Skip explicitly so the
-    // intent is logged for the SUMMARY.
+    // sets connection parameters; cache is not enabled). Skip explicitly so
+    // the test report shows the case exists but did not run.
     it.skip('cache+strategy smoke skipped: fixture orm.config has no cache provider', async () => {
       // To enable: add `cache: { type: "database" }` (or redis) to withCache
-      // and remove .skip. This test was deferred per RESEARCH open question #5
-      // because enabling DB cache requires schema changes (new query_cache
-      // table) that are out of scope for this spec.
+      // and remove .skip. This test was deferred because enabling DB cache
+      // requires schema changes (new query_cache table) that are out of
+      // scope for this spec.
     });
   });
 
@@ -197,9 +200,9 @@ describe('TypeORM relationLoadStrategy opt-in', () => {
       //     return the primary key (`id`) on every row.
       const qTopCols = Object.keys(qFirst).sort();
       const jTopCols = Object.keys(jFirst).sort();
-      // eslint-disable-next-line no-console
+
       console.log(`[Test 5 audit] top-level user columns under 'query': ${JSON.stringify(qTopCols)}`);
-      // eslint-disable-next-line no-console
+
       console.log(`[Test 5 audit] top-level user columns under 'join':  ${JSON.stringify(jTopCols)}`);
       // Invariants we WILL assert: primary key always present.
       expect(qFirst.id).toBeDefined();
@@ -215,15 +218,14 @@ describe('TypeORM relationLoadStrategy opt-in', () => {
       // Severity guard: relation MUST be present under at least one strategy
       // — if undefined under both, surface as deviation.
       if (!qWithCompany || !jWithCompany) {
-        // eslint-disable-next-line no-console
         console.warn('[Test 5] no user with company in first 3 rows — divergence audit incomplete');
       } else {
         // Document divergence in test output (NOT a hard assertion):
         const qCols = Object.keys(qWithCompany.company).sort();
         const jCols = Object.keys(jWithCompany.company).sort();
-        // eslint-disable-next-line no-console
+
         console.log(`[Test 5 audit] company columns under 'query': ${JSON.stringify(qCols)}`);
-        // eslint-disable-next-line no-console
+
         console.log(`[Test 5 audit] company columns under 'join':  ${JSON.stringify(jCols)}`);
         // The DIVERGENCE: under 'query', TypeORM's setFindOptions ignores our
         // JoinOption.allow allowlist and loads ALL company columns. Under

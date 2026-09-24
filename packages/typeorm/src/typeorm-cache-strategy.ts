@@ -10,7 +10,7 @@ import { type RedisLike, toRedisLike } from '@nestjs-crud/core/cache';
  * not need to call `await redis.connect()` before passing the client.
  *
  * ```ts
- * // Option A — node-redis (v5)
+ * // Option A — node-redis (v5 or v6)
  * import { createClient } from 'redis';
  * import { TypeOrmCacheStrategy } from '@nestjs-crud/typeorm';
  *

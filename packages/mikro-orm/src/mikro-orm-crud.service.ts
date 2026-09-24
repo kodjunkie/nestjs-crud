@@ -129,7 +129,7 @@ export class MikroOrmCrudService<T extends object> extends CrudService<T> {
       return this.doGetManyCursor(parsed, options);
     }
 
-    // T-06-02: fresh em per call via createQueryBuilder on the proxy.
+    // Fresh em per call via createQueryBuilder on the proxy.
     const qb = (this.em as any).createQueryBuilder(this.entityClass);
     this.translator.applyToQuery(qb, parsed, options);
 
@@ -474,7 +474,7 @@ export class MikroOrmCrudService<T extends object> extends CrudService<T> {
       this.throwBadRequestException(`Cursor sort field mismatch: expected '${sort.field}', got '${decoded.sortField}'`);
     }
 
-    // D-06a: missing-limit terminal → 400
+    // Missing limit in cursor mode is a terminal error → 400
     const take = this.getTake(parsed, options.query);
     if (take == null) {
       this.throwBadRequestException(
@@ -485,7 +485,7 @@ export class MikroOrmCrudService<T extends object> extends CrudService<T> {
     const idField = this.entityPrimaryColumns[0];
     const sortField = sort.field;
 
-    // T-06-02: fresh em per call via createQueryBuilder on the proxy — same
+    // Fresh em per call via createQueryBuilder on the proxy — same
     // shape as the offset branch above. DO NOT capture this.em into a variable
     // that survives the method.
     const qb = (this.em as any).createQueryBuilder(this.entityClass);
@@ -497,7 +497,7 @@ export class MikroOrmCrudService<T extends object> extends CrudService<T> {
     // Peek one extra row for end-of-stream detection
     qb.limit((take as number) + 1);
 
-    // D-05: cursor mode BYPASSES cache wrap — call qb.getResult() directly,
+    // Cursor mode bypasses the cache wrap — call qb.getResult() directly,
     //       NOT translator.executeMany (which goes through cacheStrategy.wrap).
     const rows = (await qb.getResult()) as T[];
 

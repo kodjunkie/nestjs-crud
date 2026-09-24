@@ -9,7 +9,7 @@ module.exports = {
   testEnvironment: 'node',
   setupFilesAfterEnv: ['jest-extended/all'],
   moduleNameMapper: pathsToModuleNameMapper(compilerOptions.paths, {
-    prefix: '<rootDir>/packages/',
+    prefix: '<rootDir>/',
   }),
   moduleFileExtensions: ['ts', 'js'],
   // Root jest is scoped to core/request/util specs only. Adapter packages

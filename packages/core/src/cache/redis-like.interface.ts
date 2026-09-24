@@ -1,7 +1,7 @@
 /**
  * Narrow Redis client surface used by built-in cache strategies.
  *
- * Both `redis` (node-redis v5) and `ioredis` adapt to this — consumers pass
+ * Both `redis` (node-redis v5 or v6) and `ioredis` adapt to this — consumers pass
  * either client directly to the strategy ctor; auto-detection chooses the
  * adapter. Lazy-once auto-connect: first op triggers `connect()` if needed;
  * concurrent first ops dedup to a single connect call.
@@ -35,7 +35,7 @@ export function isRedisLike(c: unknown): c is RedisLike {
 }
 
 /**
- * Adapt a node-redis v5 or ioredis client to RedisLike. Returns input
+ * Adapt a node-redis (v5 or v6) or ioredis client to RedisLike. Returns input
  * unchanged when already adapted. Throws TypeError on unrecognized client.
  */
 export function toRedisLike(client: unknown): RedisLike {
@@ -43,7 +43,7 @@ export function toRedisLike(client: unknown): RedisLike {
   if (isNodeRedis(client)) return adaptNodeRedis(client);
   if (isIoredis(client)) return adaptIoredis(client);
   throw new TypeError(
-    'Cache backend client must be a node-redis (v5) instance, an ioredis instance, or implement the RedisLike interface.',
+    'Cache backend client must be a node-redis (v5 or v6) instance, an ioredis instance, or implement the RedisLike interface.',
   );
 }
 

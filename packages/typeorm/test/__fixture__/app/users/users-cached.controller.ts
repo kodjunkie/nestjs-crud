@@ -10,7 +10,7 @@ import { UsersService } from './users.service';
  *
  * Declares `@Crud({ query: { cache: 5000 } })` so the FetchHelper's
  * `getEffectiveTtl(options)` returns 5000 at request time — exercising the
- * production TTL wiring path (D-10 contract: TTL is sourced from
+ * production TTL wiring path (TTL is sourced from
  * `options.query.cache` per request, NOT from a static field).
  *
  * Mounted at `/companies/:companyId/users-cached` to avoid colliding with the
@@ -22,7 +22,7 @@ import { UsersService } from './users.service';
  *
  * NOTE: The fixture DataSource (orm.config.ts `withCache`) does NOT configure a
  * TypeORM native cache provider. With `cacheStrategy` wired, step 7 of
- * QueryComposer is skipped (D-21 guard), so no `CrudCacheNotConfiguredError` is
+ * QueryComposer is skipped, so no `CrudCacheNotConfiguredError` is
  * thrown for normal requests. The error test explicitly resets CrudConfigService
  * so the strategy is absent AND the native cache provider is absent.
  */

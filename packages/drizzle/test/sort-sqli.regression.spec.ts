@@ -5,14 +5,14 @@
  * any identifier reaches `sql.identifier`. Drizzle's SQL builder does NOT
  * parameterize column identifiers, so the allowlist is the only defense.
  *
- * Harness contract (PATTERNS.md §5): `onBadRequest` MUST throw. A `jest.fn()`
+ * Harness contract: `onBadRequest` MUST throw. A `jest.fn()`
  * stub would let a miss return silently — masking the exact bug this
  * regression gate exists to close.
  *
  * @see packages/typeorm/test/sort-sqli.regression.spec.ts (source matrix)
  */
 import { BadRequestException } from '@nestjs/common';
-// eslint-disable-next-line @typescript-eslint/no-require-imports
+
 const Database = require('better-sqlite3');
 import { getTableColumns, getTableName } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/better-sqlite3';

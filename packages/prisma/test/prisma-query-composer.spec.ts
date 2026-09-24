@@ -101,6 +101,63 @@ describe('PrismaQueryComposer', () => {
       const result = composer.applyToQuery({}, parsed, emptyOptions);
       expect(result.orderBy).toEqual([{ company: { name: 'asc' } }]);
     });
+
+    it('falls back to the route default sort when the request has none', () => {
+      const options = { query: { sort: [{ field: 'name', order: 'ASC' }] }, routes: {}, params: {} } as any;
+      const result = composer.applyToQuery({}, emptyParsed, options);
+      expect(result.orderBy).toEqual([{ name: 'asc' }]);
+    });
+
+    it('compiles a two-field route default with no extra primary-key entry', () => {
+      const options = {
+        query: {
+          sort: [
+            { field: 'name', order: 'ASC' },
+            { field: 'id', order: 'DESC' },
+          ],
+        },
+        routes: {},
+        params: {},
+      } as any;
+      const result = composer.applyToQuery({}, emptyParsed, options);
+      expect(result.orderBy).toEqual([{ name: 'asc' }, { id: 'desc' }]);
+    });
+
+    it('request sort replaces the route default entirely (no merge)', () => {
+      const parsed = { ...emptyParsed, sort: [{ field: 'email', order: 'DESC' }] };
+      const options = {
+        query: {
+          sort: [
+            { field: 'name', order: 'ASC' },
+            { field: 'id', order: 'DESC' },
+          ],
+        },
+        routes: {},
+        params: {},
+      } as any;
+      const result = composer.applyToQuery({}, parsed, options);
+      expect(result.orderBy).toEqual([{ email: 'desc' }]);
+    });
+
+    it('throws when the route default sorts on an unknown relation', () => {
+      const options = { query: { sort: [{ field: 'admin.secret', order: 'ASC' }] }, routes: {}, params: {} } as any;
+      expect(() => composer.applyToQuery({}, emptyParsed, options)).toThrow(
+        new BadRequestException('Unknown relation: admin'),
+      );
+    });
+
+    it('throws when the route default sorts on a column not in entityColumns', () => {
+      const options = { query: { sort: [{ field: 'nope', order: 'ASC' }] }, routes: {}, params: {} } as any;
+      expect(() => composer.applyToQuery({}, emptyParsed, options)).toThrow(
+        new BadRequestException('Unknown column: nope'),
+      );
+    });
+
+    it('leaves orderBy undefined when the route default is absent or empty and the request has no sort', () => {
+      const options = { query: { sort: [] }, routes: {}, params: {} } as any;
+      const result = composer.applyToQuery({}, emptyParsed, options);
+      expect(result.orderBy).toBeUndefined();
+    });
   });
 
   describe('pagination', () => {
@@ -191,8 +248,8 @@ describe('PrismaQueryComposer', () => {
       expect(result.include?.company).toBe(true);
     });
 
-    // L2 guard: to-one soft-delete MUST stay at parent where, never inside include
-    it('L2: to-one relation soft-delete routes to parent where, include remains true (not object)', () => {
+    // To-one soft-delete MUST stay at parent where, never inside include
+    it('to-one relation soft-delete routes to parent where, include remains true (not object)', () => {
       // SCondition dotted-path 'company.deletedAt' with $isnull → parent where.company.deletedAt = null
       const parsed = {
         ...emptyParsed,
@@ -211,8 +268,8 @@ describe('PrismaQueryComposer', () => {
       expect(result.where).toBeDefined();
     });
 
-    // L3 guard: include does NOT auto-inject deletedAt filter
-    it('L3: include does NOT auto-filter soft-deleted relations (consumer opt-in only)', () => {
+    // include does NOT auto-inject a deletedAt filter
+    it('include does NOT auto-filter soft-deleted relations (consumer opt-in only)', () => {
       const parsed = { ...emptyParsed };
       const options = {
         query: { join: { company: { eager: true } }, softDelete: true },
@@ -225,10 +282,128 @@ describe('PrismaQueryComposer', () => {
       // Must NOT be an object (which would mean filtered include was injected)
       expect(typeof result.include?.company).toBe('boolean');
     });
+
+    it('leaves include undefined for a non-eager, unrequested join option (no over-fetch)', () => {
+      const parsed = { ...emptyParsed };
+      const options = {
+        query: { join: { company: { eager: false } } },
+        routes: {},
+        params: {},
+      } as any;
+      const result = composer.applyToQuery({}, parsed, options);
+      expect(result.include).toBeUndefined();
+    });
+
+    it('leaves include undefined for a requested join that the join options do not list (allowlist bypass closed)', () => {
+      const parsed = { ...emptyParsed, join: [{ field: 'company', select: [] }] };
+      const options = {
+        query: { join: {} },
+        routes: {},
+        params: {},
+      } as any;
+      const result = composer.applyToQuery({}, parsed, options);
+      expect(result.include).toBeUndefined();
+    });
+
+    it('sets include.company = true for a join option that is both eager and requested', () => {
+      const parsed = { ...emptyParsed, join: [{ field: 'company', select: [] }] };
+      const options = {
+        query: { join: { company: { eager: true } } },
+        routes: {},
+        params: {},
+      } as any;
+      const result = composer.applyToQuery({}, parsed, options);
+      expect(result.include).toEqual({ company: true });
+    });
+
+    it('leaves include undefined for an eager join option that is not a known relation field', () => {
+      const parsed = { ...emptyParsed };
+      const options = {
+        query: { join: { notARelation: { eager: true } } },
+        routes: {},
+        params: {},
+      } as any;
+      const result = composer.applyToQuery({}, parsed, options);
+      expect(result.include).toBeUndefined();
+    });
   });
 
   // To-many filtered include — deferred; not in current MVP
   it.todo('Document to-many filtered include behavior');
+
+  describe('include — nested join ancestry', () => {
+    it("throws before any include is built when the nested join's parent is not joined", () => {
+      const parsed = { ...emptyParsed, join: [{ field: 'company.projects', select: [] }] };
+      const options = {
+        query: { join: { company: {}, 'company.projects': {} } },
+        routes: {},
+        params: {},
+      } as any;
+
+      expect(() => composer.applyToQuery({}, parsed, options)).toThrow(
+        new BadRequestException("Invalid join: 'company.projects'"),
+      );
+    });
+
+    it('applies the company include with no throw regardless of request order (nested include stays excluded)', () => {
+      const parsed = {
+        ...emptyParsed,
+        join: [
+          { field: 'company.projects', select: [] },
+          { field: 'company', select: [] },
+        ],
+      };
+      const options = {
+        query: { join: { company: {}, 'company.projects': {} } },
+        routes: {},
+        params: {},
+      } as any;
+
+      const result = composer.applyToQuery({}, parsed, options);
+      expect(result.include).toEqual({ company: true });
+    });
+
+    it('does not throw when the nested join has an eager parent', () => {
+      const parsed = { ...emptyParsed, join: [{ field: 'company.projects', select: [] }] };
+      const options = {
+        query: { join: { company: { eager: true }, 'company.projects': {} } },
+        routes: {},
+        params: {},
+      } as any;
+
+      expect(() => composer.applyToQuery({}, parsed, options)).not.toThrow();
+    });
+
+    it('throws when an eager nested join has an unjoined parent', () => {
+      const options = {
+        query: { join: { company: {}, 'company.projects': { eager: true } } },
+        routes: {},
+        params: {},
+      } as any;
+
+      expect(() => composer.applyToQuery({}, emptyParsed, options)).toThrow(
+        new BadRequestException("Invalid join: 'company.projects'"),
+      );
+    });
+
+    it('does not throw and includes company when the nested join is not allowlisted', () => {
+      const parsed = {
+        ...emptyParsed,
+        join: [
+          { field: 'company', select: [] },
+          { field: 'company.projects', select: [] },
+        ],
+      };
+      const options = {
+        query: { join: { company: {} } },
+        routes: {},
+        params: {},
+      } as any;
+
+      const result = composer.applyToQuery({}, parsed, options);
+      expect(result.include).toEqual({ company: true });
+    });
+  });
 
   // Pragma-sweep branch — getTake opts.limit fallback
   // Cross-adapter convergence: same shape as typeorm/drizzle/mikro-orm composer sweeps.

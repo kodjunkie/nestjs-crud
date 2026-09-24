@@ -6,30 +6,32 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "start": "node dist/main.js",
-    "start:dev": "ts-node -r tsconfig-paths/register src/main.ts",
-    "start:watch": "nodemon --watch src -e ts --exec \"ts-node -r tsconfig-paths/register src/main.ts\""
+    "start:dev": "tsc -p tsconfig.json && (tsc -p tsconfig.json --watch --preserveWatchOutput & node --watch dist/main.js)"
   },
   "dependencies": {
     "@nestjs-crud/core": "file:../../packages/core",
     "@nestjs-crud/request": "file:../../packages/request",
     "@nestjs-crud/typeorm": "file:../../packages/typeorm",
     "@nestjs-crud/util": "file:../../packages/util",
-    "@nestjs/common": "^11",
-    "@nestjs/core": "^11",
-    "@nestjs/platform-express": "^11",
-    "@nestjs/typeorm": "^11",
+    "@nestjs/common": "^12",
+    "@nestjs/core": "^12",
+    "@nestjs/platform-express": "^12",
+    "@nestjs/typeorm": "^12",
     "class-transformer": "^0.5",
     "class-validator": "^0.15",
     "pg": "^8",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.2",
-    "typeorm": "^0.3"
+    "typeorm": "^1"
   },
   "devDependencies": {
     "@types/node": "^24",
-    "nodemon": "^3.1.14",
-    "ts-node": "^10.9.2",
-    "tsconfig-paths": "^4.2.0",
-    "typescript": "^5"
+    "typescript": "^6"
+  },
+  "resolutions": {
+    "@nestjs-crud/core": "file:../../packages/core",
+    "@nestjs-crud/request": "file:../../packages/request",
+    "@nestjs-crud/util": "file:../../packages/util",
+    "@nestjs-crud/typeorm": "file:../../packages/typeorm"
   }
 }

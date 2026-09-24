@@ -16,12 +16,15 @@
  */
 import { BadRequestException } from '@nestjs/common';
 import type { EntityProperty } from '@mikro-orm/core';
+import type { JoinOptions } from '@nestjs-crud/core';
+import type { QueryJoin } from '@nestjs-crud/request';
 
+import { MikroOrmJoinResolver } from '@nestjs-crud/mikro-orm/mikro-orm-join-resolver';
 import { MikroOrmQueryComposer } from '@nestjs-crud/mikro-orm/query/mikro-orm-query-composer';
 import { REFERENCE_DATASET, RefUser } from '../scondition-matrix';
 
 // ---------------------------------------------------------------------------
-// Throwing stub — NEVER jest.fn() on a security path (PATTERNS.md §5)
+// Throwing stub — NEVER jest.fn() on a security path
 // ---------------------------------------------------------------------------
 
 const throwingOnBadRequest = (msg: string): never => {
@@ -91,6 +94,33 @@ function makeMockQb(): { qb: any; state: MockQbState } {
   };
 
   return { qb, state };
+}
+
+// ---------------------------------------------------------------------------
+// Recording stub for the orphan-nested-join guard — a plain-function double,
+// never a mock framework spy, on this security path.
+// Exposes leftJoinAndSelect, joinAndSelect and populate, matching the
+// feature-detection MikroOrmJoinResolver performs before falling back
+// between them.
+// ---------------------------------------------------------------------------
+
+function makeRecordingStub(): { stub: any; calls: Array<{ method: string; args: unknown[] }> } {
+  const calls: Array<{ method: string; args: unknown[] }> = [];
+  const stub: any = {
+    leftJoinAndSelect: (...args: unknown[]) => {
+      calls.push({ method: 'leftJoinAndSelect', args });
+      return stub;
+    },
+    joinAndSelect: (...args: unknown[]) => {
+      calls.push({ method: 'joinAndSelect', args });
+      return stub;
+    },
+    populate: (...args: unknown[]) => {
+      calls.push({ method: 'populate', args });
+      return stub;
+    },
+  };
+  return { stub, calls };
 }
 
 // ---------------------------------------------------------------------------
@@ -184,7 +214,30 @@ function evaluateOperator(fieldVal: any, opObj: Record<string, any>): boolean {
 // ---------------------------------------------------------------------------
 
 export interface MikroOrmHarness {
-  applyAndRun(parsed: any): Promise<number[]>;
+  /**
+   * The optional `routeQuery` carries a route-level `@Crud({ query: {...} })`
+   * config (for example a default `sort`) into `composer.applyToQuery`'s
+   * `options.query`, alongside the parsed request. Callers that pass only
+   * `parsed` keep today's behavior (an empty route query).
+   */
+  applyAndRun(parsed: any, routeQuery?: Record<string, unknown>): Promise<number[]>;
+
+  /**
+   * Drive the real `MikroOrmJoinResolver.applyJoins` guard against a
+   * hand-built `ParityGuardUser` -> `profile` metadata fixture. The orphan
+   * check runs purely against `joins`/`joinOptions`, so a single top-level
+   * `profile` relation in the fixture metadata is sufficient — no nested
+   * `profile.licenses` metadata is needed for the guard itself.
+   */
+  applyJoins(joins: QueryJoin[], joinOptions: JoinOptions): Promise<void>;
+
+  /**
+   * Drive the same guard resolver against `makeRecordingStub()` and return
+   * the sorted relation names actually joined, read from the alias argument
+   * of each recorded `leftJoinAndSelect`/`joinAndSelect` call (or the
+   * populated path for the `populate` fallback).
+   */
+  loadedJoins(joins: QueryJoin[], joinOptions: JoinOptions): Promise<string[]>;
 }
 
 // ---------------------------------------------------------------------------
@@ -219,7 +272,7 @@ export function buildMikroOrmComposer(): MikroOrmHarness {
   const emptyOptions = { query: {}, routes: {}, params: {} } as any;
 
   return {
-    async applyAndRun(parsed: any): Promise<number[]> {
+    async applyAndRun(parsed: any, routeQuery?: Record<string, unknown>): Promise<number[]> {
       const normalized = {
         fields: [],
         paramsFilter: [],
@@ -239,7 +292,7 @@ export function buildMikroOrmComposer(): MikroOrmHarness {
       };
 
       const { qb, state } = makeMockQb();
-      composer.applyToQuery(qb, normalized, emptyOptions);
+      composer.applyToQuery(qb, normalized, { ...emptyOptions, query: { ...(routeQuery ?? {}) } });
 
       // Filter dataset
       let results = REFERENCE_DATASET.filter((u) => evaluatePredicate(u, state.where));
@@ -267,6 +320,58 @@ export function buildMikroOrmComposer(): MikroOrmHarness {
 
       return results.map((u) => u.id);
     },
+
+    async applyJoins(joins: QueryJoin[], joinOptions: JoinOptions): Promise<void> {
+      const guardResolver = new MikroOrmJoinResolver({
+        metadata: buildGuardMetadata() as any,
+        onBadRequest: throwingOnBadRequest,
+      });
+
+      const { stub } = makeRecordingStub();
+      guardResolver.applyJoins(stub, joins, joinOptions);
+    },
+
+    async loadedJoins(joins: QueryJoin[], joinOptions: JoinOptions): Promise<string[]> {
+      const guardResolver = new MikroOrmJoinResolver({
+        metadata: buildGuardMetadata() as any,
+        onBadRequest: throwingOnBadRequest,
+      });
+
+      const { stub, calls } = makeRecordingStub();
+      guardResolver.applyJoins(stub, joins, joinOptions);
+
+      const aliasNames = calls
+        .filter((c) => c.method === 'leftJoinAndSelect' || c.method === 'joinAndSelect')
+        .map((c) => c.args[1] as string);
+      const populatedNames = calls.filter((c) => c.method === 'populate').flatMap((c) => c.args[0] as string[]);
+
+      return Array.from(new Set([...aliasNames, ...populatedNames])).sort();
+    },
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Shared guard metadata fixture: `ParityGuardUser` -> `profile`
+// ---------------------------------------------------------------------------
+
+function buildGuardMetadata(): {
+  className: string;
+  relations: Array<{ name: string; kind: string; targetMeta: { properties: Record<string, unknown> } }>;
+} {
+  return {
+    className: 'ParityGuardUser',
+    relations: [
+      {
+        name: 'profile',
+        kind: '1:1',
+        targetMeta: {
+          properties: {
+            id: { name: 'id', kind: 'scalar', primary: true },
+            bio: { name: 'bio', kind: 'scalar' },
+          },
+        },
+      },
+    ],
   };
 }
 

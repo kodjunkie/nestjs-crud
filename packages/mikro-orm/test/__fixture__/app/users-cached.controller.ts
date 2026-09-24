@@ -9,7 +9,7 @@ import { UsersService } from './users.service';
  *
  * Declares `@Crud({ query: { cache: 5000 } })` so the FetchHelper's
  * `getEffectiveTtl(options)` returns 5000 at request time — exercising the
- * production TTL wiring path (D-10 contract: TTL is sourced from
+ * production TTL wiring path (TTL is sourced from
  * `options.query.cache` per request, NOT from a static field).
  *
  * Mounted at `/users-cached` to avoid colliding with the existing `/users` controller.
@@ -21,7 +21,7 @@ import { UsersService } from './users.service';
  *
  * NOTE: The fixture does NOT configure a MikroORM Result Cache provider.
  * With `cacheStrategy` wired, the FetchHelper's cache-wrap path is activated
- * (BYO Redis bypass — MikroORM Result Cache is skipped per D-20).
+ * (BYO Redis bypass — MikroORM Result Cache is intentionally skipped).
  * The error test explicitly resets CrudConfigService so the strategy is absent.
  */
 @Crud({

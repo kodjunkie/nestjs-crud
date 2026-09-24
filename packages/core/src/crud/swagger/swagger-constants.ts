@@ -34,7 +34,7 @@ import { safeRequire } from '../../util';
 export interface SwaggerConstants {
   DECORATORS_PREFIX: string;
   DECORATORS: Record<string, string>;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
   [key: string]: any;
 }
 
@@ -82,9 +82,8 @@ export const INLINED_FALLBACK: SwaggerConstants = {
 function resolveSwaggerConst(): SwaggerConstants | null {
   // Step 1: attempt the legacy deep require first — wins on older swagger versions whose
   // exports map still allows `./dist/*` or that predate exports maps entirely.
-  const deep = safeRequire<SwaggerConstants>(
-    '@nestjs/swagger/dist/constants',
-    () => require('@nestjs/swagger/dist/constants'),
+  const deep = safeRequire<SwaggerConstants>('@nestjs/swagger/dist/constants', () =>
+    require('@nestjs/swagger/dist/constants'),
   );
   if (deep && deep.DECORATORS) {
     return deep;

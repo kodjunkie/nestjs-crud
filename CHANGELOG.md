@@ -7,6 +7,47 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [2.3.0] — 2026-09-24
+
+### Added
+
+- **NestJS 12 support.** Every package's `@nestjs/common` peer range and `@nestjs-crud/typeorm`'s `@nestjs/typeorm` range now accept `^12.0.0` alongside `^10.0.0 || ^11.0.0`. `@nestjs-crud/core`'s optional `@nestjs/swagger` peer also accepts `^12.0.0` — see Fixed, below, for its full corrected range. The test suite runs on NestJS 12. NestJS 12 ships as ESM only, and the `@nestjs-crud` packages are CommonJS, so apps on NestJS 12 need a Node release that can `require()` ES modules without a flag.
+- **TypeORM 1.x support.** `@nestjs-crud/typeorm` accepts `typeorm` `^1.0.0`. The test suite runs on TypeORM 1.1.1.
+- **node-redis 6 support.** The `redis` peer range on the four adapter packages is now `^5.0.0 || ^6.0.0`. The Redis cache strategies work unchanged with a node-redis 6 client.
+- **class-validator 0.15 support.** `@nestjs-crud/core`'s `class-validator` peer range is now `^0.14.0 || ^0.15.0`. The previous range, `^0.14.0`, excluded 0.15.x, which is the version the test suite runs on.
+- **ioredis 6 support (optional peer).** The four adapter packages' optional `ioredis` peer range is now `^5.0.0 || ^6.0.0`, widened on the evidence of the Redis cache-strategy specs running against a live ioredis 6 client. The 5.x line stays claimed and is exercised separately by the oldest-peer CI profiles.
+- **`swagger.queryDocsUrl` option.** Set it on a route (`@Crud({ swagger: { queryDocsUrl } })`) or globally (`CrudConfigService.load({ swagger: { queryDocsUrl } })`) to point the query-syntax link at the end of the `getManyBase` and `getOneBase` OpenAPI descriptions at your own documentation, or set it to `false` to remove the line. The route value wins over the global value, which wins over the library's Query Syntax wiki page, the default when nothing is set. An invalid value throws at startup.
+
+### Changed
+
+- **Node 22.12.0 or later is now required (`engines.node`) on every published package, raised from `>=22.0.0`.** NestJS 12 ships as ESM only, and these packages are CommonJS; they load it through Node's `require()`-of-ESM support, which lands at 22.12.0.
+- **Adapter packages require `@nestjs-crud/core` from the same release or later.** Every internal `@nestjs-crud/*` range in `dependencies` and `peerDependencies` now tracks the release version in lockstep: each adapter's `@nestjs-crud/core` peer range moves from `^2.0.0` to the caret of the release version; `@nestjs-crud/mikro-orm` does the same for `@nestjs-crud/request` and `@nestjs-crud/util`. The adapters call core helpers added after 2.0.0, including the cursor sort resolver added in 2.2.6, so an older core satisfied the old range without providing them.
+- **`@nestjs-crud/request` is now the only package that depends on `qs`.** `@nestjs-crud/core` no longer lists `qs` as a dependency. Its request interceptor passes the raw query string to `RequestQueryParser.parseQuery()`, which parses it with `qs`. Parsing results are unchanged, and core still gets `qs` through `@nestjs-crud/request`.
+- **`RequestQueryParser.parseQuery()` accepts a raw query string** (the part of the URL after `?`) as well as a parsed query object.
+- **Installing `@nestjs-crud/typeorm` with npm can hit an `ERESOLVE` conflict on TypeORM 1.x.** TypeORM 1.1.1's optional `ioredis` peer (`^5`) conflicts with NestJS 12's optional `ioredis` peer, which npm resolves to 6.x. Add `ioredis@^5` to your app's dependencies, or an `"overrides": { "ioredis": "^5.0.4" }` entry to its `package.json`, to work around it.
+- **On Drizzle, MikroORM and Prisma, an orphan nested `?join=` entry used to be accepted with the nested join silently dropped.** It now returns the same `400` TypeORM returns (see Fixed, below). MikroORM and Prisma still do not load nested relations — only the top-level relation of a nested join is joined or included.
+- **Under TypeORM `relationLoadStrategy: 'query'`, an orphan nested join no longer loads its parent implicitly.** It now returns the same `400 Invalid join: '<field>'` the default strategy returns.
+- **`@Crud()` throws at startup when an eager join option has a non-eager ancestor** (for example `'profile.licenses': { eager: true }` without an eager `profile`). Previously the TypeORM adapter failed on every request to that route, and the other adapters silently skipped the nested join. Mark every ancestor eager, or remove `eager` from the nested entry.
+- **`@nestjs-crud/drizzle`'s `drizzle-orm` peer range now has an upper bound.** It was `>=0.45.2` with no ceiling; it is now `^0.45.2`. drizzle-orm's 1.x line exists only as prereleases, and no CI cell exercises a stable 1.x release.
+- **The four adapters' optional `redis` peer range is unchanged, and both admitted majors are exercised.** `redis` stays `^5.0.0 || ^6.0.0`. Major 6 is exercised by the live Redis cache-strategy specs and the root `redis` dependency; major 5 is exercised by the oldest-peer CI profiles, which install `redis` 5.12.1 and run the four adapters' Redis cache-strategy specs against it.
+- **`@nestjs-crud/prisma`'s optional `@prisma/extension-accelerate` peer range is unchanged and remains permanently unexercisable in CI.** It requires a live, paid Prisma Accelerate account and network egress to a managed gateway that no local or CI environment can stand in for.
+- **On Prisma, an offset-mode `getMany` request with no `?sort=` now falls back to the route's default sort declared via `@Crud({ query: { sort } })`, matching TypeORM, Drizzle and MikroORM.** Previously it returned rows in database order. A request's `?sort=` still replaces the default entirely — the two are never merged — and the default sort field passes through the same sort-field allowlist as a request sort. To keep database order on an existing route, remove its `sort` default.
+- **On Prisma, a route's join options now decide which relations come back, the same rule TypeORM, Drizzle and MikroORM already applied.** A relation from `@Crud({ query: { join } })` comes back only when it is marked `eager` or requested with `?join=`. Previously every listed relation came back on every read, whether requested or not. Routes that relied on the old behavior should mark the join `eager: true`.
+
+### Fixed
+
+- **`@nestjs-crud/core`'s optional `@nestjs/swagger` peer range no longer names a major npm never published.** The range was `^10.0.0 || ^11.0.0 || ^12.0.0` — there has never been a published `@nestjs/swagger` major 10. It is now `^7.0.0 || ^8.0.0 || ^11.0.0 || ^12.0.0`, the majors that actually pair with NestJS 10, proven by CI cells that install `@nestjs/swagger` 7 and 8 alongside NestJS 10.
+- **`@nestjs-crud/mikro-orm`'s published types now resolve without an undeclared dependency.** The package's emitted `.d.ts` files imported `QueryBuilder` from `@mikro-orm/knex`, a package `@nestjs-crud/mikro-orm` never declared as a dependency or peer. TypeScript projects that didn't happen to have `@mikro-orm/knex` installed couldn't resolve the adapter's types. The types now come from `@mikro-orm/sql`, the MikroORM 7 package that ships `QueryBuilder`. `@mikro-orm/sql` `^7.0.0` is a new peer dependency of `@nestjs-crud/mikro-orm`; every MikroORM 7 SQL driver (`@mikro-orm/postgresql`, `@mikro-orm/mysql`, `@mikro-orm/sqlite`) already depends on it, so installs that already have a driver need no action.
+- **A nested `?join=` entry such as `profile.licenses` needs every ancestor joined, either requested in `?join=` or marked eager in `@Crud({ query: { join } })`, in any order and at any depth.** On TypeORM such a request used to crash with a `500`, and could keep failing later nested-join requests on the same route until restart; it now returns `400 Invalid join: 'profile.licenses'`. Listing a nested join before its parent now works on TypeORM and Drizzle.
+
+### Security
+
+- **`@nestjs-crud/typeorm` requires `typeorm` 0.3.30 or later on the 0.3 line.** The peer range moves from `^0.3.0` to `^0.3.30 || ^1.0.0`. The old floor admitted older, vulnerable 0.3 releases for consumers who pinned low, the item carried forward from 2.2.6.
+- **`@nestjs-crud/request` requires `qs` 6.16.0 or later.** The previous floor, `^6.15.2`, admitted versions affected by two advisories fixed in 6.16.0: a denial of service through attacker-controlled `isBuffer` (GHSA-4mjr-xmp4-gh2g) and an array-limit bypass through bracket-key comma parsing (GHSA-x5fp-wj9c-mxmx). The root lockfile now resolves a single `qs` 6.16.0 for the whole workspace.
+- **Under TypeORM `relationLoadStrategy: 'query'`, a nested join needs its full dotted path in the join options.** Previously, any nested relation under an allowlisted top-level relation could be loaded, even when the nested path itself was not allowlisted.
+- **The build and test toolchain now resolves patched `smol-toml`, `mysql2` and `mariadb` releases.** Nx (the engine behind Lerna's task runner), the Prisma CLI, and the Prisma MariaDB driver adapter each pinned an older, vulnerable copy of one of these packages exactly; the root workspace now overrides those pins. None of the three packages ship inside a published `@nestjs-crud/*` tarball, and no published package's dependencies or peer ranges changed.
+- **A `?join=` for a Prisma relation the route's join options do not list is no longer included.** Previously, any relation the Prisma service's `relationFields` named could be requested with `?join=` and loaded with all its columns, regardless of whether the route's `@Crud({ query: { join } })` allowlisted it — bypassing the join allowlist the other three adapters already enforced.
+
 ## [2.2.6] — 2026-07-31
 
 ### Fixed
@@ -274,6 +315,7 @@ Full breaking-change inventory and step-by-step upgrade guidance: [v2 Migration 
 ### Forward-looking (v2.x / v3 work)
 
 The following work is tracked separately and NOT promised by v2.0.0:
+
 - Unified caching API across all 4 adapters (currently TypeORM-only).
 - Unified `relationLoadStrategy` across all 4 adapters (currently TypeORM-only).
 - `@zmotivat0r/mrepo` evaluation against alternatives (Nx, Turborepo).
@@ -336,7 +378,8 @@ See the [v1.0.1 release](https://github.com/kodjunkie/nestjs-crud/releases/tag/v
 
 ---
 
-[Unreleased]: https://github.com/kodjunkie/nestjs-crud/compare/v2.2.6...HEAD
+[Unreleased]: https://github.com/kodjunkie/nestjs-crud/compare/v2.3.0...HEAD
+[2.3.0]: https://github.com/kodjunkie/nestjs-crud/compare/v2.2.6...v2.3.0
 [2.2.6]: https://github.com/kodjunkie/nestjs-crud/compare/v2.2.5...v2.2.6
 [2.2.5]: https://github.com/kodjunkie/nestjs-crud/compare/v2.2.4...v2.2.5
 [2.2.4]: https://github.com/kodjunkie/nestjs-crud/compare/v2.2.3...v2.2.4

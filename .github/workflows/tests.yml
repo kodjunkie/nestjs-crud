@@ -14,7 +14,21 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
-      - name: Enable Corepack
+      - name: check manifest contracts
+        run: node scripts/check-manifest-contracts.js
+
+      - name: check peer ranges
+        run: node scripts/check-peer-ranges.js
+
+      - name: Enable Corepack (pre-setup-node)
+        run: corepack enable
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+
+      - name: Enable Corepack (post-setup-node)
         run: corepack enable
 
       - name: Pin Yarn version
@@ -38,14 +52,24 @@ jobs:
         # the test matrix runs per-adapter configs only. This is what executes
         # swagger-constants-fallback.spec.ts — the guard that fails when the
         # inlined DECORATORS fallback drifts from the installed @nestjs/swagger.
-        run: npx jest --silent
+        # NODE_OPTIONS is required: NestJS 12 is ESM-only, and a bare `npx jest`
+        # aborts with a require-of-ESM error before a single test runs.
+        run: NODE_OPTIONS=--experimental-vm-modules npx jest --silent
 
   parity:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
 
-      - name: Enable Corepack
+      - name: Enable Corepack (pre-setup-node)
+        run: corepack enable
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+
+      - name: Enable Corepack (post-setup-node)
         run: corepack enable
 
       - name: Pin Yarn version
@@ -80,7 +104,15 @@ jobs:
       - name: build docker db
         run: docker compose up -d
 
-      - name: Enable Corepack
+      - name: Enable Corepack (pre-setup-node)
+        run: corepack enable
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+
+      - name: Enable Corepack (post-setup-node)
         run: corepack enable
 
       - name: Pin Yarn version
@@ -101,6 +133,16 @@ jobs:
             docker compose exec -T ${{ matrix.db }} sh -c 'exit 0' && break || sleep 2
           done
 
+      # The adapter suites include cache-strategy specs that open a real Redis
+      # connection, so Redis has to be accepting commands before they start —
+      # waiting only for the database leaves that a race.
+      - name: wait for Redis
+        run: |
+          for i in {1..30}; do
+            docker compose exec -T redis redis-cli PING | grep -q PONG && break || sleep 2
+          done
+          docker compose exec -T redis redis-cli PING | grep -q PONG
+
       - name: run ${{ matrix.adapter }} x ${{ matrix.db }} tests
         run: yarn test:${{ matrix.adapter }}:${{ matrix.db }}
 
@@ -111,7 +153,15 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
-      - name: Enable Corepack
+      - name: Enable Corepack (pre-setup-node)
+        run: corepack enable
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+
+      - name: Enable Corepack (post-setup-node)
         run: corepack enable
 
       - name: Pin Yarn version
@@ -127,7 +177,9 @@ jobs:
         run: yarn build
 
       - name: run no-swagger sentinel
-        run: npx jest --config jest.config.no-swagger.js --coverage
+        # NODE_OPTIONS is required: NestJS 12 is ESM-only, and a bare `npx jest`
+        # aborts with a require-of-ESM error before a single test runs.
+        run: NODE_OPTIONS=--experimental-vm-modules npx jest --config jest.config.no-swagger.js --coverage
 
       - name: upload coverage artifact
         if: always()
@@ -145,7 +197,15 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
-      - name: Enable Corepack
+      - name: Enable Corepack (pre-setup-node)
+        run: corepack enable
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+
+      - name: Enable Corepack (post-setup-node)
         run: corepack enable
 
       - name: Pin Yarn version
@@ -180,3 +240,262 @@ jobs:
           path: |
             knip-report.md
             knip-report.json
+
+  node-floor:
+    name: node-floor (22.12.0)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Enable Corepack (pre-setup-node)
+        run: corepack enable
+
+      - name: Setup Node.js
+        # This job pins the exact published floor, not a range. A slightly
+        # newer patch such as 22.14.0 already satisfies some of our
+        # dependencies' own higher engine floors, which would hide the
+        # advisory engine warning this job exists to characterize.
+        uses: actions/setup-node@v5
+        with:
+          node-version: '22.12.0'
+
+      - name: Enable Corepack (post-setup-node)
+        run: corepack enable
+
+      - name: Pin Yarn version
+        run: yarn set version 4.12.0
+
+      - name: install
+        # Engine-compatibility warnings from dependencies that declare a
+        # higher floor than ours in their own engines field are expected on
+        # this exact version and must not be treated as failures here.
+        run: yarn install --immutable
+
+      - name: clean and build
+        run: yarn clean && yarn build
+
+      - name: run request/util unit suite
+        # Scoped to packages/request and packages/util, not the full
+        # core/request/util suite the other jobs run. packages/core specs
+        # import @nestjs/common (ESM-only) transitively, and Jest's own
+        # require(esm) support is gated behind a runtime feature-detection
+        # (vm.SourceTextModule.prototype.hasAsyncGraph) present only from
+        # Node v24.9 onward. That gate lives inside Jest itself, separate
+        # from Node's own require(esm) support, which is unflagged already
+        # at this job's 22.12.0 floor. The line below that actually proves
+        # our published CJS packages load NestJS 12 through Node's native
+        # require(esm) at this floor is "run smoke", not this step.
+        run: NODE_OPTIONS=--experimental-vm-modules npx jest --silent packages/util packages/request
+
+      - name: run smoke
+        run: yarn smoke:pack
+
+  install-checks:
+    name: install-checks (${{ matrix.pm }})
+    runs-on: ubuntu-latest
+    needs: parity
+    strategy:
+      fail-fast: false
+      matrix:
+        pm: [npm, yarn, pnpm]
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Enable Corepack (pre-setup-node)
+        run: corepack enable
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+
+      - name: Enable Corepack (post-setup-node)
+        run: corepack enable
+
+      - name: Pin Yarn version
+        run: yarn set version 4.12.0
+
+      - name: install
+        run: yarn install --immutable
+
+      - name: build
+        run: yarn build
+
+      - name: run ${{ matrix.pm }} install check (strict peers)
+        # Invokes the script directly with its flags, not through a yarn
+        # script, so no package-manager environment leaks into the child.
+        run: node scripts/smoke-pack.js --pm=${{ matrix.pm }} --strict-peers
+
+  ioredis-canary:
+    name: ioredis-canary
+    runs-on: ubuntu-latest
+    needs: parity
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Enable Corepack (pre-setup-node)
+        run: corepack enable
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+
+      - name: Enable Corepack (post-setup-node)
+        run: corepack enable
+
+      - name: Pin Yarn version
+        run: yarn set version 4.12.0
+
+      - name: install
+        run: yarn install --immutable
+
+      - name: build
+        run: yarn build
+
+      - name: run ioredis canary
+        # Passes while the known npm dependency conflict between typeorm and
+        # NestJS's optional ioredis peer still reproduces; fails once it
+        # stops reproducing, so a maintainer knows to remove the workaround.
+        run: node scripts/smoke-pack.js --expect-ioredis-eresolve
+
+  oldest-peers:
+    name: oldest-peers (${{ matrix.profile }})
+    runs-on: ubuntu-latest
+    needs: parity
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - profile: nestjs11
+            adapters: 'typeorm drizzle mikro-orm prisma'
+          - profile: nestjs10-swagger7
+            # TypeORM only: the MikroORM integration package has never
+            # accepted NestJS 10 at any published version. That is a
+            # registry constraint on that dependency, not a choice made
+            # here, so the other three adapters cannot join this cell.
+            adapters: 'typeorm'
+          - profile: nestjs10-swagger8
+            # Same registry constraint as the swagger7 cell above.
+            adapters: 'typeorm'
+    env:
+      COMPOSE_FILE: ./compose.yml
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: build docker db
+        run: docker compose up -d
+
+      - name: Enable Corepack (pre-setup-node)
+        run: corepack enable
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+
+      - name: Enable Corepack (post-setup-node)
+        run: corepack enable
+
+      - name: Pin Yarn version
+        run: yarn set version 4.12.0
+
+      - name: install
+        # Installs the committed lockfile at its current (non-downgraded)
+        # peers. The next step is the only one in this job that mutates it.
+        run: yarn install --immutable
+
+      - name: wait for DB
+        run: |
+          for i in {1..30}; do
+            docker compose exec -T postgres sh -c 'exit 0' && break || sleep 2
+          done
+
+      - name: apply the ${{ matrix.profile }} oldest-peer profile
+        # scripts/oldest-peers.js disables Yarn's immutable-install behaviour
+        # for its own `yarn up` call only; every other step in this job, and
+        # every other job in this file, keeps it on.
+        run: node scripts/oldest-peers.js ${{ matrix.profile }}
+
+      - name: build
+        run: yarn build
+
+      - name: run core/request/util unit suite
+        # NODE_OPTIONS is required: NestJS 12 is ESM-only, and a bare `npx
+        # jest` aborts with a require-of-ESM error before a single test runs.
+        run: NODE_OPTIONS=--experimental-vm-modules npx jest --silent
+
+      - name: parity piece-level
+        run: yarn test:parity
+
+      - name: run this profile's adapter suites on Postgres
+        run: |
+          for adapter in ${{ matrix.adapters }}; do
+            yarn test:${adapter}:postgres
+          done
+
+      - name: restore package.json and yarn.lock
+        if: always()
+        run: node scripts/oldest-peers.js --restore
+
+  demo:
+    name: demo (typeorm-demo on Postgres)
+    runs-on: ubuntu-latest
+    needs: parity
+    permissions:
+      contents: read
+    env:
+      COMPOSE_FILE: ./compose.yml
+    steps:
+      # The demo install floats and runs third-party install scripts, so this
+      # job keeps no Git credentials on disk.
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+
+      - name: build docker db
+        run: docker compose up -d postgres
+
+      - name: Enable Corepack (pre-setup-node)
+        run: corepack enable
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+
+      - name: Enable Corepack (post-setup-node)
+        run: corepack enable
+
+      - name: Pin Yarn version
+        run: yarn set version 4.12.0
+
+      - name: install
+        run: yarn install --immutable
+
+      - name: build
+        # Produces packages/*/lib, which the demo's file: dependencies link to.
+        run: yarn build
+
+      - name: wait for Postgres
+        run: |
+          for i in {1..30}; do
+            docker compose exec -T postgres pg_isready -U root -d nestjs_crud && break || sleep 2
+          done
+          docker compose exec -T postgres pg_isready -U root -d nestjs_crud
+
+      - name: install the demo
+        # The demo has no committed lockfile, so its install floats to the
+        # newest releases in its ranges, and a red job here means a fresh
+        # consumer install is broken right now. CI makes Yarn installs
+        # immutable by default, and an install that starts from the empty
+        # marker always writes the lockfile, so this step opts out.
+        run: touch examples/typeorm-demo/yarn.lock && yarn --cwd examples/typeorm-demo install --no-immutable
+
+      - name: build the demo
+        run: yarn --cwd examples/typeorm-demo build
+
+      - name: smoke-test the demo
+        # Checks list, create company, create user and the join route against
+        # this job's fresh Postgres database.
+        run: node scripts/demo-smoke.js

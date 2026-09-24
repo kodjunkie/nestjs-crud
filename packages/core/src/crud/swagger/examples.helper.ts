@@ -15,7 +15,6 @@ import { swaggerConst } from './swagger-constants';
 // cited: node_modules/@nestjs/swagger/dist/constants.js line 15 for
 // DECORATORS.API_MODEL_PROPERTIES_ARRAY, line 14 for DECORATORS.API_MODEL_PROPERTIES.
 export function synthesizeBodyExample(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   modelType: any,
   consumerSynth?: CrudSwaggerSynthExampleFn,
   route?: BaseRouteName,
@@ -36,7 +35,6 @@ export function synthesizeBodyExample(
   return {};
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function introspectApiPropertyExample(modelType: any): Record<string, unknown> {
   if (!modelType) {
     return {};

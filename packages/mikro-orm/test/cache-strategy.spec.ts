@@ -1,7 +1,7 @@
-// Wave 2 plan 21-03: MikroORM cache-strategy integration spec
+// MikroORM cache-strategy integration spec.
 // Exercises the production TTL wiring path: fixture controller declares
 // @Crud({ query: { cache: 5000 } }) so FetchHelper's getEffectiveTtl(options)
-// returns 5000 from options.query.cache at request time (D-10 contract).
+// returns 5000 from options.query.cache at request time.
 // Uses MockCacheStrategy (in-memory, deterministic) — NOT real Redis.
 
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, jest } from '@jest/globals';
@@ -76,8 +76,8 @@ const runSuite = dialect === 'postgres' || dialect === 'mysql';
     expect(b.status).toBe(200);
     expect(b.body).toEqual(a.body);
     // Production-wiring check: wrap is invoked with the ttl from @Crud option (5000ms).
-    // Proves getEffectiveTtl(options) sourced TTL from options.query.cache (D-10)
-    // and that ttl is in MILLISECONDS uniformly (FIX 1).
+    // Proves getEffectiveTtl(options) sourced TTL from options.query.cache
+    // and that ttl is in MILLISECONDS uniformly.
     expect(wrapSpy).toHaveBeenCalled();
     const wrapCalls = wrapSpy.mock.calls as unknown[][];
     expect(wrapCalls.some((args) => args[2] === 5000)).toBe(true);
@@ -122,7 +122,7 @@ const runSuite = dialect === 'postgres' || dialect === 'mysql';
     expect(wrapSpy).not.toHaveBeenCalled();
   });
 
-  it('thunk invariant: concurrent reads under cache do not produce identity-map collisions (T-06-02 / T-21-04)', async () => {
+  it('thunk invariant: concurrent reads under cache do not produce identity-map collisions', async () => {
     // First request populates cache; concurrent requests hit cache (single-flight).
     // Behaviorally: cached reads across concurrent requests must not crash or corrupt.
     // Static invariant: getEm() is called INSIDE the fetch closure (verified by acceptance grep
@@ -134,7 +134,7 @@ const runSuite = dialect === 'postgres' || dialect === 'mysql';
     expect(a.body).toEqual(b.body);
   });
 
-  it('throws CrudCacheNotConfiguredError when @Crud cache set without strategy (D-11 parity with TypeORM/Drizzle/Prisma)', async () => {
+  it('throws CrudCacheNotConfiguredError when @Crud cache set without strategy (parity with TypeORM/Drizzle/Prisma)', async () => {
     // Reset removes the global strategy. The UsersCachedController declares
     // @Crud({ query: { cache: 5000 } }) — now no strategy is wired anywhere.
     // FetchHelper.assertStrategyOrPassThrough throws CrudCacheNotConfiguredError

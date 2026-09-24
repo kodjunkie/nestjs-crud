@@ -1,14 +1,14 @@
-// Wave 2 plan 21-05: Drizzle cache-strategy integration spec
+// Drizzle cache-strategy integration spec.
 // Exercises the production TTL wiring path: fixture controller declares
 // @Crud({ query: { cache: 5000 } }) so FetchHelper's getEffectiveTtl(options)
-// returns 5000 from options.query.cache at request time (D-10 contract).
+// returns 5000 from options.query.cache at request time.
 // Uses MockCacheStrategy (in-memory, deterministic) — NOT real Redis.
 
 import { INestApplication } from '@nestjs/common';
 import { APP_FILTER } from '@nestjs/core';
 import { Test } from '@nestjs/testing';
 import { CrudConfigService, MockCacheStrategy } from '@nestjs-crud/core';
-import * as request from 'supertest';
+import request from 'supertest';
 
 import { AppModule } from './__fixture__/app/app.module';
 import { HttpExceptionFilter } from './__fixture__/app/http-exception.filter';
@@ -111,7 +111,7 @@ const runSuite = dialect === 'postgres' || dialect === 'mysql';
     expect(wrapSpy).not.toHaveBeenCalled();
   });
 
-  it('throws CrudCacheNotConfiguredError when @Crud cache set without strategy (D-11 unconditional)', async () => {
+  it('throws CrudCacheNotConfiguredError when @Crud cache set without strategy (thrown unconditionally)', async () => {
     // Reset removes the global strategy. The UsersCachedController declares
     // @Crud({ query: { cache: 5000 } }) — now no strategy is wired anywhere.
     // FetchHelper.assertStrategyOrPassThrough throws CrudCacheNotConfiguredError

@@ -12,7 +12,7 @@
     "esModuleInterop": true,
     "strict": false,
     "noImplicitAny": false,
-    "moduleResolution": "node",
+    "types": ["node"],
     "resolveJsonModule": true
   },
   "include": ["src/**/*"],

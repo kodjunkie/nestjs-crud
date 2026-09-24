@@ -1,7 +1,7 @@
 {
   "name": "@nestjs-crud/drizzle",
   "description": "NestJs CRUD for RESTful APIs - Drizzle ORM",
-  "version": "2.2.6",
+  "version": "2.3.0",
   "license": "MIT",
   "main": "lib/index.js",
   "typings": "lib/index.d.ts",
@@ -38,19 +38,19 @@
     "email": "paplow01@gmail.com"
   },
   "engines": {
-    "node": ">=22.0.0"
+    "node": ">=22.12.0"
   },
   "scripts": {
     "build": "npx tsc -b"
   },
   "peerDependencies": {
-    "@nestjs-crud/core": "^2.0.0",
-    "@nestjs/common": "^10.0.0 || ^11.0.0",
-    "drizzle-orm": ">=0.45.2",
-    "ioredis": "^5.0.0",
+    "@nestjs-crud/core": "^2.3.0",
+    "@nestjs/common": "^10.0.0 || ^11.0.0 || ^12.0.0",
+    "drizzle-orm": "^0.45.2",
+    "ioredis": "^5.0.0 || ^6.0.0",
     "mysql2": "^3.0.0",
     "pg": "^8.0.0",
-    "redis": "^5.0.0"
+    "redis": "^5.0.0 || ^6.0.0"
   },
   "peerDependenciesMeta": {
     "ioredis": {

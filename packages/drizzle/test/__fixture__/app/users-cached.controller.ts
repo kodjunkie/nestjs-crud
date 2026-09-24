@@ -10,7 +10,7 @@ import { UsersService } from './users.service';
  *
  * Declares `@Crud({ query: { cache: 5000 } })` so the FetchHelper's
  * `getEffectiveTtl(options)` returns 5000 at request time — exercising the
- * production TTL wiring path (D-10 contract: TTL is sourced from
+ * production TTL wiring path (TTL is sourced from
  * `options.query.cache` per request, NOT from a static field).
  *
  * Mounted at `/users-cached` to avoid colliding with the existing `/users` controller.
@@ -21,7 +21,7 @@ import { UsersService } from './users.service';
  * config and the FetchHelper will call `strategy.wrap(key, fetchFn, 5000)`.
  *
  * The error test explicitly resets CrudConfigService so the strategy is absent,
- * triggering `CrudCacheNotConfiguredError` unconditionally (D-11 parity).
+ * triggering `CrudCacheNotConfiguredError` unconditionally.
  */
 @Crud({
   model: { type: UserModel },

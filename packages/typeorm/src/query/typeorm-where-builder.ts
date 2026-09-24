@@ -25,7 +25,6 @@ export class TypeOrmWhereBuilder<T extends ObjectLiteral> implements WhereBuilde
 
   private readonly entityColumnsHash: ObjectLiteral;
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   private readonly onBadRequest: (msg: string) => void;
 
   constructor(config: TypeOrmWhereBuilderConfig<T>) {

@@ -2,7 +2,7 @@ import { INestApplication } from '@nestjs/common';
 import { APP_FILTER } from '@nestjs/core';
 import { Test } from '@nestjs/testing';
 import { RequestQueryBuilder } from '@nestjs-crud/request';
-import * as request from 'supertest';
+import request from 'supertest';
 
 import {
   CANONICAL_SEED_COMPANIES,
@@ -78,7 +78,7 @@ async function reseedDb(prisma: any, db: 'postgres' | 'mysql'): Promise<void> {
     // Standalone Prisma client for seeding — owned by the spec, not NestJS DI.
     // v7: must go through driver-adapter factory (ctor no longer accepts
     // `datasources`/`datasourceUrl` nor auto-reads env.DATABASE_URL).
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
+
     const { makePrismaClient } = require('./__fixture__/make-prisma-client');
     seedPrisma = makePrismaClient(dialect);
   });

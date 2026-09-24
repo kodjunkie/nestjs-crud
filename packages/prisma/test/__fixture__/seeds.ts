@@ -38,8 +38,8 @@ async function main(dialect: 'postgres' | 'mysql'): Promise<void> {
   // Prisma v7: PrismaClient ctor rejects `datasources`/`datasourceUrl` entirely
   // and no longer reads env.DATABASE_URL implicitly. Only driver-adapter (or
   // Accelerate) paths remain — we use @prisma/adapter-pg / @prisma/adapter-mariadb
-  // here via the shared factory. See D-01 amendment in 18-CONTEXT.md.
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  // here via the shared factory.
+
   const { makePrismaClient } = require('./make-prisma-client');
   const prisma = makePrismaClient(dialect);
 

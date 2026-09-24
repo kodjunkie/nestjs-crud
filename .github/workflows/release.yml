@@ -57,7 +57,7 @@ jobs:
         # trusted-publisher auth natively.
         uses: actions/setup-node@v5
         with:
-          node-version: '24'
+          node-version-file: .nvmrc
 
       - name: Enable Corepack (post-setup-node)
         run: corepack enable
@@ -79,6 +79,11 @@ jobs:
 
       - name: Run Tests
         run: yarn test:all
+
+      - name: Check Peer Ranges
+        # Gates tagging and publishing: fails on a drifted internal range or
+        # an external peer range that admits an untested major.
+        run: node scripts/check-peer-ranges.js
 
       - name: Determine Version and Dist Tag
         id: version
@@ -163,8 +168,20 @@ jobs:
           # when `id-token: write` permission + `environment: Release` are set
           # at the job level (both are already configured above).
           #
+          # PACKAGES comes from the workspace manifests, in dependency order
+          # (scripts/lib/workspace-packages.js) — a new package needs no edit
+          # here.
           DIST_TAG="${{ steps.version.outputs.dist_tag }}"
-          PACKAGES=(core util request typeorm drizzle mikro-orm prisma)
+          PACKAGE_LIST="$(node scripts/lib/workspace-packages.js)"
+          # Test the raw string for emptiness before mapfile: `mapfile -t PACKAGES
+          # <<< "$PACKAGE_LIST"` on an empty PACKAGE_LIST reads one empty line (the
+          # here-string's trailing newline), giving ${#PACKAGES[@]} a value of 1, so
+          # an array-length check alone would never fire.
+          if [ -z "$PACKAGE_LIST" ]; then
+            echo "::error::scripts/lib/workspace-packages.js produced an empty package list"
+            exit 1
+          fi
+          mapfile -t PACKAGES <<< "$PACKAGE_LIST"
           for pkg in "${PACKAGES[@]}"; do
             echo "::group::Publishing @nestjs-crud/$pkg@${{ steps.version.outputs.version }}"
             (cd "packages/$pkg" && npm publish --access public --tag "$DIST_TAG")

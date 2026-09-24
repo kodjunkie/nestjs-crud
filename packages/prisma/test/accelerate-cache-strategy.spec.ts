@@ -1,6 +1,6 @@
-// PrismaAccelerateCacheStrategy unit spec (Wave 2 plan 21-04).
+// PrismaAccelerateCacheStrategy unit spec.
 // No real DB required — all cases mock the Accelerate delegate.
-// Exercises: AsyncLocalStorage context injection, ms→s conversion (FIX 1),
+// Exercises: AsyncLocalStorage context injection, ms→s conversion,
 // try/finally clear-on-resolve + clear-on-reject, invalidate tag mapping,
 // constructor guard for missing $accelerate.
 
@@ -33,8 +33,8 @@ describe('PrismaAccelerateCacheStrategy', () => {
     expect(observed?.cacheStrategy).toBeDefined();
   });
 
-  // FIX 1 — explicit ms→s conversion via Math.ceil(ttl/1000)
-  it('wrap() converts ttl from milliseconds to SECONDS via Math.ceil(ttl/1000) before attaching to context (FIX 1)', async () => {
+  // Explicit ms→s conversion via Math.ceil(ttl/1000)
+  it('wrap() converts ttl from milliseconds to SECONDS via Math.ceil(ttl/1000) before attaching to context', async () => {
     const strategy = new PrismaAccelerateCacheStrategy(mockClient);
 
     let observed5000: { cacheStrategy?: { ttl: number } } | undefined;

@@ -84,7 +84,7 @@ export class PrismaQueryTranslator<T extends Record<string, unknown>> implements
   /**
    * Execute a findFirst through the FetchHelper cache wrap path.
    * Routes through the cache wrap when a strategy is wired and the
-   * request is not bypassed (D-10 + D-11).
+   * request is not bypassed.
    */
   public async findOneOrFail<R = T>(
     qb: any,

@@ -3,13 +3,15 @@ import { Controller, INestApplication } from '@nestjs/common';
 import { APP_FILTER } from '@nestjs/core';
 import { Test } from '@nestjs/testing';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import * as request from 'supertest';
+import { DataSource } from 'typeorm';
+import request from 'supertest';
 
 import { Company } from './__fixture__/app/companies';
 import { withCache } from './__fixture__/app/orm.config';
 import { Project } from './__fixture__/app/projects';
 import { User } from './__fixture__/app/users';
 import { UserProfile } from './__fixture__/app/users-profiles';
+import { resetFixture } from './__fixture__/app/reset-fixture';
 import { HttpExceptionFilter } from './__fixture__/shared/https-exception.filter';
 import { Crud } from '../../core/src/decorators/crud.decorator';
 import { UsersService } from './__fixture__/users.service';
@@ -88,6 +90,7 @@ describe('#crud-typeorm', () => {
       app = fixture.createNestApplication();
 
       await app.init();
+      await resetFixture(app.get(DataSource));
       server = app.getHttpServer();
     });
 

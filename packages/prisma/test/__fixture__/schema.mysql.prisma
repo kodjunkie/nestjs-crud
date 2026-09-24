@@ -1,7 +1,7 @@
 generator client {
   provider = "prisma-client-js"
   output   = "../../../../node_modules/.prisma/client-smoke"
-  // L1: do NOT enable previewFeatures = ["relationJoins"] — consumer opt-in only
+  // Do NOT enable previewFeatures = ["relationJoins"] — consumer opt-in only
 }
 
 datasource db {

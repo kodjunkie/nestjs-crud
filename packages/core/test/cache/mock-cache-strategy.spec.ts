@@ -55,7 +55,7 @@ describe('MockCacheStrategy', () => {
     expect(await cache.get('Company:1')).toBe('c');
   });
 
-  // FIX 3 — single-flight dedup against thundering herd
+  // Single-flight dedup against thundering herd
   it('single-flight: 5 concurrent wrap() calls execute fetchFn exactly once', async () => {
     let invocations = 0;
     const slowFn = jest.fn(async () => {
@@ -89,7 +89,7 @@ describe('MockCacheStrategy', () => {
     expect(flakyFn).toHaveBeenCalledTimes(2);
   });
 
-  // FIX 2 — cacheErrorPolicy is consumed by adapter FetchHelpers (Wave 2), not by MockCacheStrategy
+  // cacheErrorPolicy is consumed by adapter FetchHelpers, not by MockCacheStrategy
   // itself. This unit test asserts the SHAPE only; behavior tests live in adapter integration specs.
   describe('cacheErrorPolicy contract (consumed by adapter FetchHelpers)', () => {
     it('CrudConfigService.config.query.cacheErrorPolicy defaults to "fail-fast"', () => {

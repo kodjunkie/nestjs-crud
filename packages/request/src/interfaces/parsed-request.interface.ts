@@ -10,7 +10,7 @@ import { QueryFields, QueryFilter, QueryJoin, QuerySort, SCondition } from '../t
  * `cacheStrategy.wrap()`. `false` = bypass cache for this read; `true` = use cache;
  * `undefined` = defer to the controller's `@Crud({ query: { cache } })` setting.
  *
- * Wave 2 FetchHelpers honor `options.cache === false` by skipping the wrap call
+ * Adapter FetchHelpers honor `options.cache === false` by skipping the wrap call
  * (bypass-read; cached entry is NOT invalidated, TTL keeps running).
  *
  * @since 2.2.0

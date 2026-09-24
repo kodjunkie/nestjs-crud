@@ -71,6 +71,12 @@ Concrete example against a `User → company` relation with `allow: ['name', 'do
 
 **Why:** `'query'` issues `SELECT * FROM relation_table WHERE parentId IN (...)` per relation. TypeORM's `setFindOptions` API treats `relations` as a whole-entity load, with no parent context to resolve a parent-aliased computed column or a per-relation column allowlist. This is TypeORM behavior, not a `@nestjs-crud` bug; it is documented here so you know the tradeoff before opting in.
 
+## Nested joins under `'query'`
+
+Nested joins follow the same ancestor rule under `'query'` as under the default `'join'` strategy: every ancestor of a nested `?join=` entry must also be joined, requested or eager, at any depth. Previously, an orphan nested join under `'query'` loaded a missing parent implicitly; it now returns `400 Invalid join: '<field>'`, the same outcome `'join'` returns.
+
+A requested nested join is admitted only when its full dotted path is a join-option key, the same rule `JoinOption.allow` follows under `'join'` (see above). `{ company: {} }` plus `?join=company&join=company.users` no longer loads `company.users` just because `company` is allowlisted — the full `company.users` path must be a join-option key too.
+
 ## Other adapters
 
 Drizzle, MikroORM, and Prisma do not expose a `relationLoadStrategy` switch through `@Crud()` in v2.0.0. Each ORM has its own loading semantics:

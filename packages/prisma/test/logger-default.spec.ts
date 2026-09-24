@@ -1,5 +1,5 @@
 /**
- * Plan 15-01 regression spec: PrismaCrudService ctor default logger.
+ * Regression spec: PrismaCrudService constructor default logger.
  *
  * Pins:
  *   1. Omitted `serviceConfig.logger` → auto-instantiated `Logger` instance.

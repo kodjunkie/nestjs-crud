@@ -4,7 +4,7 @@
 // (@prisma/adapter-pg for Postgres, @prisma/adapter-mariadb for MySQL) from
 // the URL the db.{postgres,mysql}.ts setEnv() helpers populate.
 //
-// D-05 invariant: packages/prisma/src/** is untouched — the runtime contract
+// Invariant: packages/prisma/src/** is untouched — the runtime contract
 // PrismaCrudService consumes (delegates: findMany, count, create, update,
 // delete, $transaction) is satisfied identically by a driver-adapter-built
 // PrismaClient as by a config-URL-built one.
@@ -30,7 +30,7 @@ export function makePrismaClient(dialect: Dialect): any {
   // site (seeds.ts, app.module.ts, real-db-smoke.spec.ts).
   // This file lives at packages/prisma/test/__fixture__/make-prisma-client.ts,
   // so node_modules is 4 levels up.
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
+
   const { PrismaClient } = require('../../../../node_modules/.prisma/client-smoke');
 
   const url = process.env.DATABASE_URL;

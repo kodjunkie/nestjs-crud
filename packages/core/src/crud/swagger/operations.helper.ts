@@ -3,28 +3,25 @@
  * OpenAPI `summary` / `description` for the eight generated CRUD routes,
  * plus thin reflection wrappers around `API_OPERATION` metadata.
  */
-// ESM-safe: pluralize is a hard dep; import * as unwraps correctly in both CJS
-// (ts-jest default-esm preset returns the function directly) and native ESM
-// (function at .default).
-import * as pluralizeNs from 'pluralize';
+import pluralize from 'pluralize';
 
 import { BaseRouteName } from '../../types';
 import { R } from '../reflection.helper';
 import { swaggerConst } from './swagger-constants';
+import { DEFAULT_QUERY_DOCS_URL, queryDocsLine } from './query-docs-url';
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const pluralize: (word: string) => string =
-  typeof pluralizeNs === 'function' ? (pluralizeNs as any) : (pluralizeNs as any).default;
-
-// Full query-grammar reference linked once per list/get operation (the only routes
-// with a query surface). Hardcoded for now; a `swagger.queryDocsUrl` config knob
-// (route-level → global → this default, `false` to disable) is the planned follow-up.
-const QUERY_DOCS_URL = 'https://github.com/kodjunkie/nestjs-crud/wiki/Query-Syntax';
-const QUERY_DOCS_LINE = `Full query syntax reference: [Query Syntax](${QUERY_DOCS_URL}).`;
-
-export function operationsMap(modelName: string, softDelete = false): { [key in BaseRouteName]: { summary: string; description: string } } {
+export function operationsMap(
+  modelName: string,
+  softDelete = false,
+  queryDocsUrl: string | false = DEFAULT_QUERY_DOCS_URL,
+): { [key in BaseRouteName]: { summary: string; description: string } } {
   const lower = modelName.toLowerCase();
   const lowerPlural = pluralize(lower);
+  // Full query-grammar reference appended once per list/get operation (the only
+  // routes with a query surface). The target is configurable via
+  // `swagger.queryDocsUrl` (route-level → global → the default above); `false`
+  // omits the line entirely.
+  const queryDocsTail = queryDocsUrl === false ? [] : ['', queryDocsLine(queryDocsUrl)];
 
   return {
     getManyBase: {
@@ -38,8 +35,7 @@ export function operationsMap(modelName: string, softDelete = false): { [key in 
         ...(softDelete
           ? ['', 'Soft-deleted records are excluded by default; pass `?includeDeleted=1` to include them.']
           : []),
-        '',
-        QUERY_DOCS_LINE,
+        ...queryDocsTail,
       ].join('\n'),
     },
     getOneBase: {
@@ -51,8 +47,7 @@ export function operationsMap(modelName: string, softDelete = false): { [key in 
         ...(softDelete
           ? ['', 'Soft-deleted records are excluded by default; pass `?includeDeleted=1` to include them.']
           : []),
-        '',
-        QUERY_DOCS_LINE,
+        ...queryDocsTail,
       ].join('\n'),
     },
     createOneBase: {
@@ -111,14 +106,12 @@ export function operationsMap(modelName: string, softDelete = false): { [key in 
   };
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function setOperation(metadata: unknown, func: any): void {
   if (swaggerConst) {
     R.set(swaggerConst.DECORATORS.API_OPERATION, metadata, func);
   }
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function getOperation(func: any): any {
   return swaggerConst ? R.get(swaggerConst.DECORATORS.API_OPERATION, func) || {} : {};
 }

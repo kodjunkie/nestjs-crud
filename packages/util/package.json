@@ -1,7 +1,7 @@
 {
   "name": "@nestjs-crud/util",
   "description": "NestJs CRUD for RESTful APIs - util",
-  "version": "2.2.6",
+  "version": "2.3.0",
   "license": "MIT",
   "main": "lib/index.js",
   "typings": "lib/index.d.ts",
@@ -42,7 +42,7 @@
     }
   ],
   "engines": {
-    "node": ">=22.0.0"
+    "node": ">=22.12.0"
   },
   "scripts": {
     "build": "npx tsc -b"

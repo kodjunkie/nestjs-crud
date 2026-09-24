@@ -3,7 +3,7 @@
  * `applyJoins`. Mirrors the shape of
  * `packages/typeorm/test/typeorm-join-resolver.spec.ts`.
  *
- * The MikroORM resolver is the D-05b dotted-path SQLi gate: its
+ * The MikroORM resolver is the dotted-path SQLi gate: its
  * `getAllowedColumnsFor(relation)` feeds the translator's mapSort
  * allowlist. A zero-size Set MUST short-circuit to `onBadRequest` upstream.
  *
@@ -167,6 +167,68 @@ describe('MikroOrmJoinResolver', () => {
       resolver.applyJoins(query, [{ field: 'company' }], { company: { eager: false } });
 
       expect(populate).toHaveBeenCalledWith(['company']);
+    });
+  });
+
+  describe('applyJoins — nested join ancestry', () => {
+    function createQueryStub() {
+      return {
+        leftJoinAndSelect: jest.fn(),
+        joinAndSelect: jest.fn(),
+        populate: jest.fn(),
+      };
+    }
+
+    it("throws before any join is applied when the nested join's parent is not joined", () => {
+      const query = createQueryStub();
+
+      expect(() =>
+        resolver.applyJoins(query as any, [{ field: 'company.users' }], {
+          company: {},
+          'company.users': {},
+        }),
+      ).toThrow(new BadRequestException("Invalid join: 'company.users'"));
+      expect(query.leftJoinAndSelect).not.toHaveBeenCalled();
+      expect(query.joinAndSelect).not.toHaveBeenCalled();
+      expect(query.populate).not.toHaveBeenCalled();
+    });
+
+    it('applies the company join with no throw when both are allowlisted, regardless of request order', () => {
+      const query = createQueryStub();
+
+      expect(() =>
+        resolver.applyJoins(query as any, [{ field: 'company.users' }, { field: 'company' }], {
+          company: {},
+          'company.users': {},
+        }),
+      ).not.toThrow();
+      // company.users has no dotted relation in metadata (existing
+      // limitation, unchanged) — only the company join applies, via the
+      // leftJoinAndSelect branch since this stub declares it.
+      expect(query.leftJoinAndSelect).toHaveBeenCalled();
+      expect(query.joinAndSelect).not.toHaveBeenCalled();
+    });
+
+    it('applies both joins with no throw when the parent is eager', () => {
+      const query = createQueryStub();
+
+      expect(() =>
+        resolver.applyJoins(query as any, [{ field: 'company.users' }], {
+          company: { eager: true },
+          'company.users': {},
+        }),
+      ).not.toThrow();
+    });
+
+    it('throws when an eager nested join has an unjoined parent', () => {
+      const query = createQueryStub();
+
+      expect(() =>
+        resolver.applyJoins(query as any, [], {
+          company: {},
+          'company.users': { eager: true },
+        }),
+      ).toThrow(new BadRequestException("Invalid join: 'company.users'"));
     });
   });
 });

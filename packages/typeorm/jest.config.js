@@ -17,7 +17,7 @@ module.exports = {
   testMatch: ['<rootDir>/packages/typeorm/test/**/*.spec.ts'],
   testTimeout: 30000,
   forceExit: true,
-  // D-12: scope coverage collection to this adapter's own src tree. Cross-package
+  // Scope coverage collection to this adapter's own src tree. Cross-package
   // files (drizzle/mikro-orm/prisma) inflate the "uncovered" count when this
   // adapter's test run cannot exercise them.
   collectCoverageFrom: [
@@ -28,7 +28,7 @@ module.exports = {
     '!**/__stubs__/**',
     '!**/__fixture__/**',
   ],
-  // D-12: 80% per-metric floor enforced via Jest's native gate.
+  // 80% per-metric floor enforced via Jest's native gate.
   coverageThreshold: {
     global: {
       lines: 80,

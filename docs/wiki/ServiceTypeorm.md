@@ -1,5 +1,7 @@
 A CRUD service for relational databases built with TypeORM.
 
+> `typeorm` 1.1.1 declares its own Node floor, `^20.19.0 || ^22.13.0 || >=24.11.0`, higher than this project's own `>=22.12.0`. Installing on exactly 22.12.0 can print an advisory `EBADENGINE` warning naming `typeorm`; it is informational, not a failure.
+
 ## Install
 
 ```shell
@@ -9,6 +11,8 @@ npm i mysql2                   # MySQL
 ```
 
 The DB driver is declared as an optional `peerDependency` on `@nestjs-crud/typeorm` — install whichever your backend uses.
+
+With TypeORM 1.x, an `npm install` can fail with `ERESOLVE` because typeorm's optional `ioredis` peer (`^5`) conflicts with NestJS 12's optional `ioredis` peer, which npm resolves to 6.x. This is npm-specific — the same install resolves cleanly under Yarn and pnpm with no workaround needed. Fix the npm case by adding `ioredis@^5` to your app's dependencies, or `"overrides": { "ioredis": "^5.0.4" }` to its `package.json`.
 
 ## Usage
 

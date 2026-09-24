@@ -7,9 +7,13 @@
 
 ## Install
 
+Requires Node.js 22.12.0 or later — NestJS 12 ships as ESM only, and this package is CommonJS; it loads NestJS 12 through Node's `require(esm)` support, which arrives at 22.12.0. `typeorm` 1.1.1 declares its own higher floor, `^20.19.0 || ^22.13.0 || >=24.11.0`; installing on exactly 22.12.0 can print an advisory `EBADENGINE` warning naming it, which is informational, not a failure.
+
 ```shell
 npm i @nestjs-crud/typeorm @nestjs/typeorm typeorm
 ```
+
+With TypeORM 1.x, an `npm install` can fail with `ERESOLVE` because typeorm's optional `ioredis` peer (`^5`) conflicts with NestJS 12's optional `ioredis` peer, which npm resolves to 6.x. This is npm-specific — the same install resolves cleanly under Yarn and pnpm with no workaround needed. Fix the npm case by adding `ioredis@^5` to your app's dependencies, or `"overrides": { "ioredis": "^5.0.4" }` to its `package.json`.
 
 ## Usage
 

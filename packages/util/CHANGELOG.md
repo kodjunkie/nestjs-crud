@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [2.3.0] — 2026-09-24
+
+### Changed
+
+- **Node 22.12.0 or later is now required (`engines.node`), raised from `>=22.0.0`.** This package has no dependencies and would run on older releases; the floor is kept uniform across every `@nestjs-crud` package so consumers get one Node requirement rather than several. The packages that integrate with NestJS set it: NestJS 12 ships as ESM only, and they are CommonJS, so they load it through Node's `require()`-of-ESM support, which lands at 22.12.0.
+
 ## [2.2.6] — 2026-07-31
 
 Version-only republish — no package-specific source changes. Bumped in lockstep with the rest of the monorepo. See the [root CHANGELOG.md](../../CHANGELOG.md#226--2026-07-31) for full release details.

@@ -9,7 +9,7 @@ import type { SCondition } from '@nestjs-crud/request';
  * Subject to change without a semver-major bump. Not exported from the main
  * `@nestjs-crud/core` barrel; accessed via `@nestjs-crud/core/query` deep path.
  */
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
+
 export interface WhereBuilder<_Q, W> {
   build(search: SCondition): W;
 }

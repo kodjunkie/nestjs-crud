@@ -393,7 +393,7 @@ export class TypeOrmCrudService<T> extends CrudService<T> {
       this.throwBadRequestException(`Cursor sort field mismatch: expected '${sort.field}', got '${decoded.sortField}'`);
     }
 
-    // D-06a: missing-limit terminal → 400
+    // Missing limit in cursor mode is a terminal error → 400
     const take = this.getTake(parsed, options.query);
     if (take == null) {
       this.throwBadRequestException(
@@ -412,7 +412,7 @@ export class TypeOrmCrudService<T> extends CrudService<T> {
     // Peek one extra row for end-of-stream detection
     builder.take((take as number) + 1);
 
-    // D-05: cursor mode BYPASSES cache wrap — call builder.getMany() directly,
+    // Cursor mode bypasses the cache wrap — call builder.getMany() directly,
     //       NOT translator.executeMany (which goes through cacheStrategy.wrap).
     const rows = await builder.getMany();
 

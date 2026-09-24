@@ -12,25 +12,13 @@ import {
   isNil,
   isUndefined,
 } from '@nestjs-crud/util';
-// ESM-safe callable: pluralize ships CJS-only. Same dual-shape unwrap as deepmerge below.
-import * as pluralizeNs from 'pluralize';
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const pluralize: (word: string) => string =
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  typeof (pluralizeNs as any) === 'function' ? (pluralizeNs as any) : (pluralizeNs as any).default;
-import * as deepmergeNs from 'deepmerge';
-// ESM-safe callable: deepmerge ships CJS-only. Under Jest ESM (--experimental-vm-modules),
-// `import * as` yields a namespace where the function lives at .default. Under ts-jest CJS
-// compilation for the other 5 packages, the namespace IS the callable function directly.
-// Normalise to a callable regardless of how the module loader wrapped the CJS export.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const deepmerge: typeof deepmergeNs = (
-  typeof (deepmergeNs as any).default === 'function' ? (deepmergeNs as any).default : deepmergeNs
-) as typeof deepmergeNs;
+import deepmerge from 'deepmerge';
+import pluralize from 'pluralize';
 
 import { R } from './reflection.helper';
 import { SerializeHelper } from './serialize.helper';
 import { Swagger, swaggerConst } from './swagger.helper';
+import { describeQueryDocsUrlValue, isValidQueryDocsUrl } from './swagger/query-docs-url';
 import { Validation } from './validation.helper';
 import { CrudRequestInterceptor, CrudResponseInterceptor } from '../interceptors';
 import { BaseRoute, CrudOptions, CrudRequest, MergedCrudOptions } from '../interfaces';
@@ -91,6 +79,8 @@ export class CrudRoutesFactory {
   protected create() {
     const routesSchema = this.getRoutesSchema();
     this.mergeOptions();
+    this.validateJoinOptions();
+    this.validateSwaggerOptions();
     this.setResponseModels();
     this.setSwaggerTags();
     this.createRoutes(routesSchema);
@@ -172,7 +162,63 @@ export class CrudRoutesFactory {
         ? false
         : this.options.serialize.delete || this.modelType;
 
+    // merge swagger config: only `queryDocsUrl` is ever global. The route's own
+    // value wins when set; otherwise the global value applies; the key is left off when
+    // neither is set (operationsMap's own default parameter then applies).
+    const swagger = isObjectFull(this.options.swagger) ? this.options.swagger : {};
+    const globalQueryDocsUrl = CrudConfigService.config.swagger?.queryDocsUrl;
+    const queryDocsUrl = swagger.queryDocsUrl !== undefined ? swagger.queryDocsUrl : globalQueryDocsUrl;
+    this.options.swagger = queryDocsUrl !== undefined ? { ...swagger, queryDocsUrl } : swagger;
+
     R.setCrudOptions(this.options, this.target);
+  }
+
+  /**
+   * Reject an eager join-option key whose ancestor is not also eager. A
+   * route in this state could never serve a request: TypeORM crashes with a
+   * 500 and the other adapters silently drop the nested join. Failing when
+   * `@Crud()` is applied points the developer at the controller, instead of
+   * every client discovering the bug independently at request time.
+   */
+  protected validateJoinOptions(): void {
+    const join = this.options.query?.join;
+    if (!join) {
+      return;
+    }
+
+    for (const key of Object.keys(join)) {
+      if (!join[key]?.eager) {
+        continue;
+      }
+
+      const segments = key.split('.');
+
+      for (let i = 1; i < segments.length; i++) {
+        const ancestor = segments.slice(0, i).join('.');
+
+        if (!join[ancestor]?.eager) {
+          throw new Error(
+            `@Crud: eager join '${key}' on ${this.target.name} needs '${ancestor}' to be eager too — mark '${ancestor}' eager or remove eager from '${key}'.`,
+          );
+        }
+      }
+    }
+  }
+
+  /**
+   * Reject an invalid merged `swagger.queryDocsUrl`. A bad value would
+   * otherwise ship silently inside the emitted OpenAPI Markdown description.
+   * Not gated on `swaggerConst` — this is configuration validation, not
+   * Swagger metadata, so it must throw with or without `@nestjs/swagger`
+   * installed.
+   */
+  protected validateSwaggerOptions(): void {
+    const queryDocsUrl = this.options.swagger?.queryDocsUrl;
+    if (queryDocsUrl !== undefined && !isValidQueryDocsUrl(queryDocsUrl)) {
+      throw new Error(
+        `@Crud: swagger.queryDocsUrl on ${this.target.name} must be an absolute http:// or https:// URL, or false — received ${describeQueryDocsUrlValue(queryDocsUrl)}`,
+      );
+    }
   }
 
   protected getRoutesSchema(): BaseRoute[] {
@@ -566,7 +612,11 @@ export class CrudRoutesFactory {
   }
 
   protected setSwaggerOperation(name: BaseRouteName) {
-    const { summary, description } = Swagger.operationsMap(this.modelName, this.options.query.softDelete === true)[name];
+    const { summary, description } = Swagger.operationsMap(
+      this.modelName,
+      this.options.query.softDelete === true,
+      this.options.swagger?.queryDocsUrl,
+    )[name];
     const override = this.options.swagger?.operations?.[name] ?? {};
     const operationId = name + this.targetProto.constructor.name + this.modelName;
     // Spread order is load-bearing: consumer override merges over base, then the
@@ -652,11 +702,7 @@ export class CrudRoutesFactory {
     // Consumer-fn may return the full bulk wrapper when it inspects route === 'createManyBase'.
     // Detect and pass through without double-wrapping.
     const alreadyBulk =
-      name === 'createManyBase' &&
-      single &&
-      typeof single === 'object' &&
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      Array.isArray((single as any).bulk);
+      name === 'createManyBase' && single && typeof single === 'object' && Array.isArray((single as any).bulk);
     const example = name === 'createManyBase' && !alreadyBulk ? { bulk: [single] } : single;
     // SwaggerModule's api-parameters explorer removes the reflected body param
     // whenever an explicit body param is emitted on the same operation; the
@@ -701,7 +747,6 @@ export class CrudRoutesFactory {
         : [pluralize(this.modelName)];
 
     if (this.options.swagger?.tagWithVersion === true) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const common: any = safeRequire('@nestjs/common/constants') || safeRequire('@nestjs/common');
       const versionMetaKey = common?.VERSION_METADATA;
       if (versionMetaKey) {

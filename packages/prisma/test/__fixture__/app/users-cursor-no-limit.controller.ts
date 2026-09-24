@@ -10,7 +10,7 @@ import { UsersService } from './users.service';
  *
  * Declares `pagination: 'cursor'` with NO `limit` and NO `maxLimit` so
  * `getTake()` returns null and `doGetManyCursor` throws 400 BadRequest with
- * the "Cursor pagination requires a limit" message (D-06a).
+ * the "Cursor pagination requires a limit" message.
  */
 @Crud({
   model: { type: UserModel },

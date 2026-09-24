@@ -3,6 +3,8 @@ import { QueryJoin } from '@nestjs-crud/request';
 import { isArrayFull } from '@nestjs-crud/util';
 import { EntityMetadata, Repository, SelectQueryBuilder } from 'typeorm';
 
+import { ancestorPaths, findOrphanJoin, invalidJoinMessage } from './join-ancestry';
+
 interface IAllowedRelation {
   alias?: string;
   nested: boolean;
@@ -36,23 +38,29 @@ export class TypeOrmJoinResolver<T> implements JoinResolver<SelectQueryBuilder<T
       return query;
     }
 
-    const eagerJoins: Record<string, boolean> = {};
+    const candidates = this.collectJoinCandidates(joins, joinOptions);
+    const orphan = findOrphanJoin([...candidates.keys()]);
 
-    for (let i = 0; i < allowedJoins.length; i++) {
-      if (joinOptions[allowedJoins[i]].eager) {
-        const cond = (joins || []).find((j) => j && j.field === allowedJoins[i]) || {
-          field: allowedJoins[i],
-        };
-        this.setJoinInternal(cond, joinOptions, query);
-        eagerJoins[allowedJoins[i]] = true;
-      }
+    if (orphan) {
+      this.onBadRequest(invalidJoinMessage(orphan));
+      return query;
     }
 
-    if (isArrayFull(joins)) {
-      for (let i = 0; i < joins.length; i++) {
-        if (!eagerJoins[joins[i].field]) {
-          this.setJoinInternal(joins[i], joinOptions, query);
+    const applied = new Set<string>();
+
+    for (const field of candidates.keys()) {
+      for (const path of [...ancestorPaths(field), field]) {
+        if (applied.has(path)) {
+          continue;
         }
+
+        const cond = candidates.get(path);
+
+        if (cond) {
+          this.setJoinInternal(cond, joinOptions, query);
+        }
+
+        applied.add(path);
       }
     }
 
@@ -72,6 +80,35 @@ export class TypeOrmJoinResolver<T> implements JoinResolver<SelectQueryBuilder<T
   public getAllowedColumnsFor(field: string): ReadonlySet<string> {
     const rel = this.entityRelationsHash.get(field) ?? this.entityRelationsHash.get(field.split('.')[0]);
     return new Set(rel?.allowedColumns ?? []);
+  }
+
+  /**
+   * Build the ordered set of joins to apply: every eager join-option key
+   * first (in key order), then every client-requested join that is a
+   * join-option key and not already present (first occurrence wins).
+   */
+  private collectJoinCandidates(joins: QueryJoin[], joinOptions: JoinOptions): Map<string, QueryJoin> {
+    const candidates = new Map<string, QueryJoin>();
+    const allowedJoins = Object.keys(joinOptions);
+
+    for (const field of allowedJoins) {
+      if (joinOptions[field]?.eager) {
+        const cond = (joins || []).find((j) => j && j.field === field) || { field };
+        candidates.set(field, cond);
+      }
+    }
+
+    if (isArrayFull(joins)) {
+      for (const join of joins) {
+        if (!join || !joinOptions[join.field] || candidates.has(join.field)) {
+          continue;
+        }
+
+        candidates.set(join.field, join);
+      }
+    }
+
+    return candidates;
   }
 
   private get alias(): string {

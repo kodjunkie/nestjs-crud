@@ -10,6 +10,8 @@
  * Exports buildPrismaComposer() — factory used by query-composer-parity.spec.ts.
  */
 import { BadRequestException } from '@nestjs/common';
+import type { JoinOptions } from '@nestjs-crud/core';
+import type { QueryJoin } from '@nestjs-crud/request';
 
 import { PrismaWhereBuilder } from '@nestjs-crud/prisma/query/prisma-where-builder';
 import { PrismaQueryComposer } from '@nestjs-crud/prisma/query/prisma-query-composer';
@@ -17,7 +19,7 @@ import { PrismaJoinResolver } from '@nestjs-crud/prisma/prisma-join-resolver';
 import { REFERENCE_DATASET } from '../scondition-matrix';
 
 // ---------------------------------------------------------------------------
-// Throwing stub — NEVER jest.fn() on a security path (PATTERNS.md §5)
+// Throwing stub — NEVER jest.fn() on a security path
 // ---------------------------------------------------------------------------
 
 const throwingOnBadRequest = (msg: string): never => {
@@ -86,9 +88,30 @@ function isOperatorShape(v: Record<string, unknown>): boolean {
 // ---------------------------------------------------------------------------
 
 export interface PrismaHarness {
-  applyAndRun(parsed: any): Promise<number[]>;
+  /**
+   * The optional `routeQuery` carries a route-level `@Crud({ query: {...} })`
+   * config (for example a default `sort`) into `composer.applyToQuery`'s
+   * `options.query`, alongside the parsed request. Callers that pass only
+   * `parsed` keep today's behavior (an empty route query).
+   */
+  applyAndRun(parsed: any, routeQuery?: Record<string, unknown>): Promise<number[]>;
 
   composer: PrismaQueryComposer;
+
+  /**
+   * Drive the real `PrismaQueryComposer.getIncludeObject` orphan-nested-join
+   * guard with `relationFields: ['profile']` — only the top-level relation
+   * is ever "known" to Prisma's include path, because this adapter never
+   * loads nested relations, which is exactly what the guard must reject or
+   * accept ahead of that limitation.
+   */
+  applyJoins(joins: QueryJoin[], joinOptions: JoinOptions): Promise<void>;
+
+  /**
+   * Build the same `relationFields: ['profile']` composer as `applyJoins`
+   * and return the sorted keys of the composed `include` object.
+   */
+  loadedJoins(joins: QueryJoin[], joinOptions: JoinOptions): Promise<string[]>;
 }
 
 // ---------------------------------------------------------------------------
@@ -125,7 +148,7 @@ export function buildPrismaComposer(): PrismaHarness {
   return {
     composer,
 
-    async applyAndRun(parsed: any): Promise<number[]> {
+    async applyAndRun(parsed: any, routeQuery?: Record<string, unknown>): Promise<number[]> {
       const normalized = {
         fields: [],
         paramsFilter: [],
@@ -145,7 +168,7 @@ export function buildPrismaComposer(): PrismaHarness {
       };
 
       // applyToQuery returns { where?, orderBy?, take?, skip? }
-      const q = composer.applyToQuery({}, normalized, emptyOptions);
+      const q = composer.applyToQuery({}, normalized, { ...emptyOptions, query: { ...(routeQuery ?? {}) } });
 
       // Filter dataset in-memory
       let results = [...REFERENCE_DATASET];
@@ -176,6 +199,80 @@ export function buildPrismaComposer(): PrismaHarness {
       }
 
       return results.map((u) => u.id);
+    },
+
+    async applyJoins(joins: QueryJoin[], joinOptions: JoinOptions): Promise<void> {
+      const guardComposer = new PrismaQueryComposer({
+        entityColumns: columns,
+        entityPrimaryColumns: ['id'],
+        entityHasDeleteColumn: false,
+        softDeleteColumn: null,
+        onBadRequest: throwingOnBadRequest,
+        joinResolver,
+        whereBuilder,
+        relationFields: ['profile'],
+      });
+
+      const normalized = {
+        fields: [],
+        paramsFilter: [],
+        authPersist: undefined,
+        classTransformOptions: undefined,
+        search: {},
+        filter: [],
+        or: [],
+        join: joins,
+        sort: [],
+        limit: undefined,
+        offset: undefined,
+        page: undefined,
+        cache: undefined,
+        includeDeleted: 0,
+      };
+
+      guardComposer.applyToQuery(
+        {},
+        normalized as any,
+        { query: { join: joinOptions }, routes: {}, params: {} } as any,
+      );
+    },
+
+    async loadedJoins(joins: QueryJoin[], joinOptions: JoinOptions): Promise<string[]> {
+      const guardComposer = new PrismaQueryComposer({
+        entityColumns: columns,
+        entityPrimaryColumns: ['id'],
+        entityHasDeleteColumn: false,
+        softDeleteColumn: null,
+        onBadRequest: throwingOnBadRequest,
+        joinResolver,
+        whereBuilder,
+        relationFields: ['profile'],
+      });
+
+      const normalized = {
+        fields: [],
+        paramsFilter: [],
+        authPersist: undefined,
+        classTransformOptions: undefined,
+        search: {},
+        filter: [],
+        or: [],
+        join: joins,
+        sort: [],
+        limit: undefined,
+        offset: undefined,
+        page: undefined,
+        cache: undefined,
+        includeDeleted: 0,
+      };
+
+      const q = guardComposer.applyToQuery(
+        {},
+        normalized as any,
+        { query: { join: joinOptions }, routes: {}, params: {} } as any,
+      );
+
+      return Object.keys(q.include ?? {}).sort();
     },
   };
 }

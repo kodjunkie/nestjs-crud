@@ -1,6 +1,6 @@
 {
   "name": "@nestjs-crud/mikro-orm",
-  "version": "2.2.6",
+  "version": "2.3.0",
   "description": "NestJS CRUD MikroORM adapter",
   "main": "lib/index.js",
   "typings": "lib/index.d.ts",
@@ -38,21 +38,22 @@
     "email": "paplow01@gmail.com"
   },
   "engines": {
-    "node": ">=22.0.0"
+    "node": ">=22.12.0"
   },
   "scripts": {
     "build": "npx tsc -b"
   },
   "peerDependencies": {
     "@mikro-orm/core": "^7.0.0",
-    "@nestjs-crud/core": "^2.0.0",
-    "@nestjs-crud/request": "^2.0.0",
-    "@nestjs-crud/util": "^2.0.0",
-    "@nestjs/common": "^10.0.0 || ^11.0.0",
-    "ioredis": "^5.0.0",
+    "@mikro-orm/sql": "^7.0.0",
+    "@nestjs-crud/core": "^2.3.0",
+    "@nestjs-crud/request": "^2.3.0",
+    "@nestjs-crud/util": "^2.3.0",
+    "@nestjs/common": "^10.0.0 || ^11.0.0 || ^12.0.0",
+    "ioredis": "^5.0.0 || ^6.0.0",
     "mysql2": "^3.0.0",
     "pg": "^8.0.0",
-    "redis": "^5.0.0"
+    "redis": "^5.0.0 || ^6.0.0"
   },
   "peerDependenciesMeta": {
     "ioredis": {
@@ -70,7 +71,7 @@
   },
   "gitHead": "6f5fb9b83cde621265e4268c904c6ee98ae89142",
   "devDependencies": {
-    "@jest/globals": "^30.4.1",
+    "@jest/globals": "^30.5.2",
     "@mikro-orm/nestjs": "^7"
   }
 }

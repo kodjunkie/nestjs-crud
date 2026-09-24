@@ -223,7 +223,7 @@ export class DrizzleQueryComposer implements QueryComposer<AnyDrizzleSelect> {
    * sort column resolve deterministically, first page included.
    *
    * SQLi guard: validates `sort.field` via the same `columnsMap` allowlist used
-   * by `mapSort` (D-05b invariant). Unknown fields short-circuit through
+   * by `mapSort`. Unknown fields short-circuit through
    * `onBadRequest` which throws BadRequestException.
    *
    * @since 2.2.0

@@ -183,6 +183,14 @@ All mutation methods (`updateOne`, `replaceOne`, `deleteOne`) run inside `prisma
 
 Prisma's `include` and nested `select` translate `@Crud({ query: { join } })`, but the semantics differ from SQL JOINs: Prisma issues separate queries per relation by default. For relation-heavy reads, prefer explicit `include` configuration over `@Crud` join wiring. The `PrismaJoinResolver` enforces a SQLi mitigation for dotted-path sort by validating the relation chain against the schema's allowed columns.
 
+The adapter enforces the same nested-join ancestor rule as the other three adapters (`400 Invalid join: '<field>'` when a nested join's parent is neither requested nor eager), but it does not load nested relations — a valid nested join is accepted, and only its top-level relation is included.
+
+A join option listed in `@Crud({ query: { join } })` is included in the response only when it is marked `eager` or requested with `?join=`, matching TypeORM, Drizzle and MikroORM. A `?join=` for a relation the route's join options do not list is never included, even when the service's `relationFields` names it. Earlier releases of this adapter included every listed join option on every read, whether requested or not, and also loaded an unlisted requested relation if it happened to be a known `relationFields` entry — both are now closed. Mark a join `eager: true` to keep the old always-included shape.
+
+### Default sort
+
+Offset-mode `getMany` applies the route's `@Crud({ query: { sort } })` default when the request has no `?sort=`, matching the other three adapters. Earlier releases of this adapter ignored the route default in offset mode and returned rows in database order instead.
+
 ### Logger
 
 When `serviceConfig.logger` is omitted, the service defaults to `new Logger(PrismaCrudService.name)` from `@nestjs/common`, matching the other adapters. Pass a custom `logger` on the config to capture adapter-level errors in your own sink:

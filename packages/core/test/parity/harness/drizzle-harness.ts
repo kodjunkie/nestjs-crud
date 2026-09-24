@@ -7,7 +7,9 @@
  * Exports `buildDrizzleComposer()` — the factory used by query-composer-parity.spec.ts.
  */
 import { BadRequestException } from '@nestjs/common';
-// eslint-disable-next-line @typescript-eslint/no-require-imports
+import type { JoinOptions } from '@nestjs-crud/core';
+import type { QueryJoin } from '@nestjs-crud/request';
+
 const Database = require('better-sqlite3');
 import { getTableColumns } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/better-sqlite3';
@@ -31,6 +33,25 @@ const parityUsers = sqliteTable('parity_user', {
   companyId: integer('company_id').notNull(),
   profileId: integer('profile_id'),
   age: integer('age').notNull(),
+});
+
+// ---------------------------------------------------------------------------
+// Orphan-nested-join guard fixture: user -> profile -> licenses
+// ---------------------------------------------------------------------------
+
+const guardUsers = sqliteTable('parity_guard_user', {
+  id: integer('id').primaryKey(),
+  profileId: integer('profile_id'),
+});
+
+const guardProfiles = sqliteTable('parity_guard_profile', {
+  id: integer('id').primaryKey(),
+});
+
+const guardLicenses = sqliteTable('parity_guard_license', {
+  id: integer('id').primaryKey(),
+  code: text('code'),
+  profileId: integer('profile_id'),
 });
 
 // ---------------------------------------------------------------------------
@@ -65,6 +86,25 @@ function seedIfNeeded(db: ReturnType<typeof drizzle>): void {
     )
   `);
 
+  (_sqlite as any).exec(`
+    CREATE TABLE IF NOT EXISTS parity_guard_user (
+      id INTEGER PRIMARY KEY,
+      profile_id INTEGER
+    )
+  `);
+  (_sqlite as any).exec(`
+    CREATE TABLE IF NOT EXISTS parity_guard_profile (
+      id INTEGER PRIMARY KEY
+    )
+  `);
+  (_sqlite as any).exec(`
+    CREATE TABLE IF NOT EXISTS parity_guard_license (
+      id INTEGER PRIMARY KEY,
+      code TEXT,
+      profile_id INTEGER
+    )
+  `);
+
   // Insert REFERENCE_DATASET
   for (const u of REFERENCE_DATASET) {
     db.insert(parityUsers)
@@ -94,7 +134,7 @@ export function teardownDrizzleDb(): void {
 }
 
 // ---------------------------------------------------------------------------
-// Throwing stub — NEVER jest.fn() on a security path (PATTERNS.md §5)
+// Throwing stub — NEVER jest.fn() on a security path
 // ---------------------------------------------------------------------------
 
 const throwingOnBadRequest = (msg: string): never => {
@@ -106,7 +146,27 @@ const throwingOnBadRequest = (msg: string): never => {
 // ---------------------------------------------------------------------------
 
 export interface DrizzleHarness {
-  applyAndRun(parsed: any): Promise<number[]>;
+  /**
+   * The optional `routeQuery` carries a route-level `@Crud({ query: {...} })`
+   * config (for example a default `sort`) into `composer.applyToQuery`'s
+   * `options.query`, alongside the parsed request. Callers that pass only
+   * `parsed` keep today's behavior (an empty route query).
+   */
+  applyAndRun(parsed: any, routeQuery?: Record<string, unknown>): Promise<number[]>;
+
+  /**
+   * Drive the real `DrizzleJoinResolver.applyJoins` guard against the
+   * `parity_guard_user` -> `profile` -> `licenses` fixture, then execute
+   * the resulting query so a valid nested join proves it is runnable SQL.
+   */
+  applyJoins(joins: QueryJoin[], joinOptions: JoinOptions): Promise<void>;
+
+  /**
+   * Drive the same guard resolver against a small recording object exposing
+   * `leftJoin`/`innerJoin` (records the joined table, returns itself), then
+   * maps the recorded tables back to their relation names.
+   */
+  loadedJoins(joins: QueryJoin[], joinOptions: JoinOptions): Promise<string[]>;
 }
 
 // ---------------------------------------------------------------------------
@@ -146,7 +206,7 @@ export function buildDrizzleComposer(): DrizzleHarness {
   const emptyOptions = { query: {}, routes: {}, params: {} } as any;
 
   return {
-    async applyAndRun(parsed: any): Promise<number[]> {
+    async applyAndRun(parsed: any, routeQuery?: Record<string, unknown>): Promise<number[]> {
       const normalized = {
         fields: [],
         paramsFilter: [],
@@ -166,9 +226,64 @@ export function buildDrizzleComposer(): DrizzleHarness {
       };
 
       const query = composer.newQuery();
-      const composed = composer.applyToQuery(query, normalized, emptyOptions);
+      const composed = composer.applyToQuery(query, normalized, {
+        ...emptyOptions,
+        query: { ...(routeQuery ?? {}) },
+      });
       const rows = await composed;
       return (rows as any[]).map((r: any) => r.id);
+    },
+
+    async applyJoins(joins: QueryJoin[], joinOptions: JoinOptions): Promise<void> {
+      const guardResolver = new DrizzleJoinResolver({
+        relationsConfig: {
+          profile: { table: guardProfiles, foreignKey: guardProfiles.id, referenceKey: guardUsers.profileId },
+          'profile.licenses': {
+            table: guardLicenses,
+            foreignKey: guardLicenses.profileId,
+            referenceKey: guardProfiles.id,
+          },
+        },
+        onBadRequest: throwingOnBadRequest,
+      });
+      const query = guardResolver.applyJoins(db.select().from(guardUsers), joins, joinOptions);
+      await (query as any).all();
+    },
+
+    async loadedJoins(joins: QueryJoin[], joinOptions: JoinOptions): Promise<string[]> {
+      const guardResolver = new DrizzleJoinResolver({
+        relationsConfig: {
+          profile: { table: guardProfiles, foreignKey: guardProfiles.id, referenceKey: guardUsers.profileId },
+          'profile.licenses': {
+            table: guardLicenses,
+            foreignKey: guardLicenses.profileId,
+            referenceKey: guardProfiles.id,
+          },
+        },
+        onBadRequest: throwingOnBadRequest,
+      });
+
+      const recordedTables: any[] = [];
+      const recording: any = {
+        leftJoin: (table: any) => {
+          recordedTables.push(table);
+          return recording;
+        },
+        innerJoin: (table: any) => {
+          recordedTables.push(table);
+          return recording;
+        },
+      };
+
+      guardResolver.applyJoins(recording, joins, joinOptions);
+
+      const tableToName = new Map<any, string>([
+        [guardProfiles, 'profile'],
+        [guardLicenses, 'licenses'],
+      ]);
+
+      const names = recordedTables.map((table) => tableToName.get(table)).filter((name): name is string => !!name);
+      return Array.from(new Set(names)).sort();
     },
   };
 }

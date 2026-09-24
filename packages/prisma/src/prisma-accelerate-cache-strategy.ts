@@ -27,7 +27,7 @@ interface PrismaClientWithAccelerate {
  *   Concurrent requests do not bleed TTL into each other's args — `AsyncLocalStorage`
  *   isolates per async-call-stack.
  *
- * **TTL units (FIX 1):** the unified `CacheStrategy.wrap(...)` contract takes
+ * **TTL units:** the unified `CacheStrategy.wrap(...)` contract takes
  * `ttl` in MILLISECONDS, but Accelerate's per-query `cacheStrategy: { ttl }`
  * option takes SECONDS. This strategy is the ONLY adapter strategy that
  * performs unit conversion — `ttlSeconds = Math.ceil(ttl / 1000)` — to bridge
@@ -39,7 +39,7 @@ interface PrismaClientWithAccelerate {
  * entity-name prefix), so the limit is never reached.
  *
  * Requires `@prisma/extension-accelerate@^3.0.0` (declared as an optional peer
- * on `@nestjs-crud/prisma` per FIX 10). The constructor throws if the consumer's
+ * on `@nestjs-crud/prisma`). The constructor throws if the consumer's
  * `PrismaClient` was not extended with `withAccelerate()` (no `$accelerate`
  * method present on the client).
  *
@@ -63,7 +63,7 @@ export class PrismaAccelerateCacheStrategy implements CacheStrategy {
   }
 
   public async wrap<T>(_key: string, fetchFn: () => Promise<T>, ttl: number): Promise<T> {
-    // FIX 1 — convert milliseconds → seconds for Accelerate's API.
+    // Convert milliseconds → seconds for Accelerate's API.
     // Math.ceil ensures we never under-cache (e.g. 1500ms rounds up to 2s, not 1).
     const ttlSeconds = Math.ceil(ttl / 1000);
     return PrismaAccelerateCacheStrategy.currentContext.run({ cacheStrategy: { ttl: ttlSeconds } }, fetchFn);

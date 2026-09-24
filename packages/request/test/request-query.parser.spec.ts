@@ -18,6 +18,28 @@ describe('#request-query', () => {
         expect((qp as any).parseQuery({})).toBeInstanceOf(RequestQueryParser);
       });
 
+      describe('#parse raw query string', () => {
+        it('should parse repeated params into arrays', () => {
+          const test = qp.parseQuery('sort=foo,ASC&sort=bar,DESC&limit=10');
+          const expected: QuerySort[] = [
+            { field: 'foo', order: 'ASC' },
+            { field: 'bar', order: 'DESC' },
+          ];
+          expect(test.sort).toMatchObject(expected);
+          expect(test.limit).toBe(10);
+        });
+        it('should decode encoded values', () => {
+          const test = qp.parseQuery('filter=name%7C%7C%24eq%7C%7Cjohn%20doe');
+          const expected: QueryFilter[] = [{ field: 'name', operator: '$eq', value: 'john doe' }];
+          expect(test.filter).toMatchObject(expected);
+        });
+        it('should treat an empty string as an empty query', () => {
+          const test = qp.parseQuery('');
+          expect(test.fields).toMatchObject([]);
+          expect(test.filter).toMatchObject([]);
+        });
+      });
+
       describe('#parse fields', () => {
         it('should set empty array, 1', () => {
           const query = { select: '' };

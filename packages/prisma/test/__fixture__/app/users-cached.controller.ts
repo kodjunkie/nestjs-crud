@@ -10,7 +10,7 @@ import { UsersService } from './users.service';
  *
  * Declares `@Crud({ query: { cache: 5000 } })` so the FetchHelper's
  * `getEffectiveTtl(options)` returns 5000 at request time — exercising the
- * production TTL wiring path (D-10 contract: TTL is sourced from
+ * production TTL wiring path (TTL is sourced from
  * `options.query.cache` per request, NOT from a static field).
  *
  * Mounted at `/users-cached` to avoid colliding with the existing `/users`
@@ -21,7 +21,7 @@ import { UsersService } from './users.service';
  * `PrismaFetchHelper.getResolvedStrategy()` and wrap is invoked with 5000ms.
  *
  * NOTE: The existing `UsersController` does NOT declare `cache: 5000`, so
- * smoke tests are unaffected by the D-11 fail-fast behavior.
+ * smoke tests are unaffected by the cache fail-fast behavior.
  */
 @Crud({
   model: { type: UserModel },

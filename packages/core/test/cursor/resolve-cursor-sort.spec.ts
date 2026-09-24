@@ -48,7 +48,7 @@ describe('resolveCursorSort', () => {
       expect(result.sort).toBeNull();
       expect(result.error).toMatch(/@Crud\(\{ query: \{ sort \} \}\)/);
       expect(result.error).toContain('2');
-      // Not silently resolved to routeDefault[0] (D-03) — sort stays null.
+      // Not silently resolved to routeDefault[0] — sort stays null.
       expect(result.sort).not.toEqual(routeDefault[0]);
     });
   });

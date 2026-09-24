@@ -283,7 +283,7 @@ export const SQLI_CASES: ReadonlyArray<SqliCase> = [
     parsed: { sort: [{ field: "'; DROP TABLE users --", order: 'ASC' }] },
     expectedErrorContains: ['Invalid', 'sort', 'Bad Request'],
   },
-  // 2. Dotted-path with unknown relation root (D-05b vector)
+  // 2. Dotted-path with unknown relation root
   {
     name: 'sort: admin.secret (unknown relation)',
     parsed: { sort: [{ field: 'admin.secret', order: 'ASC' }] },

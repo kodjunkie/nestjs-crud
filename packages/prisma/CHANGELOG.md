@@ -3,6 +3,26 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [2.3.0] — 2026-09-24
+
+### Added
+
+- **NestJS 12 support.** The `@nestjs/common` peer range now accepts `^12.0.0` alongside `^10.0.0 || ^11.0.0`.
+- **node-redis 6 support.** The `redis` peer range moves from `^5.0.0` to `^5.0.0 || ^6.0.0`. The Redis cache strategy works unchanged with a node-redis 6 client.
+- **ioredis 6 support (optional peer).** The `ioredis` peer range moves from `^5.0.0` to `^5.0.0 || ^6.0.0`, on the evidence of the Redis cache-strategy spec running against a live ioredis 6 client. The 5.x line stays claimed and is exercised separately by the oldest-peer CI profiles.
+
+### Changed
+
+- **Node 22.12.0 or later is now required (`engines.node`), raised from `>=22.0.0`.** NestJS 12 ships as ESM only, and this package is CommonJS; it loads that ESM package through Node's `require()`-of-ESM support, which lands at 22.12.0.
+- **Requires `@nestjs-crud/core` from the same release or later.** The `@nestjs-crud/core` peer range now tracks the release version in lockstep, moving from `^2.0.0` to the caret of the release version. This package calls core helpers added after 2.0.0, so an older core satisfied the old range without providing them.
+- **A nested `?join=` entry whose parent is not joined now returns 400.** A request like `?join=company.projects` without also joining `company` (via `?join=company` or an `eager` join option) used to be silently dropped and return 200. It now returns 400 with `Invalid join: 'company.projects'`. An ancestor counts as joined at any depth, in any request order, whether client-requested or declared `eager`. This adapter still does not include nested relations: a valid nested join is accepted, and only its top-level relation is included.
+- **An offset-mode `getMany` request with no `?sort=` now falls back to the route's default sort declared via `@Crud({ query: { sort } })`, matching the other three adapters.** Previously it returned rows in database order. A request's `?sort=` still replaces the default entirely — the two are never merged — and the default sort field passes through the same sort-field allowlist as a request sort. To keep database order on an existing route, remove its `sort` default.
+- **A join option now comes back only when it is marked `eager` or requested with `?join=`, matching the other three adapters.** Previously every relation listed in `@Crud({ query: { join } })` came back on every read, whether requested or not. Routes that relied on the old behavior should mark the join `eager: true`.
+
+### Security
+
+- **A `?join=` for a relation the route's join options do not list is no longer included.** Previously, any relation named in the service's `relationFields` could be requested with `?join=` and loaded with all its columns, regardless of whether the route's `@Crud({ query: { join } })` allowlisted it — bypassing the join allowlist the other three adapters already enforced.
+
 ## [2.2.6] — 2026-07-31
 
 ### Fixed
@@ -13,7 +33,6 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 ## [2.2.5] — 2026-06-11
 
 Version-only republish — no package-specific source changes. Bumped in lockstep with the rest of the monorepo. See the [root CHANGELOG.md](../../CHANGELOG.md#225--2026-06-11) for full release details.
-
 
 ## [2.2.4] — 2026-06-10
 
@@ -34,11 +53,9 @@ Version-only republish — no package-specific source changes. Bumped in lockste
 
 See the [root CHANGELOG.md](../../CHANGELOG.md#222--2026-05-19) for the full v2.2.2 release notes (5 dependabot advisories closed; runtime dep refresh).
 
-
 ## [2.2.1] — 2026-05-03
 
 Version-only republish — no package-specific source changes. Bumped in lockstep with the rest of the monorepo. See the [root CHANGELOG.md](../../CHANGELOG.md#221--2026-05-03) for full release details.
-
 
 ## [2.2.0] — 2026-05-03
 
@@ -85,20 +102,17 @@ Initial release. `@nestjs-crud/prisma` ships at v2.0.0 — same conceptual surfa
 
 See the [root CHANGELOG.md](../../CHANGELOG.md#200--2026-04-23), the [ServicePrisma wiki page](https://github.com/kodjunkie/nestjs-crud/wiki/ServicePrisma), and the [v2 Migration guide](https://github.com/kodjunkie/nestjs-crud/wiki/v2-Migration) for full details.
 
-
 ### Features
 
-* **adapter:** `PrismaCrudService<T>` — translates parsed CRUD requests into Prisma client operations.
-* **query:** Composes `WhereBuilder` + `QueryComposer` + `FetchHelper` under shared `QueryTranslator` facade (same shape as the other adapters).
-* **logging:** Optional `LoggerService` ctor parameter.
-
+- **adapter:** `PrismaCrudService<T>` — translates parsed CRUD requests into Prisma client operations.
+- **query:** Composes `WhereBuilder` + `QueryComposer` + `FetchHelper` under shared `QueryTranslator` facade (same shape as the other adapters).
+- **logging:** Optional `LoggerService` ctor parameter.
 
 ### Security
 
-* **mutations:** Mutation methods (`updateOne`/`replaceOne`/`deleteOne`) run inside `READ COMMITTED` transactions.
-
+- **mutations:** Mutation methods (`updateOne`/`replaceOne`/`deleteOne`) run inside `READ COMMITTED` transactions.
 
 ### Internal
 
-* **engines:** Node `>=22.0.0` enforced.
-* Real-DB integration tests cover Postgres + MySQL.
+- **engines:** Node `>=22.0.0` enforced.
+- Real-DB integration tests cover Postgres + MySQL.

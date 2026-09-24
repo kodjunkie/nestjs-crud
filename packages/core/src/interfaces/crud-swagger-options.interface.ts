@@ -67,6 +67,7 @@ export type CrudSwaggerSynthExampleFn = (entity: any, route: BaseRouteName) => u
  *     },
  *     errorResponses: { unauthorized: true },
  *     tagWithVersion: true,
+ *     queryDocsUrl: 'https://api.example.com/docs/query-syntax',
  *   },
  * })
  * export class UsersController implements CrudController<User> {}
@@ -133,4 +134,19 @@ export interface CrudSwaggerOptions {
    * Default: `false`.
    */
   tagWithVersion?: boolean;
+
+  /**
+   * Target of the query-syntax link appended to the end of the `getManyBase`
+   * and `getOneBase` operation descriptions. An absolute `http://` or
+   * `https://` URL, or `false` to omit the line.
+   *
+   * When unset, the global value from
+   * `CrudConfigService.load({ swagger: { queryDocsUrl } })` applies; when
+   * that is also unset, the library's Query Syntax wiki page is used. An
+   * invalid value throws when `@Crud()` is applied to the controller.
+   *
+   * Security: the value ships verbatim into the emitted OpenAPI document —
+   * do not interpolate untrusted input.
+   */
+  queryDocsUrl?: string | false;
 }
