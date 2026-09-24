@@ -67,6 +67,17 @@ describe('queryDocsUrl', () => {
       expect(describeQueryDocsUrlValue(0)).toBe('0');
       expect(describeQueryDocsUrlValue(null)).toBe('null');
     });
+
+    it('renders objects and arrays as JSON instead of [object Object]', () => {
+      expect(describeQueryDocsUrlValue({ url: 'https://docs.example.com' })).toBe('{"url":"https://docs.example.com"}');
+      expect(describeQueryDocsUrlValue(['https://docs.example.com'])).toBe('["https://docs.example.com"]');
+    });
+
+    it('falls back to String() when JSON.stringify throws', () => {
+      const circular: Record<string, unknown> = {};
+      circular.self = circular;
+      expect(describeQueryDocsUrlValue(circular)).toBe('[object Object]');
+    });
   });
 
   describe('route-level throw', () => {

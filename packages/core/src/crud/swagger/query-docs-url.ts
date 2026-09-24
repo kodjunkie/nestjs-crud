@@ -46,5 +46,13 @@ export function isValidQueryDocsUrl(value: unknown): value is string | false {
 
 /** Renders a `queryDocsUrl` value for an error message. */
 export function describeQueryDocsUrlValue(value: unknown): string {
-  return typeof value === 'string' ? JSON.stringify(value) : String(value);
+  if (typeof value === 'string') return JSON.stringify(value);
+  if (typeof value === 'object' && value !== null) {
+    try {
+      return JSON.stringify(value);
+    } catch {
+      return String(value);
+    }
+  }
+  return String(value);
 }
