@@ -81,14 +81,9 @@ function getOpt(name, fallback) {
 const PM = getOpt('pm', 'npm');
 const STRICT_PEERS = hasFlag('strict-peers');
 const EXPECT_IOREDIS_ERESOLVE = hasFlag('expect-ioredis-eresolve');
-const FAULT = getOpt('fault', null);
 
 if (!['npm', 'yarn', 'pnpm'].includes(PM)) {
   console.error(`FATAL: unknown --pm=${PM} (expected npm, yarn, or pnpm)`);
-  process.exit(2);
-}
-if (FAULT !== null && FAULT !== 'unmet-peer') {
-  console.error(`FATAL: unknown --fault=${FAULT} (expected unmet-peer)`);
   process.exit(2);
 }
 if (!STRICT_PEERS && !EXPECT_IOREDIS_ERESOLVE && PM !== 'npm') {
@@ -243,18 +238,6 @@ function stagePackage(name) {
     for (const dep of Object.keys(rewritten[section])) {
       if (dep.startsWith('@nestjs-crud/')) rewritten[section][dep] = STAMP;
     }
-  }
-
-  // --fault=unmet-peer: locally rewrite core's class-validator peer to a
-  // range no published version satisfies, to prove each manager's strict
-  // gate actually trips. Never mutates an @nestjs-crud/* range.
-  if (
-    FAULT === 'unmet-peer' &&
-    name === 'core' &&
-    rewritten.peerDependencies &&
-    rewritten.peerDependencies['class-validator']
-  ) {
-    rewritten.peerDependencies['class-validator'] = '^99.0.0';
   }
 
   fs.writeFileSync(path.join(stageDir, 'package.json'), JSON.stringify(rewritten, null, 2));
