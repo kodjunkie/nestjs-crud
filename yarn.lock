@@ -1774,8 +1774,8 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@nestjs-crud/core@workspace:packages/core"
   dependencies:
-    "@nestjs-crud/request": "npm:^2.2.6"
-    "@nestjs-crud/util": "npm:^2.2.6"
+    "@nestjs-crud/request": "npm:^2.3.0"
+    "@nestjs-crud/util": "npm:^2.3.0"
     deepmerge: "npm:^4.3.1"
     pluralize: "npm:^8.0.0"
   peerDependencies:
@@ -1793,7 +1793,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@nestjs-crud/drizzle@workspace:packages/drizzle"
   peerDependencies:
-    "@nestjs-crud/core": ^2.2.6
+    "@nestjs-crud/core": ^2.3.0
     "@nestjs/common": ^10.0.0 || ^11.0.0 || ^12.0.0
     drizzle-orm: ^0.45.2
     ioredis: ^5.0.0 || ^6.0.0
@@ -1821,9 +1821,9 @@ __metadata:
   peerDependencies:
     "@mikro-orm/core": ^7.0.0
     "@mikro-orm/sql": ^7.0.0
-    "@nestjs-crud/core": ^2.2.6
-    "@nestjs-crud/request": ^2.2.6
-    "@nestjs-crud/util": ^2.2.6
+    "@nestjs-crud/core": ^2.3.0
+    "@nestjs-crud/request": ^2.3.0
+    "@nestjs-crud/util": ^2.3.0
     "@nestjs/common": ^10.0.0 || ^11.0.0 || ^12.0.0
     ioredis: ^5.0.0 || ^6.0.0
     mysql2: ^3.0.0
@@ -1845,7 +1845,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@nestjs-crud/prisma@workspace:packages/prisma"
   peerDependencies:
-    "@nestjs-crud/core": ^2.2.6
+    "@nestjs-crud/core": ^2.3.0
     "@nestjs/common": ^10.0.0 || ^11.0.0 || ^12.0.0
     "@prisma/client": ^7.0.0
     "@prisma/extension-accelerate": ^3.0.0
@@ -1867,11 +1867,11 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@nestjs-crud/request@npm:^2.2.6, @nestjs-crud/request@workspace:packages/request":
+"@nestjs-crud/request@npm:^2.3.0, @nestjs-crud/request@workspace:packages/request":
   version: 0.0.0-use.local
   resolution: "@nestjs-crud/request@workspace:packages/request"
   dependencies:
-    "@nestjs-crud/util": "npm:^2.2.6"
+    "@nestjs-crud/util": "npm:^2.3.0"
     qs: "npm:^6.16.0"
   languageName: unknown
   linkType: soft
@@ -1880,7 +1880,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@nestjs-crud/typeorm@workspace:packages/typeorm"
   peerDependencies:
-    "@nestjs-crud/core": ^2.2.6
+    "@nestjs-crud/core": ^2.3.0
     "@nestjs/common": ^10.0.0 || ^11.0.0 || ^12.0.0
     "@nestjs/typeorm": ^10.0.0 || ^11.0.0 || ^12.0.0
     ioredis: ^5.0.0 || ^6.0.0
@@ -1900,7 +1900,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@nestjs-crud/util@npm:^2.2.6, @nestjs-crud/util@workspace:packages/util":
+"@nestjs-crud/util@npm:^2.3.0, @nestjs-crud/util@workspace:packages/util":
   version: 0.0.0-use.local
   resolution: "@nestjs-crud/util@workspace:packages/util"
   languageName: unknown
