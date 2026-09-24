@@ -256,7 +256,7 @@ const { summary, description } = Swagger.operationsMap(this.modelName)[name];
 Swagger.setOperation({ summary, description, ... }, this.targetProto[name]);
 ```
 
-The new per-route markdown description (referencing supported query parameters and validation groups) ships alongside the summary; destructure and forward it into `setOperation` to preserve the full generated metadata.
+The new per-route markdown description (referencing supported query parameters and soft-delete semantics where relevant) ships alongside the summary; destructure and forward it into `setOperation` to preserve the full generated metadata.
 
 ## See also
 
