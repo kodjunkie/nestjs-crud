@@ -163,8 +163,16 @@ jobs:
           # when `id-token: write` permission + `environment: Release` are set
           # at the job level (both are already configured above).
           #
+          # PACKAGES comes from the workspace manifests, in dependency order
+          # (scripts/lib/workspace-packages.js) — a new package needs no edit
+          # here.
           DIST_TAG="${{ steps.version.outputs.dist_tag }}"
-          PACKAGES=(core util request typeorm drizzle mikro-orm prisma)
+          PACKAGE_LIST="$(node scripts/lib/workspace-packages.js)"
+          mapfile -t PACKAGES <<< "$PACKAGE_LIST"
+          if [ "${#PACKAGES[@]}" -eq 0 ]; then
+            echo "::error::scripts/lib/workspace-packages.js produced an empty package list"
+            exit 1
+          fi
           for pkg in "${PACKAGES[@]}"; do
             echo "::group::Publishing @nestjs-crud/$pkg@${{ steps.version.outputs.version }}"
             (cd "packages/$pkg" && npm publish --access public --tag "$DIST_TAG")

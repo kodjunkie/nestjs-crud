@@ -5,6 +5,7 @@ const path = require('path');
 const fs = require('fs');
 const os = require('os');
 const { execSync, spawnSync } = require('child_process');
+const { loadWorkspacePackages } = require('./lib/workspace-packages');
 
 // ---------------------------------------------------------------------------
 // Configuration — contracts encoded here, not in prose comments
@@ -12,43 +13,28 @@ const { execSync, spawnSync } = require('child_process');
 
 const REPO_ROOT = path.resolve(__dirname, '..');
 
-const WORKSPACE_PACKAGES = ['util', 'request', 'core', 'typeorm', 'drizzle', 'mikro-orm', 'prisma'];
-const ADAPTER_PACKAGES = ['typeorm', 'drizzle', 'mikro-orm', 'prisma'];
+let WORKSPACE;
+try {
+  WORKSPACE = loadWorkspacePackages(REPO_ROOT);
+} catch (err) {
+  console.error(`FATAL: ${err.message}`);
+  process.exit(2);
+}
 
-// Specifiers that MUST resolve from the installed tarballs.
-// Root package roots + core subpaths (canonical and workaround paths).
-const ROOT_CHECKS = [
-  '@nestjs-crud/util',
-  '@nestjs-crud/request',
-  '@nestjs-crud/core',
-  '@nestjs-crud/typeorm',
-  '@nestjs-crud/drizzle',
-  '@nestjs-crud/mikro-orm',
-  '@nestjs-crud/prisma',
-];
-const SUBPATH_CHECKS = [
-  '@nestjs-crud/core/cache',
-  '@nestjs-crud/core/cursor',
-  '@nestjs-crud/core/query',
-  '@nestjs-crud/core/lib/cache',
-  '@nestjs-crud/core/lib/cursor',
-  '@nestjs-crud/core/lib/query',
-];
-const ALL_CHECKS = [...ROOT_CHECKS, ...SUBPATH_CHECKS];
+// The full set of publishable workspace packages, and the subset that are
+// adapters (packages nothing else in the workspace depends on), both derived
+// from the manifests — see scripts/lib/workspace-packages.js.
+const WORKSPACE_PACKAGES = WORKSPACE.dirs;
+const ADAPTER_PACKAGES = WORKSPACE.adapterDirs;
+
+// Specifiers that MUST resolve from the installed tarballs: every package's
+// root specifier, plus every explicit `exports` subpath (today, only core
+// has one).
+const ALL_CHECKS = [...WORKSPACE.rootSpecifiers, ...WORKSPACE.subpathSpecifiers];
 
 // Required (non-optional) peers across the packed manifests, excluding the
 // internal @nestjs-crud/* ones, at the ranges the root manifest declares.
-const REQUIRED_PEERS = [
-  '@nestjs/common',
-  'class-transformer',
-  'class-validator',
-  '@nestjs/typeorm',
-  'typeorm',
-  'drizzle-orm',
-  '@mikro-orm/core',
-  '@mikro-orm/sql',
-  '@prisma/client',
-];
+const REQUIRED_PEERS = WORKSPACE.requiredExternalPeers;
 const EXTRA_ROOT_DEPS = ['@nestjs/core', 'reflect-metadata', 'rxjs'];
 
 // pnpm 12.5.1 has a confirmed regression where a peerDependency satisfied
@@ -301,17 +287,17 @@ for (const name of WORKSPACE_PACKAGES) {
 console.log('\n[2/4] Writing temp consumer project...');
 
 function internalOverridesMap() {
-  return {
-    '@nestjs-crud/core': tarballFileSpec('core'),
-    '@nestjs-crud/request': tarballFileSpec('request'),
-    '@nestjs-crud/util': tarballFileSpec('util'),
-  };
+  const overrides = {};
+  for (const dir of WORKSPACE.internalDirs) {
+    overrides[`@nestjs-crud/${dir}`] = tarballFileSpec(dir);
+  }
+  return overrides;
 }
 
-// The original, still-default shape: the 4 adapters as direct dependencies,
-// the 3 internal packages supplied only via an override, and (unless told
-// otherwise) the ioredis pin npm needs against the current typeorm/NestJS
-// peer set. This is `yarn smoke:pack`'s shape, and the shape
+// The original, still-default shape: every adapter package as a direct
+// dependency, every internal package supplied only via an override, and
+// (unless told otherwise) the ioredis pin npm needs against the current
+// typeorm/NestJS peer set. This is `yarn smoke:pack`'s shape, and the shape
 // --expect-ioredis-eresolve uses with the pin removed.
 function buildLegacyConsumer({ includeIoredisPin }) {
   const dependencies = {};
@@ -334,10 +320,10 @@ function buildLegacyConsumer({ includeIoredisPin }) {
 }
 
 // The realistic-consumer shape needed to prove there are no peer warnings
-// against our own ranges: all 7 tarballs as direct dependencies, every
-// required peer at the range the root manifest declares for it, plus the
-// manager's own override mechanism mapping the 3 internal package names to
-// the same tarballs.
+// against our own ranges: every workspace package's tarball as a direct
+// dependency, every required peer at the range the root manifest declares
+// for it, plus the manager's own override mechanism mapping every internal
+// package name to its own tarball.
 function buildStrictConsumer(pm) {
   const dependencies = {};
   for (const name of WORKSPACE_PACKAGES) dependencies[`@nestjs-crud/${name}`] = tarballFileSpec(name);

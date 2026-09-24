@@ -3,6 +3,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const { loadWorkspacePackages } = require('./lib/workspace-packages');
 
 // ---------------------------------------------------------------------------
 // Contract under test: qs has exactly one owner (packages/request) at exactly
@@ -26,10 +27,6 @@ const EXPECTED_NODE_FLOOR = '>=22.12.0';
 // `resolutionReasons` object (and vice versa) — a resolutions entry with no
 // recorded reason is a defect, not a style nit. See CLAUDE.md "Encode
 // contracts in config, not prose".
-
-// Mirrors scripts/smoke-pack.js WORKSPACE_PACKAGES — the fixed set of
-// workspace packages this monorepo ships.
-const WORKSPACE_PACKAGES = ['util', 'request', 'core', 'typeorm', 'drizzle', 'mikro-orm', 'prisma'];
 
 function parseArgs(argv) {
   let root = path.resolve(__dirname, '..');
@@ -93,12 +90,15 @@ function assertOwnerRange(root) {
 // ---------------------------------------------------------------------------
 
 function assertSingleOwner(root) {
+  const { dirs } = loadWorkspacePackages(root);
   const manifestsToCheck = [
     { label: 'package.json', filePath: path.join(root, 'package.json') },
-    ...WORKSPACE_PACKAGES.filter((name) => name !== OWNER_PACKAGE).map((name) => ({
-      label: path.join('packages', name, 'package.json'),
-      filePath: path.join(root, 'packages', name, 'package.json'),
-    })),
+    ...dirs
+      .filter((name) => name !== OWNER_PACKAGE)
+      .map((name) => ({
+        label: path.join('packages', name, 'package.json'),
+        filePath: path.join(root, 'packages', name, 'package.json'),
+      })),
   ];
 
   for (const manifest of manifestsToCheck) {
@@ -184,7 +184,8 @@ function assertSingleResolvedVersion(root) {
 // ---------------------------------------------------------------------------
 
 function assertEnginesFloor(root) {
-  for (const name of WORKSPACE_PACKAGES) {
+  const { dirs } = loadWorkspacePackages(root);
+  for (const name of dirs) {
     const manifestPath = path.join('packages', name, 'package.json');
     const manifest = readJson(path.join(root, manifestPath));
     const nodeFloor = manifest.engines && manifest.engines.node;
@@ -197,13 +198,13 @@ function assertEnginesFloor(root) {
     if (nodeFloor !== EXPECTED_NODE_FLOOR) {
       return {
         ok: false,
-        reason: `${manifestPath} declares engines.node "${nodeFloor}" — expected "${EXPECTED_NODE_FLOOR}" (must be identical across all ${WORKSPACE_PACKAGES.length} published packages)`,
+        reason: `${manifestPath} declares engines.node "${nodeFloor}" — expected "${EXPECTED_NODE_FLOOR}" (must be identical across all ${dirs.length} published packages)`,
       };
     }
   }
   return {
     ok: true,
-    message: `OK: all ${WORKSPACE_PACKAGES.length} published packages declare engines.node ${EXPECTED_NODE_FLOOR}`,
+    message: `OK: all ${dirs.length} published packages declare engines.node ${EXPECTED_NODE_FLOOR}`,
   };
 }
 
