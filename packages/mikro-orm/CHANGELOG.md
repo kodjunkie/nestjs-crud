@@ -14,7 +14,7 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 ### Changed
 
 - **Node 22.12.0 or later is now required (`engines.node`), raised from `>=22.0.0`.** NestJS 12 ships as ESM only, and this package is CommonJS; it loads that ESM package through Node's `require()`-of-ESM support, which lands at 22.12.0.
-- **Requires `@nestjs-crud/core` 2.2.6 or later.** The `@nestjs-crud/core`, `@nestjs-crud/request` and `@nestjs-crud/util` peer ranges move from `^2.0.0` to `^2.2.6`. This package calls core helpers added after 2.0.0, so an older core satisfied the old range without providing them.
+- **Requires `@nestjs-crud/core` from the same release or later.** The `@nestjs-crud/core`, `@nestjs-crud/request` and `@nestjs-crud/util` peer ranges now track the release version in lockstep, moving from `^2.0.0` to the caret of the release version. This package calls core helpers added after 2.0.0, so an older core satisfied the old range without providing them.
 - **A nested `?join=` entry whose parent is not joined now returns 400.** A request like `?join=company.users` without also joining `company` (via `?join=company` or an `eager` join option) used to be silently dropped and return 200. It now returns 400 with `Invalid join: 'company.users'`. An ancestor counts as joined at any depth, in any request order, whether client-requested or declared `eager`. This adapter still does not load nested relations: a valid nested join is accepted, and only its top-level relation is loaded.
 
 ### Fixed

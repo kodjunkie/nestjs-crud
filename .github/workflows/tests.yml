@@ -17,6 +17,9 @@ jobs:
       - name: check manifest contracts
         run: node scripts/check-manifest-contracts.js
 
+      - name: check peer ranges
+        run: node scripts/check-peer-ranges.js
+
       - name: Enable Corepack (pre-setup-node)
         run: corepack enable
 

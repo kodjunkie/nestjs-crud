@@ -80,6 +80,11 @@ jobs:
       - name: Run Tests
         run: yarn test:all
 
+      - name: Check Peer Ranges
+        # Gates tagging and publishing: fails on a drifted internal range or
+        # an external peer range that admits an untested major.
+        run: node scripts/check-peer-ranges.js
+
       - name: Determine Version and Dist Tag
         id: version
         run: |

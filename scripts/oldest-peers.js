@@ -93,7 +93,9 @@ function fail(message) {
 
 function usageAndExit() {
   console.error('Usage:');
-  console.error('  node scripts/oldest-peers.js <profile>   Apply a profile (' + Object.keys(PROFILES).join(', ') + ')');
+  console.error(
+    '  node scripts/oldest-peers.js <profile>   Apply a profile (' + Object.keys(PROFILES).join(', ') + ')',
+  );
   console.error('  node scripts/oldest-peers.js --restore   Restore package.json and yarn.lock from the snapshot');
   process.exit(2);
 }
@@ -254,7 +256,9 @@ function restore() {
   console.log('Running: yarn install --immutable\n');
   const install = runCapture('yarn', ['install', '--immutable'], REPO_ROOT);
   if (install.status !== 0) {
-    fail(`yarn install --immutable exited ${install.status} after restoring the snapshot — investigate before retrying.`);
+    fail(
+      `yarn install --immutable exited ${install.status} after restoring the snapshot — investigate before retrying.`,
+    );
   }
 
   const dirty = gitPorcelain(['package.json', 'yarn.lock']);
@@ -293,4 +297,8 @@ function main() {
   applyProfile(profileArg);
 }
 
-main();
+module.exports = { PROFILES };
+
+if (require.main === module) {
+  main();
+}
