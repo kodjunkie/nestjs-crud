@@ -173,11 +173,15 @@ jobs:
           # here.
           DIST_TAG="${{ steps.version.outputs.dist_tag }}"
           PACKAGE_LIST="$(node scripts/lib/workspace-packages.js)"
-          mapfile -t PACKAGES <<< "$PACKAGE_LIST"
-          if [ "${#PACKAGES[@]}" -eq 0 ]; then
+          # Test the raw string for emptiness before mapfile: `mapfile -t PACKAGES
+          # <<< "$PACKAGE_LIST"` on an empty PACKAGE_LIST reads one empty line (the
+          # here-string's trailing newline), giving ${#PACKAGES[@]} a value of 1, so
+          # an array-length check alone would never fire.
+          if [ -z "$PACKAGE_LIST" ]; then
             echo "::error::scripts/lib/workspace-packages.js produced an empty package list"
             exit 1
           fi
+          mapfile -t PACKAGES <<< "$PACKAGE_LIST"
           for pkg in "${PACKAGES[@]}"; do
             echo "::group::Publishing @nestjs-crud/$pkg@${{ steps.version.outputs.version }}"
             (cd "packages/$pkg" && npm publish --access public --tag "$DIST_TAG")
