@@ -166,8 +166,8 @@ jobs:
 
       - name: Pin Yarn version
         # Pins Yarn to the version that matches yarn.lock — keeps --immutable working.
-        # CI-03 sentinel mechanism is moduleNameMapper-based (no yarn remove) so
-        # the lockfile is never touched.
+        # The no-swagger cell hides @nestjs/swagger through moduleNameMapper, not
+        # yarn remove, so the lockfile is never touched.
         run: yarn set version 4.12.0
 
       - name: install
