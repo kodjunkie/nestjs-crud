@@ -101,6 +101,63 @@ describe('PrismaQueryComposer', () => {
       const result = composer.applyToQuery({}, parsed, emptyOptions);
       expect(result.orderBy).toEqual([{ company: { name: 'asc' } }]);
     });
+
+    it('falls back to the route default sort when the request has none', () => {
+      const options = { query: { sort: [{ field: 'name', order: 'ASC' }] }, routes: {}, params: {} } as any;
+      const result = composer.applyToQuery({}, emptyParsed, options);
+      expect(result.orderBy).toEqual([{ name: 'asc' }]);
+    });
+
+    it('compiles a two-field route default with no extra primary-key entry', () => {
+      const options = {
+        query: {
+          sort: [
+            { field: 'name', order: 'ASC' },
+            { field: 'id', order: 'DESC' },
+          ],
+        },
+        routes: {},
+        params: {},
+      } as any;
+      const result = composer.applyToQuery({}, emptyParsed, options);
+      expect(result.orderBy).toEqual([{ name: 'asc' }, { id: 'desc' }]);
+    });
+
+    it('request sort replaces the route default entirely (no merge)', () => {
+      const parsed = { ...emptyParsed, sort: [{ field: 'email', order: 'DESC' }] };
+      const options = {
+        query: {
+          sort: [
+            { field: 'name', order: 'ASC' },
+            { field: 'id', order: 'DESC' },
+          ],
+        },
+        routes: {},
+        params: {},
+      } as any;
+      const result = composer.applyToQuery({}, parsed, options);
+      expect(result.orderBy).toEqual([{ email: 'desc' }]);
+    });
+
+    it('throws when the route default sorts on an unknown relation', () => {
+      const options = { query: { sort: [{ field: 'admin.secret', order: 'ASC' }] }, routes: {}, params: {} } as any;
+      expect(() => composer.applyToQuery({}, emptyParsed, options)).toThrow(
+        new BadRequestException('Unknown relation: admin'),
+      );
+    });
+
+    it('throws when the route default sorts on a column not in entityColumns', () => {
+      const options = { query: { sort: [{ field: 'nope', order: 'ASC' }] }, routes: {}, params: {} } as any;
+      expect(() => composer.applyToQuery({}, emptyParsed, options)).toThrow(
+        new BadRequestException('Unknown column: nope'),
+      );
+    });
+
+    it('leaves orderBy undefined when the route default is absent or empty and the request has no sort', () => {
+      const options = { query: { sort: [] }, routes: {}, params: {} } as any;
+      const result = composer.applyToQuery({}, emptyParsed, options);
+      expect(result.orderBy).toBeUndefined();
+    });
   });
 
   describe('pagination', () => {

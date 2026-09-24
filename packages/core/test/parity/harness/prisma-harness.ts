@@ -88,7 +88,13 @@ function isOperatorShape(v: Record<string, unknown>): boolean {
 // ---------------------------------------------------------------------------
 
 export interface PrismaHarness {
-  applyAndRun(parsed: any): Promise<number[]>;
+  /**
+   * The optional `routeQuery` carries a route-level `@Crud({ query: {...} })`
+   * config (for example a default `sort`) into `composer.applyToQuery`'s
+   * `options.query`, alongside the parsed request. Callers that pass only
+   * `parsed` keep today's behavior (an empty route query).
+   */
+  applyAndRun(parsed: any, routeQuery?: Record<string, unknown>): Promise<number[]>;
 
   composer: PrismaQueryComposer;
 
@@ -136,7 +142,7 @@ export function buildPrismaComposer(): PrismaHarness {
   return {
     composer,
 
-    async applyAndRun(parsed: any): Promise<number[]> {
+    async applyAndRun(parsed: any, routeQuery?: Record<string, unknown>): Promise<number[]> {
       const normalized = {
         fields: [],
         paramsFilter: [],
@@ -156,7 +162,7 @@ export function buildPrismaComposer(): PrismaHarness {
       };
 
       // applyToQuery returns { where?, orderBy?, take?, skip? }
-      const q = composer.applyToQuery({}, normalized, emptyOptions);
+      const q = composer.applyToQuery({}, normalized, { ...emptyOptions, query: { ...(routeQuery ?? {}) } });
 
       // Filter dataset in-memory
       let results = [...REFERENCE_DATASET];

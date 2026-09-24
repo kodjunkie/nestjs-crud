@@ -9,7 +9,9 @@
  *   - 15 SCONDITION_CASES × 4 adapters = 60 parity assertions
  *   - 3  SQLI_CASES       × 4 adapters = 12 security assertions
  *   - 5 ORPHAN_JOIN_CASES + 3 VALID_NESTED_JOIN_CASES = 8 × 4 adapters = 32 join-guard assertions
- *   Total = 104 assertions — exceeds the ≥45 must-have
+ *   - 2  DEFAULT_SORT_CASES × 4 adapters = 8 route-default-sort order assertions
+ *   - 3  SQLI_CASES (as a route default) × 4 adapters = 12 route-default-sort guard assertions
+ *   Total = 124 assertions — exceeds the ≥45 must-have
  *
  * Runs under root jest.config.js (CJS). Docker NOT required — in-memory only.
  * MikroORM + Prisma harnesses use pure mocks — no ORM init, no ESM runtime trap.
@@ -207,6 +209,75 @@ describe.each(ADAPTERS)('orphan nested join guard parity — $name', (adapterEnt
   describe.each(VALID_NESTED_JOIN_CASES)('valid case: $name', (kase) => {
     it('accepts the nested join request', async () => {
       await expect(harness.applyJoins(kase.joins, kase.joinOptions)).resolves.toBeUndefined();
+    });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Route default sort parity: 2 cases × 4 adapters = 8 assertions
+//
+// A route-level `@Crud({ query: { sort } })` default must apply when the
+// request omits `?sort=`, and a request's `?sort=` must replace the route
+// default entirely (never merge) — on all four adapters, not just the three
+// that already had the fallback before Prisma's fix.
+// ---------------------------------------------------------------------------
+
+interface DefaultSortCase {
+  name: string;
+  parsed: { sort?: Array<{ field: string; order: 'ASC' | 'DESC' }> };
+  routeQuery: { sort: Array<{ field: string; order: 'ASC' | 'DESC' }> };
+  /** Expected IDs in exact order — never re-sorted before comparison. */
+  expectedIds: number[];
+}
+
+const DEFAULT_SORT_CASES: ReadonlyArray<DefaultSortCase> = [
+  {
+    name: 'route default applies',
+    parsed: {},
+    routeQuery: { sort: [{ field: 'age', order: 'ASC' }] },
+    expectedIds: [7, 3, 1, 10, 4, 2, 9, 5, 6, 8],
+  },
+  {
+    name: 'request sort replaces the route default',
+    parsed: { sort: [{ field: 'id', order: 'DESC' }] },
+    routeQuery: { sort: [{ field: 'age', order: 'ASC' }] },
+    expectedIds: [10, 9, 8, 7, 6, 5, 4, 3, 2, 1],
+  },
+];
+
+describe.each(ADAPTERS)('route default sort parity — $name', (adapterEntry) => {
+  let harness: Harness;
+
+  beforeAll(async () => {
+    harness = await resolveHarness(adapterEntry);
+  });
+
+  describe.each(DEFAULT_SORT_CASES)('case: $name', (kase) => {
+    it('produces IDs in the exact expected order (no re-sorting before comparison)', async () => {
+      const ids = await harness.applyAndRun(kase.parsed, kase.routeQuery);
+      expect(ids).toEqual(kase.expectedIds);
+    });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Route default sort SQLi guard parity: 3 SQLI_CASES × 4 adapters = 12 assertions
+//
+// A malicious sort field supplied as a route default (rather than a
+// request's ?sort=) must pass through the exact same allowlist and throw
+// via onBadRequest — a route default is not a trusted bypass of the guard.
+// ---------------------------------------------------------------------------
+
+describe.each(ADAPTERS)('route default sort SQLi guard parity — $name', (adapterEntry) => {
+  let harness: Harness;
+
+  beforeAll(async () => {
+    harness = await resolveHarness(adapterEntry);
+  });
+
+  describe.each(SQLI_CASES)('SQLi case: $name', (sqliCase) => {
+    it('rejects fabricated/dotted-path sort field supplied as a route default (must throw)', async () => {
+      await expect(harness.applyAndRun({}, { sort: sqliCase.parsed.sort })).rejects.toThrow();
     });
   });
 });

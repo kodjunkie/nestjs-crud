@@ -30,6 +30,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **`@nestjs-crud/drizzle`'s `drizzle-orm` peer range now has an upper bound.** It was `>=0.45.2` with no ceiling; it is now `^0.45.2`. drizzle-orm's 1.x line exists only as prereleases, and no CI cell exercises a stable 1.x release.
 - **The four adapters' optional `redis` peer range is unchanged, and its major-5 line remains claimed but unexercised.** `redis` stays `^5.0.0 || ^6.0.0`. Major 6 is exercised by the live Redis cache-strategy specs and the root `redis` dependency; no CI cell installs a 5.x `redis` client, so that line is claimed but not proven.
 - **`@nestjs-crud/prisma`'s optional `@prisma/extension-accelerate` peer range is unchanged and remains permanently unexercisable in CI.** It requires a live, paid Prisma Accelerate account and network egress to a managed gateway that no local or CI environment can stand in for.
+- **On Prisma, an offset-mode `getMany` request with no `?sort=` now falls back to the route's default sort declared via `@Crud({ query: { sort } })`, matching TypeORM, Drizzle and MikroORM.** Previously it returned rows in database order. A request's `?sort=` still replaces the default entirely — the two are never merged — and the default sort field passes through the same sort-field allowlist as a request sort. To keep database order on an existing route, remove its `sort` default.
 
 ### Fixed
 

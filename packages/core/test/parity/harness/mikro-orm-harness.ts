@@ -214,7 +214,13 @@ function evaluateOperator(fieldVal: any, opObj: Record<string, any>): boolean {
 // ---------------------------------------------------------------------------
 
 export interface MikroOrmHarness {
-  applyAndRun(parsed: any): Promise<number[]>;
+  /**
+   * The optional `routeQuery` carries a route-level `@Crud({ query: {...} })`
+   * config (for example a default `sort`) into `composer.applyToQuery`'s
+   * `options.query`, alongside the parsed request. Callers that pass only
+   * `parsed` keep today's behavior (an empty route query).
+   */
+  applyAndRun(parsed: any, routeQuery?: Record<string, unknown>): Promise<number[]>;
 
   /**
    * Drive the real `MikroOrmJoinResolver.applyJoins` guard against a
@@ -258,7 +264,7 @@ export function buildMikroOrmComposer(): MikroOrmHarness {
   const emptyOptions = { query: {}, routes: {}, params: {} } as any;
 
   return {
-    async applyAndRun(parsed: any): Promise<number[]> {
+    async applyAndRun(parsed: any, routeQuery?: Record<string, unknown>): Promise<number[]> {
       const normalized = {
         fields: [],
         paramsFilter: [],
@@ -278,7 +284,7 @@ export function buildMikroOrmComposer(): MikroOrmHarness {
       };
 
       const { qb, state } = makeMockQb();
-      composer.applyToQuery(qb, normalized, emptyOptions);
+      composer.applyToQuery(qb, normalized, { ...emptyOptions, query: { ...(routeQuery ?? {}) } });
 
       // Filter dataset
       let results = REFERENCE_DATASET.filter((u) => evaluatePredicate(u, state.where));

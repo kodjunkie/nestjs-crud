@@ -125,9 +125,17 @@ export class PrismaQueryComposer implements QueryComposer<any> {
       out.where = { AND: whereParts };
     }
 
-    // 3. Sort — ASC/DESC → asc/desc; dotted-path via JoinResolver allowlist (SQLi guard)
-    if (parsed.sort?.length) {
-      out.orderBy = parsed.sort.map((s) => this.compileSort(s));
+    // 3. Sort — ASC/DESC → asc/desc; dotted-path via JoinResolver allowlist (SQLi guard).
+    // Falls back to the route's default sort (queryOptions.sort) when the request
+    // omits ?sort=, matching TypeORM/Drizzle/MikroORM.
+    const sortInput =
+      parsed.sort && parsed.sort.length
+        ? parsed.sort
+        : queryOptions.sort && queryOptions.sort.length
+          ? queryOptions.sort
+          : [];
+    if (sortInput.length) {
+      out.orderBy = sortInput.map((s) => this.compileSort(s));
     }
 
     // 4. Pagination

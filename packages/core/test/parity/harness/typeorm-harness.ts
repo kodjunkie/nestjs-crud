@@ -157,8 +157,15 @@ const throwingOnBadRequest = (msg: string): never => {
 // ---------------------------------------------------------------------------
 
 export interface TypeOrmHarness {
-  /** Apply parsed request + run query; returns array of IDs matching the predicate. */
-  applyAndRun(parsed: any): Promise<number[]>;
+  /**
+   * Apply parsed request + run query; returns array of IDs matching the predicate.
+   *
+   * The optional `routeQuery` carries a route-level `@Crud({ query: {...} })`
+   * config (for example a default `sort`) into `composer.applyToQuery`'s
+   * `options.query`, alongside the parsed request. Callers that pass only
+   * `parsed` keep today's behavior (an empty route query).
+   */
+  applyAndRun(parsed: any, routeQuery?: Record<string, unknown>): Promise<number[]>;
 
   /**
    * Drive the real `TypeOrmJoinResolver.applyJoins` guard against the
@@ -210,7 +217,7 @@ export async function buildTypeOrmComposer(): Promise<TypeOrmHarness> {
   const emptyOptions = { query: {}, routes: {}, params: {} } as any;
 
   return {
-    async applyAndRun(parsed: any): Promise<number[]> {
+    async applyAndRun(parsed: any, routeQuery?: Record<string, unknown>): Promise<number[]> {
       const normalized = {
         fields: [],
         paramsFilter: [],
@@ -230,7 +237,10 @@ export async function buildTypeOrmComposer(): Promise<TypeOrmHarness> {
       };
 
       const qb = repo.createQueryBuilder('ParityUser');
-      const composed = composer.applyToQuery(qb, normalized, emptyOptions);
+      const composed = composer.applyToQuery(qb, normalized, {
+        ...emptyOptions,
+        query: { ...(routeQuery ?? {}) },
+      });
       const rows = await composed.getMany();
       return rows.map((r: ParityUser) => r.id);
     },

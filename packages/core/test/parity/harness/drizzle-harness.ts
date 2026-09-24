@@ -146,7 +146,13 @@ const throwingOnBadRequest = (msg: string): never => {
 // ---------------------------------------------------------------------------
 
 export interface DrizzleHarness {
-  applyAndRun(parsed: any): Promise<number[]>;
+  /**
+   * The optional `routeQuery` carries a route-level `@Crud({ query: {...} })`
+   * config (for example a default `sort`) into `composer.applyToQuery`'s
+   * `options.query`, alongside the parsed request. Callers that pass only
+   * `parsed` keep today's behavior (an empty route query).
+   */
+  applyAndRun(parsed: any, routeQuery?: Record<string, unknown>): Promise<number[]>;
 
   /**
    * Drive the real `DrizzleJoinResolver.applyJoins` guard against the
@@ -193,7 +199,7 @@ export function buildDrizzleComposer(): DrizzleHarness {
   const emptyOptions = { query: {}, routes: {}, params: {} } as any;
 
   return {
-    async applyAndRun(parsed: any): Promise<number[]> {
+    async applyAndRun(parsed: any, routeQuery?: Record<string, unknown>): Promise<number[]> {
       const normalized = {
         fields: [],
         paramsFilter: [],
@@ -213,7 +219,10 @@ export function buildDrizzleComposer(): DrizzleHarness {
       };
 
       const query = composer.newQuery();
-      const composed = composer.applyToQuery(query, normalized, emptyOptions);
+      const composed = composer.applyToQuery(query, normalized, {
+        ...emptyOptions,
+        query: { ...(routeQuery ?? {}) },
+      });
       const rows = await composed;
       return (rows as any[]).map((r: any) => r.id);
     },

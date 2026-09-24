@@ -578,7 +578,7 @@ Per-relation options (all optional):
 
 _Optional._
 
-Default `sort` merged with any `sort` passed in the request. Without a request-level `sort`, this default applies on its own.
+This default applies only when the request has no `?sort=`. A request-level `sort` replaces the default entirely — the two are never merged. All four adapters (TypeORM, Drizzle, MikroORM, Prisma) resolve `sort` this way.
 
 #### limit
 

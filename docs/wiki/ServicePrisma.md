@@ -185,6 +185,10 @@ Prisma's `include` and nested `select` translate `@Crud({ query: { join } })`, b
 
 The adapter enforces the same nested-join ancestor rule as the other three adapters (`400 Invalid join: '<field>'` when a nested join's parent is neither requested nor eager), but it does not load nested relations — a valid nested join is accepted, and only its top-level relation is included.
 
+### Default sort
+
+Offset-mode `getMany` applies the route's `@Crud({ query: { sort } })` default when the request has no `?sort=`, matching the other three adapters. Earlier releases of this adapter ignored the route default in offset mode and returned rows in database order instead.
+
 ### Logger
 
 When `serviceConfig.logger` is omitted, the service defaults to `new Logger(PrismaCrudService.name)` from `@nestjs/common`, matching the other adapters. Pass a custom `logger` on the config to capture adapter-level errors in your own sink:
